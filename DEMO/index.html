@@ -399,17 +399,21 @@
 
         .folder-preview {
             position: absolute;
-            bottom: 72px;
+            bottom: 74px;
             left: 50%;
             z-index: 1;
-            width: 82px;
-            height: 106px;
-            overflow: hidden;
-            border: 1px solid var(--line-soft);
-            border-radius: 14px;
-            background: var(--gray-1);
+            display: grid;
+            place-items: center;
+            width: 78px;
+            height: 78px;
+            padding: 12px;
+            border: 4px solid var(--surface-highlight);
+            border-radius: 24px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .58)),
+                color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 16%, transparent);
             box-shadow:
-                0 12px 24px rgba(var(--shadow-rgb), .11),
+                0 14px 26px rgba(var(--shadow-rgb), .13),
                 inset 0 0 0 1px var(--surface-highlight-soft);
             transform: translateX(-50%) translateY(18px) rotate(var(--paper-rotate, -4deg));
             transform-origin: 50% 100%;
@@ -418,17 +422,18 @@
 
         .folder-preview img {
             display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: top center;
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
         }
 
         .folder-preview::after {
             content: "";
             position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, transparent 48%, var(--surface-highlight-soft) 100%);
+            inset: 2px;
+            border-radius: inherit;
+            background: linear-gradient(135deg, rgba(255, 255, 255, .34), transparent 48%);
+            pointer-events: none;
         }
 
         .folder-front {
@@ -454,30 +459,6 @@
             border-radius: inherit;
             background: linear-gradient(130deg, var(--surface-highlight-soft), transparent 40%);
             pointer-events: none;
-        }
-
-        .sticker {
-            position: absolute;
-            right: max(9px, calc(50% - 89px));
-            bottom: 36px;
-            z-index: 4;
-            display: grid;
-            place-items: center;
-            width: 58px;
-            height: 58px;
-            border: 5px solid var(--surface-highlight);
-            border-radius: 18px;
-            background: var(--surface-highlight);
-            box-shadow: 0 12px 22px rgba(var(--shadow-rgb), .16);
-            transform: rotate(var(--sticker-rotate, 8deg));
-            transition: transform 420ms cubic-bezier(.2, .72, .18, 1);
-        }
-
-        .sticker img {
-            display: block;
-            width: 40px;
-            height: 40px;
-            object-fit: contain;
         }
 
         .folder-card:hover .folder-back,
@@ -507,11 +488,6 @@
         .folder-card:focus-visible .folder-preview {
             filter: saturate(1.05);
             transform: translateX(-50%) translateY(-8px) rotate(calc(var(--paper-rotate, -4deg) * .65));
-        }
-
-        .folder-card:hover .sticker,
-        .folder-card:focus-visible .sticker {
-            transform: rotate(calc(var(--sticker-rotate, 8deg) - 4deg)) translateY(-3px) scale(1.03);
         }
 
         .folder-title {
@@ -557,8 +533,8 @@
 
         .note-stage {
             position: relative;
-            width: min(860px, 100%);
-            max-height: min(760px, calc(100vh - 56px));
+            width: min(550px, 100%);
+            max-height: min(486px, calc(100vh - 56px));
             perspective: 1100px;
             transform-origin: var(--open-x, 50%) var(--open-y, 50%);
         }
@@ -584,10 +560,10 @@
             --br-z: 0px;
             --br-o: .18;
             position: relative;
-            min-height: 540px;
-            max-height: min(760px, calc(100vh - 56px));
+            min-height: 346px;
+            max-height: min(486px, calc(100vh - 56px));
             overflow: auto;
-            padding: clamp(24px, 4.8vw, 46px);
+            padding: clamp(18px, 3.1vw, 29px);
             border: 1px solid rgba(117, 99, 36, .12);
             border-radius: 16px 14px 18px 13px;
             color: var(--note-ink);
@@ -721,8 +697,8 @@
             position: relative;
             z-index: 4;
             display: grid;
-            grid-template-columns: 118px minmax(0, 1fr);
-            gap: 24px;
+            grid-template-columns: 76px minmax(0, 1fr);
+            gap: 18px;
             align-content: start;
             min-height: 100%;
             transform: translateZ(24px);
@@ -731,43 +707,43 @@
         .note-sticker {
             display: grid;
             place-items: center;
-            width: 96px;
-            height: 96px;
-            border: 7px solid var(--note-highlight);
-            border-radius: 26px;
+            width: 72px;
+            height: 72px;
+            border: 5px solid var(--note-highlight);
+            border-radius: 21px;
             background:
                 linear-gradient(145deg, rgba(255, 255, 255, .84), rgba(255, 255, 255, .52)),
                 color-mix(in srgb, var(--note-accent, var(--yellow-4)) 18%, transparent);
-            box-shadow: 0 18px 36px rgba(var(--shadow-rgb), .15);
+            box-shadow: 0 14px 26px rgba(var(--shadow-rgb), .14);
             transform: rotate(-5deg);
         }
 
         .note-sticker img {
             display: block;
-            width: 66px;
-            height: 66px;
+            width: 50px;
+            height: 50px;
             object-fit: contain;
         }
 
         .info-copy {
             display: grid;
-            gap: 14px;
+            gap: 12px;
             min-width: 0;
         }
 
         .info-copy h2 {
             color: var(--note-ink);
             font-family: "Mohr Rounded", "PingFang SC", sans-serif;
-            font-size: clamp(30px, 4.2vw, 48px);
+            font-size: clamp(25px, 3.1vw, 34px);
             line-height: 1;
             letter-spacing: 0;
         }
 
         .info-copy p {
-            max-width: 48ch;
+            max-width: 34ch;
             color: var(--note-text);
-            font-size: 15px;
-            line-height: 1.75;
+            font-size: 16px;
+            line-height: 1.68;
         }
 
         .copy-list {
@@ -819,45 +795,11 @@
             transform: translateY(-1px);
         }
 
-        .preview-strip {
-            grid-column: 1 / -1;
-            position: relative;
-            min-height: 170px;
-            overflow: hidden;
-            border: 1px solid var(--note-line);
-            border-radius: var(--radius-card);
-            background:
-                linear-gradient(135deg, color-mix(in srgb, var(--note-accent, var(--yellow-4)) 16%, transparent), var(--note-highlight-soft));
-            box-shadow: inset 0 1px 0 var(--note-highlight-soft);
-        }
-
-        .preview-strip img {
-            display: block;
-            width: 100%;
-            height: 220px;
-            object-fit: cover;
-            object-position: top center;
-            filter: saturate(1.02);
-        }
-
-        .note-files {
-            grid-column: 1 / -1;
-            display: grid;
-            gap: 14px;
-            margin-top: 2px;
-        }
-
-        .note-files h3 {
-            color: var(--note-strong);
-            font-size: 13px;
-            line-height: 1.3;
-            font-weight: 700;
-        }
-
         .file-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: 2px;
         }
 
         .file-item {
@@ -866,10 +808,10 @@
             grid-template-columns: auto minmax(0, 1fr);
             gap: 12px;
             align-items: center;
-            min-height: 76px;
-            padding: 10px 12px;
+            min-height: 58px;
+            padding: 9px 11px;
             border: 1px solid var(--note-line);
-            border-radius: 12px;
+            border-radius: 11px;
             color: inherit;
             background: var(--note-glass);
             box-shadow: inset 0 1px 0 var(--note-highlight-soft);
@@ -888,10 +830,10 @@
             display: grid;
             place-items: center;
             grid-row: 1 / span 2;
-            width: 44px;
-            height: 54px;
+            width: 38px;
+            height: 38px;
             border: 1px solid var(--note-line);
-            border-radius: 8px 13px 8px 8px;
+            border-radius: 11px;
             color: var(--yellow-6);
             background:
                 linear-gradient(135deg, var(--note-highlight), var(--note-highlight-soft)),
@@ -899,28 +841,15 @@
             box-shadow: 0 12px 22px rgba(var(--shadow-rgb), .1);
         }
 
-        .file-icon::before {
-            content: "";
-            position: absolute;
-            right: -1px;
-            top: -1px;
-            width: 15px;
-            height: 15px;
-            border-left: 1px solid var(--note-line);
-            border-bottom: 1px solid var(--note-line);
-            border-radius: 0 14px 0 6px;
-            background: var(--note-highlight);
-        }
-
         .file-icon i {
             position: relative;
             z-index: 1;
-            font-size: 23px;
+            font-size: 19px;
         }
 
         .file-name {
             color: var(--note-ink);
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.25;
             font-weight: 700;
         }
@@ -1102,30 +1031,23 @@
             }
 
             .folder-preview {
-                bottom: 54px;
-                width: 60px;
-                height: 78px;
-                border-radius: 12px;
+                bottom: 57px;
+                width: 56px;
+                height: 56px;
+                padding: 8px;
+                border-width: 3px;
+                border-radius: 18px;
+            }
+
+            .folder-preview img {
+                width: 38px;
+                height: 38px;
             }
 
             .folder-front {
                 bottom: 13px;
                 height: 82px;
                 border-radius: 18px;
-            }
-
-            .sticker {
-                right: max(7px, calc(50% - 70px));
-                bottom: 26px;
-                width: 48px;
-                height: 48px;
-                border-width: 4px;
-                border-radius: 15px;
-            }
-
-            .sticker img {
-                width: 33px;
-                height: 33px;
             }
 
             .folder-title {
@@ -1171,14 +1093,6 @@
             .note-sticker img {
                 width: 52px;
                 height: 52px;
-            }
-
-            .preview-strip {
-                min-height: 138px;
-            }
-
-            .preview-strip img {
-                height: 172px;
             }
 
             .file-grid {
@@ -1234,13 +1148,12 @@
         </section>
 
         <section class="folder-grid" aria-label="Demo 列表">
-            <button class="folder-card" type="button" data-project="kbook" style="--folder-accent: var(--orange-4); --paper-rotate: -5deg; --sticker-rotate: 8deg;">
+            <button class="folder-card" type="button" data-project="kbook" style="--folder-accent: var(--orange-4); --paper-rotate: -5deg;">
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/kbook.jpg" alt=""></span>
+                    <span class="folder-preview"><img src="https://kbook.mikeywa.icu/assets/UI/favcon.png" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="https://kbook.mikeywa.icu/assets/UI/favcon.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>英语新素养K段-绘本发散</strong>
@@ -1248,13 +1161,12 @@
                 </span>
             </button>
 
-            <button class="folder-card" type="button" data-project="lansen" style="--folder-accent: var(--green-4); --paper-rotate: 4deg; --sticker-rotate: -7deg;">
+            <button class="folder-card" type="button" data-project="lansen" style="--folder-accent: var(--green-4); --paper-rotate: 4deg;">
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/lansen.jpg" alt=""></span>
+                    <span class="folder-preview"><img src="https://lansen.mikeywa.icu/app-logo.png" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="https://lansen.mikeywa.icu/app-logo.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>蓝森-更适合叫叫的人力系统</strong>
@@ -1262,13 +1174,12 @@
                 </span>
             </button>
 
-            <button class="folder-card" type="button" data-project="jojoup" style="--folder-accent: var(--purple-4); --paper-rotate: -3deg; --sticker-rotate: 9deg;">
+            <button class="folder-card" type="button" data-project="jojoup" style="--folder-accent: var(--purple-4); --paper-rotate: -3deg;">
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/jojoup-ios.jpg" alt=""></span>
+                    <span class="folder-preview"><img src="https://zzx.mikeywa.icu/brand-assets/favicon.png" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="https://zzx.mikeywa.icu/brand-assets/favicon.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>周周学</strong>
@@ -1276,13 +1187,12 @@
                 </span>
             </button>
 
-            <button class="folder-card" type="button" data-project="uiDesign" style="--folder-accent: var(--pro-blue-4); --paper-rotate: 5deg; --sticker-rotate: -8deg;">
+            <button class="folder-card" type="button" data-project="uiDesign" style="--folder-accent: var(--pro-blue-4); --paper-rotate: 5deg;">
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/brand.jpg" alt=""></span>
+                    <span class="folder-preview"><img src="../assets/demo-favicons/index.svg" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="../assets/demo-favicons/index.svg" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>JOJO UI DesignMD测试Demo</strong>
@@ -1290,13 +1200,12 @@
                 </span>
             </button>
 
-            <button class="folder-card" type="button" data-project="modular" style="--folder-accent: var(--yellow-4); --paper-rotate: -4deg; --sticker-rotate: 7deg;">
+            <button class="folder-card" type="button" data-project="modular" style="--folder-accent: var(--yellow-4); --paper-rotate: -4deg;">
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/modular-standard-question.svg" alt=""></span>
+                    <span class="folder-preview"><img src="../assets/demo-favicons/modular-standard-question.svg" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="../assets/demo-favicons/modular-standard-question.svg" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>JOJO 模块化设计MD测试</strong>
@@ -1319,15 +1228,9 @@
                     <div class="info-copy">
                         <h2 id="note-title">JOJO Demos</h2>
                         <p id="note-desc"></p>
+                        <div class="file-grid" id="file-grid"></div>
                         <div class="copy-list" id="copy-list"></div>
                     </div>
-                    <div class="preview-strip">
-                        <img id="note-shot" src="../assets/demo-shots/brand.jpg" alt="">
-                    </div>
-                    <section class="note-files">
-                        <h3 id="file-count">文件</h3>
-                        <div class="file-grid" id="file-grid"></div>
-                    </section>
                 </div>
             </article>
         </section>
@@ -1389,7 +1292,6 @@
                     desc: "围绕 K 段英语绘本阅读的发散式学习体验，重点展示移动端中的故事、任务和学习路径。",
                     accent: "#FF9045",
                     icon: "https://kbook.mikeywa.icu/assets/UI/favcon.png",
-                    shot: "../assets/demo-shots/kbook.jpg",
                     files: [
                         { name: "打开项目", meta: "kbook.mikeywa.icu", href: "https://kbook.mikeywa.icu", icon: "ph-arrow-up-right" }
                     ],
@@ -1400,7 +1302,6 @@
                     desc: "给内部组织协作使用的人力系统预览，强调清晰的信息结构和更贴近叫叫业务语境的工作台体验。",
                     accent: "#78C562",
                     icon: "https://lansen.mikeywa.icu/app-logo.png",
-                    shot: "../assets/demo-shots/lansen.jpg",
                     files: [
                         { name: "打开项目", meta: "lansen.mikeywa.icu", href: "https://lansen.mikeywa.icu", icon: "ph-arrow-up-right" }
                     ],
@@ -1411,7 +1312,6 @@
                     desc: "周周学的移动端 Demo 与官网入口，分别用于体验产品流程和查看对外展示版本。",
                     accent: "#AE84E3",
                     icon: "https://zzx.mikeywa.icu/brand-assets/favicon.png",
-                    shot: "../assets/demo-shots/jojoup-ios.jpg",
                     files: [
                         { name: "Demo", meta: "zzx.mikeywa.icu/DEMO", href: "https://zzx.mikeywa.icu/DEMO", icon: "ph-device-mobile" },
                         { name: "官网", meta: "zzx.mikeywa.icu", href: "https://zzx.mikeywa.icu/", icon: "ph-globe" }
@@ -1423,7 +1323,6 @@
                     desc: "为 AI 准备的 JOJO UI 完整设计规范，覆盖颜色、圆角、字体、动效和交付前自检规则。",
                     accent: "#528BFF",
                     icon: "../assets/demo-favicons/index.svg",
-                    shot: "../assets/demo-shots/brand.jpg",
                     files: [
                         { name: "DESIGN.md", meta: "设计规范", href: "../DESIGN.md", icon: "ph-file-text" },
                         { name: "Skill.md", meta: "安装说明", href: "../skills/jujo-ui-design-md/SKILL.md", icon: "ph-file-code" }
@@ -1437,7 +1336,6 @@
                     desc: "为模块化题型和视觉皮肤准备的规范入口，聚焦答题页白底、选项控制、按钮层级和动效边界。",
                     accent: "#FCDA00",
                     icon: "../assets/demo-favicons/modular-standard-question.svg",
-                    shot: "../assets/demo-shots/modular-standard-question.svg",
                     files: [
                         { name: "Demo", meta: "模块化题型预览", href: "../DEMO/modular-standard-question.html", icon: "ph-arrow-up-right" }
                     ],
@@ -1455,8 +1353,6 @@
             const titleEl = document.getElementById("note-title");
             const descEl = document.getElementById("note-desc");
             const iconEl = document.getElementById("note-icon");
-            const shotEl = document.getElementById("note-shot");
-            const fileCountEl = document.getElementById("file-count");
             const fileGrid = document.getElementById("file-grid");
             const copyList = document.getElementById("copy-list");
             const toast = document.getElementById("copy-toast");
@@ -1576,7 +1472,6 @@
 
             function renderFiles(files) {
                 fileGrid.innerHTML = "";
-                fileCountEl.textContent = files.length > 1 ? `${files.length} 个文件` : "1 个文件";
 
                 if (!files.length) {
                     const empty = document.createElement("div");
@@ -1664,8 +1559,6 @@
                 descEl.textContent = project.desc;
                 iconEl.src = project.icon;
                 iconEl.alt = `${project.title} favicon`;
-                shotEl.src = project.shot;
-                shotEl.alt = `${project.title} 截图`;
                 renderCopies(project.copies);
                 renderFiles(project.files);
 
