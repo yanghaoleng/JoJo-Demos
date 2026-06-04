@@ -889,6 +889,13 @@
             transform: translateY(-3px);
         }
 
+        .file-separator {
+            height: 1px;
+            margin: 3px 9px 5px;
+            background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--note-ink) 18%, transparent), transparent);
+            opacity: .52;
+        }
+
         .file-icon {
             position: relative;
             display: grid;
@@ -1452,11 +1459,11 @@
                     accent: "#528BFF",
                     icon: "../assets/demo-favicons/index.svg",
                     files: [
+                        { name: "app-design.md", meta: "点击下载", href: "/app-design.md", icon: "ph-download-simple", download: "app-design.md", dividerAfter: true },
                         { name: "领课链路", meta: "登录、选课、评估、报告", href: "/DEMO/login.html", icon: "ph-route" },
                         { name: "叫叫官网", meta: "品牌官网预览", href: "/DEMO/jiaojiao.html", icon: "ph-globe" },
                         { name: "绿豆官网", meta: "英语产品官网预览", href: "/DEMO/lvdou.html", icon: "ph-leaf" },
-                        { name: "成长内容 App", meta: "叫叫 App Demo", href: "/DEMO/app.html", icon: "ph-device-mobile" },
-                        { name: "app-design.md", meta: "点击下载", href: "/app-design.md", icon: "ph-download-simple", download: "app-design.md" }
+                        { name: "成长内容 App", meta: "叫叫 App Demo", href: "/DEMO/app.html", icon: "ph-device-mobile" }
                     ],
                     copies: []
                 },
@@ -1466,8 +1473,8 @@
                     accent: "#FCDA00",
                     icon: "../assets/demo-favicons/modular-standard-question.svg",
                     files: [
-                        { name: "出题 Demo", meta: "模块化题型预览", href: "/DEMO/modular-standard-question.html", icon: "ph-arrow-up-right" },
-                        { name: "course-design.md", meta: "点击下载", href: "/course-design.md", icon: "ph-download-simple", download: "course-design.md" }
+                        { name: "course-design.md", meta: "点击下载", href: "/course-design.md", icon: "ph-download-simple", download: "course-design.md", dividerAfter: true },
+                        { name: "出题 Demo", meta: "模块化题型预览", href: "/DEMO/modular-standard-question.html", icon: "ph-arrow-up-right" }
                     ],
                     copies: []
                 }
@@ -1684,6 +1691,12 @@
                         <span class="file-meta">${file.meta}</span>
                     `;
                     fileGrid.append(link);
+                    if (file.dividerAfter) {
+                        const separator = document.createElement("div");
+                        separator.className = "file-separator";
+                        separator.setAttribute("aria-hidden", "true");
+                        fileGrid.append(separator);
+                    }
                 });
             }
 
