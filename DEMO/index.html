@@ -97,10 +97,9 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        a:focus-visible,
-        button:focus-visible {
-            outline: 3px solid var(--focus);
-            outline-offset: 4px;
+        *:focus,
+        *:focus-visible {
+            outline: none !important;
         }
 
         .page {
@@ -1055,10 +1054,9 @@
     <main class="page">
         <section class="hero-main" aria-labelledby="demo-title">
             <div>
-                <span class="hero-kicker">JOJO Project Notes</span>
+                <span class="hero-kicker">一个 VibeCoding 的备忘录</span>
                 <h1 id="demo-title">JOJO Demos</h1>
             </div>
-            <p class="hero-note">项目入口被收进半透明文件夹里，打开后会展开一张轻轻浮起的便签纸。</p>
         </section>
 
         <section class="folder-grid" aria-label="Demo 列表">
@@ -1128,7 +1126,7 @@
                 </span>
                 <span class="folder-title">
                     <strong>JOJO 模块化设计MD测试</strong>
-                    <span>2 个文件</span>
+                    <span>1 个文件</span>
                 </span>
             </button>
         </section>
@@ -1220,8 +1218,7 @@
                         { name: "Skill.md", meta: "安装说明", href: "../skills/jujo-ui-design-md/SKILL.md", icon: "ph-file-code" }
                     ],
                     copies: [
-                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md", text: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md" },
-                        { label: "复制给 AI 的提示词", text: PROMPTS.ui }
+                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md", text: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md" }
                     ]
                 },
                 modular: {
@@ -1231,12 +1228,10 @@
                     icon: "../assets/demo-favicons/modular-standard-question.svg",
                     shot: "../assets/demo-shots/modular-standard-question.svg",
                     files: [
-                        { name: "Style.md", meta: "模块化规范", href: "../design/JOJO_MODULAR_VISUAL_STYLE.md", icon: "ph-file-text" },
-                        { name: "Skill.md", meta: "安装说明", href: "../skills/jujo-modular-style/SKILL.md", icon: "ph-file-code" }
+                        { name: "Demo", meta: "模块化题型预览", href: "../DEMO/modular-standard-question.html", icon: "ph-arrow-up-right" }
                     ],
                     copies: [
-                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style", text: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style" },
-                        { label: "复制给 AI 的提示词", text: PROMPTS.modular }
+                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style", text: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style" }
                     ]
                 }
             };
