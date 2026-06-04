@@ -1305,6 +1305,21 @@
                 </span>
             </button>
 
+            <button class="folder-card" type="button" data-project="jojoDemo" style="--folder-accent: var(--yellow-4); --paper-rotate: 3deg;">
+                <span class="folder-visual" aria-hidden="true">
+                    <span class="folder-tab"></span>
+                    <span class="folder-back"></span>
+                    <span class="folder-paper"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/webapp.jpg" alt=""></span>
+                    <span class="folder-front"></span>
+                    <span class="folder-favicon"><img src="../assets/demo-favicons/app.svg" alt=""></span>
+                </span>
+                <span class="folder-title">
+                    <strong>叫叫 Demo</strong>
+                    <span>4 个入口</span>
+                </span>
+            </button>
+
             <button class="folder-card" type="button" data-project="uiDesign" style="--folder-accent: var(--pro-blue-4); --paper-rotate: 5deg;">
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
@@ -1316,7 +1331,7 @@
                 </span>
                 <span class="folder-title">
                     <strong>叫叫App DesignMD</strong>
-                    <span>2 个文件</span>
+                    <span>1 个文件</span>
                 </span>
             </button>
 
@@ -1414,11 +1429,6 @@
                 }
             }
 
-            const PROMPTS = {
-                ui: "我已通过 `npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md` 安装了 JOJO UI 设计规范 skill。请按本 skill 中的 JOJO UI 规范（DESIGN.md v1.3）完成我的任务：颜色只用 5 个主品牌色 + 4 个中性色，圆角只用 22px/999px/16px/10px 四档，标题用 Mohr Rounded Bold，正文用 PingFang SC，动效用 GSAP easeOutBack 0.6-0.8s。每个设计/代码产出后请用一句注释说明依据，并对照本 skill 的违规检查清单（色值/圆角/字号/动效/6 态/可访问性）逐条自检后再交付。",
-                modular: "我已通过 `npx skills add pixel-point/jujo-skills --skill jujo-modular-style` 安装了 JOJO 模块化视觉风格 skill。请按本 skill 的规范（JOJO_MODULAR_VISUAL_STYLE.md）完成我的模块化视觉任务：题干/作答区保持纯白底、不在题目内容中加圆角描边容器、选项按钮圆角 12px 克制处理、提交按钮比选项按钮更大更粗、答题页不启用 ani-tip-repeat / ani-bounds 这两个循环动效。每个皮肤/组件产出后请用一句注释说明色值依据，并对照本 skill 的违规检查清单（白底/无渐变/克制圆角/硬边投影/箭头无尾巴/无循环动效）逐条自检后再交付。"
-            };
-
             const PROJECTS = {
                 kbook: {
                     title: "K段绘本",
@@ -1451,30 +1461,38 @@
                     ],
                     copies: []
                 },
+                jojoDemo: {
+                    title: "叫叫 Demo",
+                    desc: "之前做过的叫叫体验入口，包含领课链路、官网和成长内容 App 预览。",
+                    accent: "#FCDA00",
+                    icon: "../assets/demo-favicons/app.svg",
+                    files: [
+                        { name: "领课链路", meta: "登录、选课、评估、报告", href: "/DEMO/login.html", icon: "ph-route" },
+                        { name: "叫叫官网", meta: "品牌官网预览", href: "/DEMO/jiaojiao.html", icon: "ph-globe" },
+                        { name: "绿豆官网", meta: "英语产品官网预览", href: "/DEMO/lvdou.html", icon: "ph-leaf" },
+                        { name: "成长内容 App", meta: "叫叫 App Demo", href: "/DEMO/app.html", icon: "ph-device-mobile" }
+                    ],
+                    copies: []
+                },
                 uiDesign: {
                     title: "叫叫App DesignMD",
-                    desc: "为 AI 准备的 JOJO UI 完整设计规范，覆盖颜色、圆角、字体、动效和交付前自检规则。",
+                    desc: "叫叫 App 设计规范 Markdown，点击即可下载到本地。",
                     accent: "#528BFF",
                     icon: "../assets/demo-favicons/index.svg",
                     files: [
-                        { name: "DESIGN.md", meta: "设计规范", href: "../DESIGN.md", icon: "ph-file-text" },
-                        { name: "Skill.md", meta: "安装说明", href: "../skills/jujo-ui-design-md/SKILL.md", icon: "ph-file-code" }
+                        { name: "app-design.md", meta: "点击下载", href: "/app-design.md", icon: "ph-download-simple", download: "app-design.md" }
                     ],
-                    copies: [
-                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md", text: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md" }
-                    ]
+                    copies: []
                 },
                 modular: {
                     title: "叫叫课中 DesignMD",
-                    desc: "为模块化题型和视觉皮肤准备的规范入口，聚焦答题页白底、选项控制、按钮层级和动效边界。",
+                    desc: "叫叫课中模块化视觉规范 Markdown，点击即可下载到本地。",
                     accent: "#FCDA00",
                     icon: "../assets/demo-favicons/modular-standard-question.svg",
                     files: [
-                        { name: "Demo", meta: "模块化题型预览", href: "modular-standard-question.html", icon: "ph-arrow-up-right" }
+                        { name: "course-design.md", meta: "点击下载", href: "/course-design.md", icon: "ph-download-simple", download: "course-design.md" }
                     ],
-                    copies: [
-                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style", text: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style" }
-                    ]
+                    copies: []
                 }
             };
 
@@ -1632,6 +1650,7 @@
 
             function renderCopies(copies) {
                 copyList.innerHTML = "";
+                copyList.hidden = !copies.length;
                 copies.forEach((item) => {
                     const row = document.createElement("div");
                     row.className = "copy-pill";
@@ -1677,8 +1696,12 @@
                     const link = document.createElement("a");
                     link.className = "file-item";
                     link.href = file.href;
-                    link.target = "_blank";
-                    link.rel = "noopener noreferrer";
+                    if (file.download) {
+                        link.download = file.download;
+                    } else {
+                        link.target = "_blank";
+                        link.rel = "noopener noreferrer";
+                    }
                     link.innerHTML = `
                         <span class="file-icon" aria-hidden="true"><i class="ph-fill ${file.icon || "ph-file"}"></i></span>
                         <span class="file-name">${file.name}</span>
