@@ -20,6 +20,23 @@
         ".tab-button",
         ".reaction-button"
     ].join(",");
+    const clickableSelector = [
+        "a[href]",
+        "button",
+        "[role='button']",
+        "[data-action]",
+        "[data-view]",
+        "[data-tab]",
+        "[data-like]",
+        "[data-confirm]",
+        "[data-outfit]",
+        "[data-subject]",
+        "[data-kind]",
+        "[data-feed-mode]",
+        ".option-item",
+        ".task-item"
+    ].join(",");
+    const clickSoundSrc = "../assets/音效/Click - Tap_Done_Checkbox1.wav";
 
     document.documentElement.classList.remove("gsap-boot");
 
@@ -148,6 +165,27 @@
         });
     }
 
+    function playClickSound() {
+        const audio = new Audio(clickSoundSrc);
+        audio.volume = .38;
+        audio.play().catch(() => {});
+    }
+
+    function isClickableEnabled(target) {
+        if (!target || !document.documentElement.contains(target)) return false;
+        if (target.disabled || target.getAttribute("aria-disabled") === "true") return false;
+        if (target.closest("[data-sound='none']")) return false;
+        return true;
+    }
+
+    function bindClickSound() {
+        document.addEventListener("click", (event) => {
+            const target = event.target.closest(clickableSelector);
+            if (!isClickableEnabled(target)) return;
+            playClickSound();
+        }, true);
+    }
+
     function watchAppRenders() {
         if (reduceMotion || !hasGsap) return;
         const target = document.getElementById("app") || document.body;
@@ -176,6 +214,7 @@
         reveal(document);
         floatArt();
         bindDelegatedFeedback();
+        bindClickSound();
         watchAppRenders();
     }
 

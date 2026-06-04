@@ -832,23 +832,31 @@
         }
 
         .copy-pill button {
+            position: relative;
             display: inline-grid;
             place-items: center;
             width: 30px;
             height: 30px;
-            border: 0;
+            border: 1px solid rgba(64, 64, 64, .08);
             border-radius: 8px;
-            color: var(--note-ink);
-            background: var(--note-button);
+            color: rgba(64, 64, 64, .68);
+            background: #F5F4F4;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .82), 0 8px 18px rgba(var(--shadow-rgb), .06);
             cursor: pointer;
-            transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+            transform-origin: center;
+            transition: background 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
         }
 
         .copy-pill button:hover,
         .copy-pill button.is-copied {
-            color: var(--yellow-6);
-            background: var(--yellow-4);
-            transform: translateY(-1px);
+            color: var(--note-ink);
+            background: #EAEAEA;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 11px 22px rgba(var(--shadow-rgb), .09);
+            transform: scale(1.08);
+        }
+
+        .copy-pill button:active {
+            transform: scale(1.02);
         }
 
         .file-grid {
@@ -970,6 +978,28 @@
         .toast.is-visible {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.is-anchored {
+            top: var(--toast-y);
+            bottom: auto;
+            left: var(--toast-x);
+            max-width: min(220px, calc(100vw - 28px));
+            padding: 7px 11px;
+            font-size: 12px;
+            transform: translate(-50%, -100%) translateY(5px) scale(.94);
+        }
+
+        .toast.is-anchored.is-visible {
+            transform: translate(-50%, -100%) translateY(-8px) scale(1);
+        }
+
+        .toast.is-anchored.is-below {
+            transform: translate(-50%, 0) translateY(-5px) scale(.94);
+        }
+
+        .toast.is-anchored.is-below.is-visible {
+            transform: translate(-50%, 0) translateY(8px) scale(1);
         }
 
         @keyframes note-open {
@@ -1359,6 +1389,10 @@
                 "../assets/mascots-webp/粉豆-震惊错愕，恍惚，发呆.webp",
                 "../assets/mascots-webp/豆芽-玩味挑眉，慵懒，狡黠.webp"
             ];
+            const SOUND_SRC = {
+                click: "../assets/音效/Click - Tap_Done_Checkbox1.wav",
+                pop: "../assets/音效/Pop - Notification1.wav"
+            };
 
             const halftoneEl = document.getElementById("halftone-decor");
             if (halftoneEl && window.HalftoneDot) {
@@ -1424,7 +1458,7 @@
                     icon: "../assets/demo-favicons/index.svg",
                     files: [
                         { name: "DESIGN.md", meta: "设计规范", href: "../DESIGN.md", icon: "ph-file-text" },
-                        { name: "Skill.md", meta: "安装说明", href: "../skills/jujo-ui-design-md/SKILL.md", icon: "ph-file-code" }
+                        { name: "Skill.md", meta: "安装说明", href: "../叫叫课中 DesignMD/jujo-ui-design-md/SKILL.md", icon: "ph-file-code" }
                     ],
                     copies: [
                         { label: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md", text: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md" }
@@ -1436,7 +1470,7 @@
                     accent: "#FCDA00",
                     icon: "../assets/demo-favicons/modular-standard-question.svg",
                     files: [
-                        { name: "Demo", meta: "模块化题型预览", href: "../DEMO/modular-standard-question.html", icon: "ph-arrow-up-right" }
+                        { name: "Demo", meta: "模块化题型预览", href: "modular-standard-question.html", icon: "ph-arrow-up-right" }
                     ],
                     copies: [
                         { label: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style", text: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style" }
@@ -1510,11 +1544,58 @@
                 }
             }
 
-            function showToast(message) {
+            function playSound(type) {
+                const src = SOUND_SRC[type];
+                if (!src) return;
+                const audio = new Audio(src);
+                audio.volume = type === "pop" ? .72 : .38;
+                audio.play().catch(() => {});
+            }
+
+            function isClickableEnabled(target) {
+                if (!target || !document.documentElement.contains(target)) return false;
+                if (target.disabled || target.getAttribute("aria-disabled") === "true") return false;
+                if (target.closest("[data-sound='none']")) return false;
+                return true;
+            }
+
+            function bindClickSound() {
+                document.addEventListener("click", (event) => {
+                    const target = event.target.closest("a[href], button, [role='button']");
+                    if (!isClickableEnabled(target) || target.closest("[data-copy-action]")) return;
+                    playSound("click");
+                }, true);
+            }
+
+            function showToast(message, anchor) {
+                const wasVisible = toast.classList.contains("is-visible");
                 toast.textContent = message;
+                toast.classList.toggle("is-anchored", Boolean(anchor));
+                toast.classList.remove("is-below");
+
+                if (anchor) {
+                    const rect = anchor.getBoundingClientRect();
+                    const shouldShowBelow = rect.top < 54;
+                    toast.classList.toggle("is-below", shouldShowBelow);
+                    toast.style.setProperty("--toast-x", `${rect.left + rect.width / 2}px`);
+                    toast.style.setProperty("--toast-y", `${shouldShowBelow ? rect.bottom + 8 : rect.top - 8}px`);
+                }
+
+                if (wasVisible) {
+                    toast.classList.remove("is-visible");
+                    void toast.offsetWidth;
+                }
+
                 toast.classList.add("is-visible");
                 clearTimeout(toastTimer);
-                toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1600);
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove("is-visible");
+                    setTimeout(() => {
+                        if (!toast.classList.contains("is-visible")) {
+                            toast.classList.remove("is-anchored", "is-below");
+                        }
+                    }, 220);
+                }, 1500);
             }
 
             async function copyText(text) {
@@ -1526,10 +1607,15 @@
                 } catch (error) {}
 
                 const textarea = document.createElement("textarea");
+                const selection = document.getSelection();
+                const selectedRange = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
                 textarea.value = text;
-                textarea.style.cssText = "position:fixed;opacity:0;pointer-events:none;";
+                textarea.setAttribute("readonly", "");
+                textarea.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;";
                 document.body.appendChild(textarea);
+                textarea.focus({ preventScroll: true });
                 textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
                 let ok = false;
                 try {
                     ok = document.execCommand("copy");
@@ -1537,6 +1623,10 @@
                     ok = false;
                 }
                 document.body.removeChild(textarea);
+                if (selectedRange && selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(selectedRange);
+                }
                 return ok;
             }
 
@@ -1551,16 +1641,19 @@
 
                     const button = document.createElement("button");
                     button.type = "button";
+                    button.dataset.copyAction = "true";
                     button.setAttribute("aria-label", "复制");
                     button.innerHTML = '<i class="ph-fill ph-copy"></i>';
                     button.addEventListener("click", async () => {
                         const ok = await copyText(item.text);
                         if (ok) {
+                            playSound("pop");
                             button.classList.add("is-copied");
                             setTimeout(() => button.classList.remove("is-copied"), 1000);
-                            showToast(item.label);
+                            showToast("复制成功", button);
                         } else {
-                            showToast("复制失败，请手动选择");
+                            playSound("click");
+                            showToast("复制失败，请手动选择", button);
                         }
                     });
 
@@ -1694,12 +1787,17 @@
             paperEl.addEventListener("pointerleave", resetPaperTilt);
             closeButton.addEventListener("click", closeNote);
             layer.addEventListener("click", (event) => {
-                if (event.target === layer) closeNote();
+                if (event.target === layer) {
+                    playSound("click");
+                    closeNote();
+                }
             });
 
             document.addEventListener("keydown", (event) => {
                 if (event.key === "Escape") closeNote();
             });
+
+            bindClickSound();
         })();
     </script>
 </body>

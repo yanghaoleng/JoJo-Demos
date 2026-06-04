@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/DEMO/index.html"
+      "destination": "/K段绘本/index.html"
     }
   ]
 }

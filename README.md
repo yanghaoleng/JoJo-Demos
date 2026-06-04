@@ -8,8 +8,10 @@
 | --- | --- |
 | `DESIGN.md` | JOJO 主设计规范，包含品牌、色彩、字体、组件、动效和验收标准 |
 | `Design-mikey.MD` | 动效、状态机和交互反馈参考文档 |
-| `DEMO/` | 叫叫产品流程、品牌官网、学习评估等 demo |
-| `DEMO-top/` | 产品落地页方向 demo |
+| `K段绘本/` | 叫叫产品流程、品牌官网、学习评估等 demo |
+| `蓝森人力系统/` | 产品落地页方向 demo |
+| `叫叫课中 DesignMD/` | 课中 UI 与模块化视觉规范 skill |
+| `叫叫App DesignMD/` | 叫叫 App 模块化视觉风格文档 |
 | `assets/` | 品牌 logo、字体、icon、情感化形象等设计资产 |
 | `叫叫UI与品牌手册.pdf` | 原始品牌与 UI 手册 |
 
@@ -17,16 +19,16 @@
 
 | Demo | 文件 |
 | --- | --- |
-| 学习流程导航 | `DEMO/index.html` |
-| 品牌官网概念页 | `DEMO/brand-official.html` |
-| 登录页 | `DEMO/login.html` |
-| 学科选择 | `DEMO/subjects.html` |
-| 学习评估 | `DEMO/assessment.html` |
-| 评估报告 | `DEMO/report.html` |
-| 课前准备 | `DEMO/waiting.html` |
-| 叫叫 APP 官网页 | `DEMO/jiaojiao.html` |
-| 绿豆 APP 官网页 | `DEMO/lvdou.html` |
-| 成长内容 Web App | `DEMO/app.html` |
+| 学习流程导航 | `K段绘本/index.html` |
+| 登录页 | `K段绘本/login.html` |
+| 学科选择 | `K段绘本/subjects.html` |
+| 学习评估 | `K段绘本/assessment.html` |
+| 评估报告 | `K段绘本/report.html` |
+| 课前准备 | `K段绘本/waiting.html` |
+| 叫叫 APP 官网页 | `K段绘本/jiaojiao.html` |
+| 绿豆 APP 官网页 | `K段绘本/lvdou.html` |
+| 成长内容 Web App | `K段绘本/app.html` |
+| 模块化题型 Demo | `K段绘本/modular-standard-question.html` |
 
 ## 使用方式
 
