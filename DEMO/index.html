@@ -6,6 +6,21 @@
     <title>JOJO Demos</title>
     <link rel="icon" href="../assets/demo-favicons/index.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <script>
+        (function () {
+            const modes = ["auto", "light", "dark"];
+            let savedMode = "auto";
+            try {
+                savedMode = localStorage.getItem("jojo-index-color-mode") || "auto";
+            } catch (error) {}
+
+            const mode = modes.includes(savedMode) ? savedMode : "auto";
+            const systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            const scheme = mode === "dark" || (mode === "auto" && systemDark) ? "dark" : "light";
+            document.documentElement.dataset.colorMode = mode;
+            document.documentElement.dataset.colorScheme = scheme;
+        })();
+    </script>
     <style>
         @font-face {
             font-family: "Mohr Rounded";
@@ -46,6 +61,99 @@
             --shadow-soft: 0 22px 60px rgba(31, 40, 77, .12);
             --shadow-pop: 0 28px 80px rgba(31, 40, 77, .2);
             --focus: rgba(82, 139, 255, .42);
+            --page-bg:
+                linear-gradient(115deg, rgba(252, 218, 0, .22), transparent 28%),
+                linear-gradient(245deg, rgba(90, 200, 250, .2), transparent 30%),
+                linear-gradient(180deg, #FFFFFF 0%, var(--gray-1) 62%, #F8F8F8 100%);
+            --grid-line: rgba(64, 64, 64, .04);
+            --ambient-1: rgba(255, 144, 69, .12);
+            --ambient-2: rgba(174, 132, 227, .12);
+            --line-soft: rgba(64, 64, 64, .08);
+            --line-dashed: rgba(64, 64, 64, .14);
+            --glass-line: rgba(255, 255, 255, .68);
+            --text-strong: rgba(47, 42, 31, .74);
+            --text-soft: rgba(64, 64, 64, .72);
+            --text-muted: rgba(64, 64, 64, .58);
+            --text-faint: rgba(64, 64, 64, .54);
+            --glass-soft: rgba(255, 255, 255, .58);
+            --glass-card: rgba(255, 255, 255, .34);
+            --glass-card-hover: rgba(255, 255, 255, .82);
+            --glass-button: rgba(255, 255, 255, .84);
+            --glass-button-hover: rgba(255, 255, 255, .78);
+            --folder-glass-strong: rgba(255, 255, 255, .86);
+            --folder-glass-mid: rgba(255, 255, 255, .42);
+            --folder-glass-soft: rgba(255, 255, 255, .16);
+            --folder-glass-front: rgba(255, 255, 255, .8);
+            --folder-glass-front-soft: rgba(255, 255, 255, .34);
+            --folder-glass-front-tint: rgba(255, 255, 255, .1);
+            --surface-highlight: rgba(255, 255, 255, .92);
+            --surface-highlight-soft: rgba(255, 255, 255, .72);
+            --overlay-bg: rgba(250, 250, 250, .64);
+            --shadow-rgb: 31, 40, 77;
+            --note-ink: #2F2A1F;
+            --note-text: rgba(64, 64, 64, .72);
+            --note-strong: rgba(47, 42, 31, .74);
+            --note-muted: rgba(64, 64, 64, .58);
+            --note-faint: rgba(64, 64, 64, .54);
+            --note-line: rgba(64, 64, 64, .08);
+            --note-line-dashed: rgba(64, 64, 64, .14);
+            --note-glass: rgba(255, 255, 255, .34);
+            --note-glass-soft: rgba(255, 255, 255, .48);
+            --note-glass-hover: rgba(255, 255, 255, .82);
+            --note-button: rgba(255, 255, 255, .84);
+            --note-highlight: rgba(255, 255, 255, .92);
+            --note-highlight-soft: rgba(255, 255, 255, .72);
+            color-scheme: light;
+        }
+
+        html[data-color-scheme="dark"] {
+            --gray-1: #161719;
+            --gray-2: #202124;
+            --gray-3: #34363A;
+            --gray-4: #54565C;
+            --gray-5: #B9BBC2;
+            --gray-6: #E7E3D8;
+            --ink: #FFF2C5;
+            --white: #24262A;
+            --yellow-1: #3A3215;
+            --yellow-2: #5A4A12;
+            --yellow-6: #F9D95B;
+            --page-bg:
+                linear-gradient(115deg, rgba(252, 218, 0, .12), transparent 29%),
+                linear-gradient(245deg, rgba(90, 200, 250, .11), transparent 31%),
+                linear-gradient(180deg, #111214 0%, #161719 58%, #101113 100%);
+            --grid-line: rgba(255, 242, 197, .045);
+            --ambient-1: rgba(255, 144, 69, .1);
+            --ambient-2: rgba(174, 132, 227, .1);
+            --line-soft: rgba(255, 242, 197, .12);
+            --line-dashed: rgba(255, 242, 197, .2);
+            --glass-line: rgba(255, 242, 197, .16);
+            --text-strong: rgba(255, 242, 197, .78);
+            --text-soft: rgba(231, 227, 216, .74);
+            --text-muted: rgba(231, 227, 216, .58);
+            --text-faint: rgba(231, 227, 216, .48);
+            --glass-soft: rgba(38, 40, 43, .68);
+            --glass-card: rgba(42, 44, 48, .58);
+            --glass-card-hover: rgba(55, 57, 62, .82);
+            --glass-button: rgba(255, 242, 197, .12);
+            --glass-button-hover: rgba(255, 242, 197, .2);
+            --folder-glass-strong: rgba(255, 242, 197, .16);
+            --folder-glass-mid: rgba(255, 242, 197, .08);
+            --folder-glass-soft: rgba(10, 11, 12, .26);
+            --folder-glass-front: rgba(255, 242, 197, .14);
+            --folder-glass-front-soft: rgba(255, 242, 197, .07);
+            --folder-glass-front-tint: rgba(10, 11, 12, .2);
+            --surface-highlight: rgba(255, 242, 197, .18);
+            --surface-highlight-soft: rgba(255, 242, 197, .12);
+            --overlay-bg: rgba(12, 13, 15, .72);
+            --shadow-rgb: 0, 0, 0;
+            color-scheme: dark;
+        }
+
+        html[data-color-scheme="dark"] .halftone-decor {
+            opacity: .32;
+            filter: saturate(.9) contrast(1.08);
+            mix-blend-mode: screen;
         }
 
         html {
@@ -58,10 +166,7 @@
             font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             letter-spacing: 0;
             color: var(--gray-6);
-            background:
-                linear-gradient(115deg, rgba(252, 218, 0, .22), transparent 28%),
-                linear-gradient(245deg, rgba(90, 200, 250, .2), transparent 30%),
-                linear-gradient(180deg, #FFFFFF 0%, var(--gray-1) 62%, #F8F8F8 100%);
+            background: var(--page-bg);
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
         }
@@ -73,8 +178,8 @@
             z-index: 0;
             pointer-events: none;
             background-image:
-                linear-gradient(rgba(64, 64, 64, .04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(64, 64, 64, .04) 1px, transparent 1px);
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
             background-size: 36px 36px;
             mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .76), transparent 74%);
         }
@@ -87,8 +192,8 @@
             pointer-events: none;
             opacity: .45;
             background:
-                radial-gradient(circle at 16% 76%, rgba(255, 144, 69, .12), transparent 22%),
-                radial-gradient(circle at 86% 62%, rgba(174, 132, 227, .12), transparent 24%);
+                radial-gradient(circle at 16% 76%, var(--ambient-1), transparent 22%),
+                radial-gradient(circle at 86% 62%, var(--ambient-2), transparent 24%);
         }
 
         a,
@@ -102,6 +207,41 @@
             outline: none !important;
         }
 
+        .theme-toggle {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            z-index: 90;
+            display: inline-grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--line-soft);
+            border-radius: var(--radius-pill);
+            color: var(--text-strong);
+            background: var(--glass-soft);
+            box-shadow: 0 10px 24px rgba(var(--shadow-rgb), .1), inset 0 1px 0 var(--surface-highlight-soft);
+            cursor: pointer;
+            backdrop-filter: blur(16px) saturate(1.12);
+            -webkit-backdrop-filter: blur(16px) saturate(1.12);
+            transition: transform 160ms ease, background 160ms ease, color 160ms ease, opacity 160ms ease;
+        }
+
+        .theme-toggle:hover {
+            color: var(--ink);
+            background: var(--glass-card-hover);
+            transform: translateY(-1px);
+        }
+
+        .theme-toggle:focus-visible {
+            box-shadow: 0 0 0 3px var(--focus), 0 10px 24px rgba(var(--shadow-rgb), .12), inset 0 1px 0 var(--surface-highlight-soft);
+        }
+
+        .theme-toggle i {
+            font-size: 15px;
+            line-height: 1;
+        }
+
         .page {
             position: relative;
             z-index: 1;
@@ -109,6 +249,40 @@
             min-height: 100vh;
             margin: 0 auto;
             padding: 34px 0 56px;
+        }
+
+        .halftone-decor {
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            width: clamp(260px, 34vw, 520px);
+            aspect-ratio: 4 / 3;
+            pointer-events: none;
+            opacity: .42;
+            filter: saturate(.96) contrast(1.04);
+            transform: translate(20%, 20%) rotate(-30deg);
+            transform-origin: 50% 50%;
+            mix-blend-mode: multiply;
+        }
+
+        .halftone-decor::before {
+            content: "";
+            position: absolute;
+            inset: -14%;
+            border-radius: 42px;
+            background:
+                radial-gradient(circle at 30% 22%, rgba(252, 218, 0, .16), transparent 36%),
+                radial-gradient(circle at 72% 78%, rgba(82, 139, 255, .14), transparent 42%);
+            filter: blur(2px);
+        }
+
+        .halftone-decor__canvas {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            border-radius: 34px;
+            transform: translateZ(0);
         }
 
         .hero-main {
@@ -134,11 +308,11 @@
             min-height: 30px;
             padding: 4px 11px;
             margin-bottom: 10px;
-            border: 1px solid rgba(64, 64, 64, .08);
+            border: 1px solid var(--line-soft);
             border-radius: var(--radius-pill);
-            color: rgba(47, 42, 31, .72);
-            background: rgba(255, 255, 255, .58);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
+            color: var(--text-strong);
+            background: var(--glass-soft);
+            box-shadow: inset 0 1px 0 var(--surface-highlight-soft);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             font-size: 13px;
@@ -146,7 +320,7 @@
 
         .hero-note {
             max-width: 35ch;
-            color: rgba(64, 64, 64, .7);
+            color: var(--text-soft);
             font-size: 15px;
             line-height: 1.65;
             text-align: right;
@@ -188,7 +362,7 @@
             left: 50%;
             width: min(100%, 198px);
             transform: translateX(-50%);
-            border: 1px solid rgba(255, 255, 255, .68);
+            border: 1px solid var(--glass-line);
             backdrop-filter: blur(18px) saturate(1.18);
             -webkit-backdrop-filter: blur(18px) saturate(1.18);
         }
@@ -198,12 +372,12 @@
             height: 116px;
             border-radius: 22px 22px 24px 24px;
             background:
-                linear-gradient(150deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .42)),
-                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 28%, transparent), rgba(255, 255, 255, .16));
+                linear-gradient(150deg, var(--folder-glass-strong), var(--folder-glass-mid)),
+                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 28%, transparent), var(--folder-glass-soft));
             box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, .92),
-                inset 0 -18px 30px rgba(255, 255, 255, .18),
-                0 22px 46px rgba(31, 40, 77, .1);
+                inset 0 1px 0 var(--surface-highlight),
+                inset 0 -18px 30px var(--surface-highlight-soft),
+                0 22px 46px rgba(var(--shadow-rgb), .1);
             transition: transform 420ms cubic-bezier(.2, .72, .18, 1), box-shadow 420ms ease;
         }
 
@@ -215,28 +389,28 @@
             border-bottom: 0;
             border-radius: 19px 24px 6px 6px;
             background:
-                linear-gradient(145deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .38)),
+                linear-gradient(145deg, var(--folder-glass-strong), var(--folder-glass-mid)),
                 linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 38%, transparent), transparent);
             transform: translateX(-50%) rotate(-1deg);
             transform-origin: 20% 100%;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+            box-shadow: inset 0 1px 0 var(--surface-highlight);
             transition: transform 420ms cubic-bezier(.2, .72, .18, 1);
         }
 
         .folder-preview {
             position: absolute;
-            bottom: 69px;
+            bottom: 72px;
             left: 50%;
             z-index: 1;
-            width: 118px;
-            height: 154px;
+            width: 82px;
+            height: 106px;
             overflow: hidden;
-            border: 1px solid rgba(64, 64, 64, .08);
-            border-radius: 17px;
+            border: 1px solid var(--line-soft);
+            border-radius: 14px;
             background: var(--gray-1);
             box-shadow:
-                0 14px 32px rgba(31, 40, 77, .12),
-                inset 0 0 0 1px rgba(255, 255, 255, .72);
+                0 12px 24px rgba(var(--shadow-rgb), .11),
+                inset 0 0 0 1px var(--surface-highlight-soft);
             transform: translateX(-50%) translateY(18px) rotate(var(--paper-rotate, -4deg));
             transform-origin: 50% 100%;
             transition: transform 420ms cubic-bezier(.2, .72, .18, 1), filter 420ms ease;
@@ -254,7 +428,7 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: linear-gradient(180deg, transparent 48%, rgba(255, 255, 255, .68) 100%);
+            background: linear-gradient(180deg, transparent 48%, var(--surface-highlight-soft) 100%);
         }
 
         .folder-front {
@@ -263,12 +437,12 @@
             height: 106px;
             border-radius: 22px 22px 24px 24px;
             background:
-                linear-gradient(145deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, .34)),
-                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 24%, transparent), rgba(255, 255, 255, .1));
+                linear-gradient(145deg, var(--folder-glass-front), var(--folder-glass-front-soft)),
+                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 24%, transparent), var(--folder-glass-front-tint));
             box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, .92),
-                inset 0 -20px 34px rgba(255, 255, 255, .24),
-                0 18px 38px rgba(31, 40, 77, .11);
+                inset 0 1px 0 var(--surface-highlight),
+                inset 0 -20px 34px var(--surface-highlight-soft),
+                0 18px 38px rgba(var(--shadow-rgb), .11);
             transform-origin: 50% 100%;
             transition: transform 420ms cubic-bezier(.2, .72, .18, 1), box-shadow 420ms ease;
         }
@@ -278,22 +452,8 @@
             position: absolute;
             inset: 1px;
             border-radius: inherit;
-            background: linear-gradient(130deg, rgba(255, 255, 255, .4), transparent 40%);
+            background: linear-gradient(130deg, var(--surface-highlight-soft), transparent 40%);
             pointer-events: none;
-        }
-
-        .folder-front::after {
-            content: "";
-            position: absolute;
-            left: 19px;
-            bottom: 18px;
-            width: 35px;
-            height: 15px;
-            border-radius: 50%;
-            border: 2px solid color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 56%, rgba(64, 64, 64, .1));
-            border-top-color: transparent;
-            opacity: .38;
-            transform: rotate(-11deg);
         }
 
         .sticker {
@@ -305,10 +465,10 @@
             place-items: center;
             width: 58px;
             height: 58px;
-            border: 5px solid #FFFFFF;
+            border: 5px solid var(--surface-highlight);
             border-radius: 18px;
-            background: rgba(255, 255, 255, .92);
-            box-shadow: 0 12px 22px rgba(31, 40, 77, .16);
+            background: var(--surface-highlight);
+            box-shadow: 0 12px 22px rgba(var(--shadow-rgb), .16);
             transform: rotate(var(--sticker-rotate, 8deg));
             transition: transform 420ms cubic-bezier(.2, .72, .18, 1);
         }
@@ -324,9 +484,9 @@
         .folder-card:focus-visible .folder-back {
             transform: translateX(-50%) translateY(-4px) rotateX(4deg);
             box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, .94),
-                inset 0 -18px 30px rgba(255, 255, 255, .2),
-                0 26px 58px rgba(31, 40, 77, .15);
+                inset 0 1px 0 var(--surface-highlight),
+                inset 0 -18px 30px var(--surface-highlight-soft),
+                0 26px 58px rgba(var(--shadow-rgb), .15);
         }
 
         .folder-card:hover .folder-tab,
@@ -338,9 +498,9 @@
         .folder-card:focus-visible .folder-front {
             transform: translateX(-50%) translateY(8px) rotateX(-13deg);
             box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, .9),
-                inset 0 -20px 34px rgba(255, 255, 255, .2),
-                0 24px 56px rgba(31, 40, 77, .15);
+                inset 0 1px 0 var(--surface-highlight),
+                inset 0 -20px 34px var(--surface-highlight-soft),
+                0 24px 56px rgba(var(--shadow-rgb), .15);
         }
 
         .folder-card:hover .folder-preview,
@@ -368,7 +528,7 @@
         }
 
         .folder-title span {
-            color: rgba(64, 64, 64, .58);
+            color: var(--text-muted);
             font-size: 12px;
             line-height: 1.3;
         }
@@ -381,8 +541,8 @@
             place-items: center;
             padding: 28px;
             background:
-                radial-gradient(circle at var(--open-x, 50%) var(--open-y, 50%), rgba(255, 255, 255, .3), transparent 24%),
-                rgba(250, 250, 250, .64);
+                radial-gradient(circle at var(--open-x, 50%) var(--open-y, 50%), var(--surface-highlight-soft), transparent 24%),
+                var(--overlay-bg);
             backdrop-filter: blur(18px) saturate(1.08);
             -webkit-backdrop-filter: blur(18px) saturate(1.08);
             opacity: 0;
@@ -430,14 +590,14 @@
             padding: clamp(24px, 4.8vw, 46px);
             border: 1px solid rgba(117, 99, 36, .12);
             border-radius: 16px 14px 18px 13px;
-            color: var(--ink);
+            color: var(--note-ink);
             background:
                 linear-gradient(92deg, rgba(255, 255, 255, .28), transparent 16%, rgba(255, 255, 255, .2) 84%, transparent),
                 repeating-linear-gradient(0deg, transparent 0 31px, rgba(117, 99, 36, .07) 31px 32px),
                 var(--note-color, #FFF5B8);
             box-shadow:
-                var(--shadow-x) 30px 70px rgba(31, 40, 77, .18),
-                0 26px 70px rgba(31, 40, 77, .14),
+                var(--shadow-x) 30px 70px rgba(var(--shadow-rgb), .18),
+                0 26px 70px rgba(var(--shadow-rgb), .14),
                 inset 0 1px 0 rgba(255, 255, 255, .56);
             transform:
                 rotateX(var(--rx))
@@ -543,17 +703,17 @@
             place-items: center;
             width: 34px;
             height: 34px;
-            border: 1px solid rgba(64, 64, 64, .08);
+            border: 1px solid var(--note-line);
             border-radius: var(--radius-pill);
-            color: rgba(47, 42, 31, .64);
-            background: rgba(255, 255, 255, .48);
+            color: var(--note-strong);
+            background: var(--note-glass-soft);
             cursor: pointer;
             transition: background 160ms ease, color 160ms ease, transform 160ms ease;
         }
 
         .note-close:hover {
-            color: var(--ink);
-            background: rgba(255, 255, 255, .78);
+            color: var(--note-ink);
+            background: var(--note-glass-hover);
             transform: translateY(-1px);
         }
 
@@ -573,12 +733,12 @@
             place-items: center;
             width: 96px;
             height: 96px;
-            border: 7px solid #FFFFFF;
+            border: 7px solid var(--note-highlight);
             border-radius: 26px;
             background:
                 linear-gradient(145deg, rgba(255, 255, 255, .84), rgba(255, 255, 255, .52)),
                 color-mix(in srgb, var(--note-accent, var(--yellow-4)) 18%, transparent);
-            box-shadow: 0 18px 36px rgba(31, 40, 77, .15);
+            box-shadow: 0 18px 36px rgba(var(--shadow-rgb), .15);
             transform: rotate(-5deg);
         }
 
@@ -596,7 +756,7 @@
         }
 
         .info-copy h2 {
-            color: var(--ink);
+            color: var(--note-ink);
             font-family: "Mohr Rounded", "PingFang SC", sans-serif;
             font-size: clamp(30px, 4.2vw, 48px);
             line-height: 1;
@@ -605,7 +765,7 @@
 
         .info-copy p {
             max-width: 48ch;
-            color: rgba(64, 64, 64, .72);
+            color: var(--note-text);
             font-size: 15px;
             line-height: 1.75;
         }
@@ -624,10 +784,10 @@
             min-width: 0;
             width: min(100%, 520px);
             padding: 8px 8px 8px 12px;
-            border: 1px solid rgba(64, 64, 64, .08);
+            border: 1px solid var(--note-line);
             border-radius: var(--radius-tight);
-            color: var(--ink);
-            background: rgba(255, 255, 255, .32);
+            color: var(--note-ink);
+            background: var(--note-glass);
         }
 
         .copy-pill code {
@@ -646,8 +806,8 @@
             height: 30px;
             border: 0;
             border-radius: 8px;
-            color: var(--gray-6);
-            background: rgba(255, 255, 255, .84);
+            color: var(--note-ink);
+            background: var(--note-button);
             cursor: pointer;
             transition: background 160ms ease, color 160ms ease, transform 160ms ease;
         }
@@ -664,11 +824,11 @@
             position: relative;
             min-height: 170px;
             overflow: hidden;
-            border: 1px solid rgba(64, 64, 64, .08);
+            border: 1px solid var(--note-line);
             border-radius: var(--radius-card);
             background:
-                linear-gradient(135deg, color-mix(in srgb, var(--note-accent, var(--yellow-4)) 16%, transparent), rgba(255, 255, 255, .42));
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .78);
+                linear-gradient(135deg, color-mix(in srgb, var(--note-accent, var(--yellow-4)) 16%, transparent), var(--note-highlight-soft));
+            box-shadow: inset 0 1px 0 var(--note-highlight-soft);
         }
 
         .preview-strip img {
@@ -688,7 +848,7 @@
         }
 
         .note-files h3 {
-            color: rgba(47, 42, 31, .74);
+            color: var(--note-strong);
             font-size: 13px;
             line-height: 1.3;
             font-weight: 700;
@@ -708,18 +868,18 @@
             align-items: center;
             min-height: 76px;
             padding: 10px 12px;
-            border: 1px solid rgba(64, 64, 64, .08);
+            border: 1px solid var(--note-line);
             border-radius: 12px;
             color: inherit;
-            background: rgba(255, 255, 255, .34);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .82);
+            background: var(--note-glass);
+            box-shadow: inset 0 1px 0 var(--note-highlight-soft);
             text-decoration: none;
             transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
         }
 
         .file-item:hover {
-            background: rgba(255, 255, 255, .82);
-            box-shadow: 0 18px 34px rgba(31, 40, 77, .12);
+            background: var(--note-glass-hover);
+            box-shadow: 0 18px 34px rgba(var(--shadow-rgb), .12);
             transform: translateY(-3px);
         }
 
@@ -730,13 +890,13 @@
             grid-row: 1 / span 2;
             width: 44px;
             height: 54px;
-            border: 1px solid rgba(64, 64, 64, .08);
+            border: 1px solid var(--note-line);
             border-radius: 8px 13px 8px 8px;
             color: var(--yellow-6);
             background:
-                linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .62)),
+                linear-gradient(135deg, var(--note-highlight), var(--note-highlight-soft)),
                 color-mix(in srgb, var(--note-accent, var(--yellow-4)) 18%, transparent);
-            box-shadow: 0 12px 22px rgba(31, 40, 77, .1);
+            box-shadow: 0 12px 22px rgba(var(--shadow-rgb), .1);
         }
 
         .file-icon::before {
@@ -746,10 +906,10 @@
             top: -1px;
             width: 15px;
             height: 15px;
-            border-left: 1px solid rgba(64, 64, 64, .08);
-            border-bottom: 1px solid rgba(64, 64, 64, .08);
+            border-left: 1px solid var(--note-line);
+            border-bottom: 1px solid var(--note-line);
             border-radius: 0 14px 0 6px;
-            background: rgba(255, 255, 255, .86);
+            background: var(--note-highlight);
         }
 
         .file-icon i {
@@ -759,26 +919,26 @@
         }
 
         .file-name {
-            color: var(--ink);
+            color: var(--note-ink);
             font-size: 14px;
             line-height: 1.25;
             font-weight: 700;
         }
 
         .file-meta {
-            color: rgba(64, 64, 64, .54);
+            color: var(--note-faint);
             font-size: 12px;
             line-height: 1.3;
         }
 
         .empty-files {
             padding: 16px;
-            border: 1px dashed rgba(64, 64, 64, .14);
+            border: 1px dashed var(--note-line-dashed);
             border-radius: var(--radius-soft);
-            color: rgba(64, 64, 64, .58);
+            color: var(--note-muted);
             font-size: 13px;
             line-height: 1.55;
-            background: rgba(255, 255, 255, .38);
+            background: var(--note-glass);
         }
 
         .brand-mark {
@@ -812,7 +972,7 @@
             border-radius: var(--radius-pill);
             color: #FFFFFF;
             background: rgba(47, 42, 31, .92);
-            box-shadow: 0 16px 40px rgba(31, 40, 77, .2);
+            box-shadow: 0 16px 40px rgba(var(--shadow-rgb), .2);
             font-size: 13px;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -942,10 +1102,10 @@
             }
 
             .folder-preview {
-                bottom: 51px;
-                width: 92px;
-                height: 122px;
-                border-radius: 14px;
+                bottom: 54px;
+                width: 60px;
+                height: 78px;
+                border-radius: 12px;
             }
 
             .folder-front {
@@ -1033,6 +1193,12 @@
             .brand-mark img {
                 width: 82px;
             }
+
+            .halftone-decor {
+                width: min(74vw, 340px);
+                opacity: .34;
+                transform: translate(28%, 24%) rotate(-30deg);
+            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1051,6 +1217,14 @@
     </style>
 </head>
 <body>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="主题：自动，点击切换" title="主题：自动，点击切换">
+        <i class="ph-fill ph-circle-half-tilt" aria-hidden="true"></i>
+    </button>
+
+    <div class="halftone-decor" aria-hidden="true">
+        <div class="halftone-decor__canvas" id="halftone-decor"></div>
+    </div>
+
     <main class="page">
         <section class="hero-main" aria-labelledby="demo-title">
             <div>
@@ -1066,7 +1240,7 @@
                     <span class="folder-back"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/kbook.jpg" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="../assets/demo-favicons/subjects.svg" alt=""></span>
+                    <span class="sticker"><img src="https://kbook.mikeywa.icu/assets/UI/favcon.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>英语新素养K段-绘本发散</strong>
@@ -1080,7 +1254,7 @@
                     <span class="folder-back"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/lansen.jpg" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="../assets/demo-favicons/app.svg" alt=""></span>
+                    <span class="sticker"><img src="https://lansen.mikeywa.icu/app-logo.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>蓝森-更适合叫叫的人力系统</strong>
@@ -1094,7 +1268,7 @@
                     <span class="folder-back"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/jojoup-ios.jpg" alt=""></span>
                     <span class="folder-front"></span>
-                    <span class="sticker"><img src="../assets/demo-favicons/jiaojiao.svg" alt=""></span>
+                    <span class="sticker"><img src="https://zzx.mikeywa.icu/brand-assets/favicon.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>周周学</strong>
@@ -1165,8 +1339,45 @@
         <img src="../assets/品牌logo/叫叫 Logo - 单色.svg" alt="叫叫">
     </div>
 
+    <script src="halftone-effect.js"></script>
+
     <script>
         (function () {
+            const COLOR_MODE_KEY = "jojo-index-color-mode";
+            const COLOR_MODE_ORDER = ["auto", "light", "dark"];
+            const COLOR_MODE_META = {
+                auto: { label: "自动", icon: "ph-circle-half-tilt" },
+                light: { label: "亮色", icon: "ph-sun" },
+                dark: { label: "暗色", icon: "ph-moon-stars" }
+            };
+            const HALFTONE_SHOTS = [
+                "../assets/demo-shots/kbook.jpg",
+                "../assets/demo-shots/lansen.jpg",
+                "../assets/demo-shots/jojoup-ios.jpg",
+                "../assets/demo-shots/brand.jpg",
+                "../assets/demo-shots/assessment.jpg"
+            ];
+
+            const halftoneEl = document.getElementById("halftone-decor");
+            if (halftoneEl && window.HalftoneDot) {
+                const halftone = new window.HalftoneDot(halftoneEl, {
+                    src: HALFTONE_SHOTS[0],
+                    gradient: ["#FCDA00", "#528BFF"],
+                    cell: 7,
+                    speed: .82
+                });
+                const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                let halftoneIndex = 0;
+
+                halftone.preload(HALFTONE_SHOTS.slice(1));
+                if (!reduceMotion) {
+                    window.setInterval(() => {
+                        halftoneIndex = (halftoneIndex + 1) % HALFTONE_SHOTS.length;
+                        halftone.src(HALFTONE_SHOTS[halftoneIndex]);
+                    }, 3600);
+                }
+            }
+
             const PROMPTS = {
                 ui: "我已通过 `npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md` 安装了 JOJO UI 设计规范 skill。请按本 skill 中的 JOJO UI 规范（DESIGN.md v1.3）完成我的任务：颜色只用 5 个主品牌色 + 4 个中性色，圆角只用 22px/999px/16px/10px 四档，标题用 Mohr Rounded Bold，正文用 PingFang SC，动效用 GSAP easeOutBack 0.6-0.8s。每个设计/代码产出后请用一句注释说明依据，并对照本 skill 的违规检查清单（色值/圆角/字号/动效/6 态/可访问性）逐条自检后再交付。",
                 modular: "我已通过 `npx skills add pixel-point/jujo-skills --skill jujo-modular-style` 安装了 JOJO 模块化视觉风格 skill。请按本 skill 的规范（JOJO_MODULAR_VISUAL_STYLE.md）完成我的模块化视觉任务：题干/作答区保持纯白底、不在题目内容中加圆角描边容器、选项按钮圆角 12px 克制处理、提交按钮比选项按钮更大更粗、答题页不启用 ani-tip-repeat / ani-bounds 这两个循环动效。每个皮肤/组件产出后请用一句注释说明色值依据，并对照本 skill 的违规检查清单（白底/无渐变/克制圆角/硬边投影/箭头无尾巴/无循环动效）逐条自检后再交付。"
@@ -1177,7 +1388,7 @@
                     title: "英语新素养K段-绘本发散",
                     desc: "围绕 K 段英语绘本阅读的发散式学习体验，重点展示移动端中的故事、任务和学习路径。",
                     accent: "#FF9045",
-                    icon: "../assets/demo-favicons/subjects.svg",
+                    icon: "https://kbook.mikeywa.icu/assets/UI/favcon.png",
                     shot: "../assets/demo-shots/kbook.jpg",
                     files: [
                         { name: "打开项目", meta: "kbook.mikeywa.icu", href: "https://kbook.mikeywa.icu", icon: "ph-arrow-up-right" }
@@ -1188,7 +1399,7 @@
                     title: "蓝森-更适合叫叫的人力系统",
                     desc: "给内部组织协作使用的人力系统预览，强调清晰的信息结构和更贴近叫叫业务语境的工作台体验。",
                     accent: "#78C562",
-                    icon: "../assets/demo-favicons/app.svg",
+                    icon: "https://lansen.mikeywa.icu/app-logo.png",
                     shot: "../assets/demo-shots/lansen.jpg",
                     files: [
                         { name: "打开项目", meta: "lansen.mikeywa.icu", href: "https://lansen.mikeywa.icu", icon: "ph-arrow-up-right" }
@@ -1199,7 +1410,7 @@
                     title: "周周学",
                     desc: "周周学的移动端 Demo 与官网入口，分别用于体验产品流程和查看对外展示版本。",
                     accent: "#AE84E3",
-                    icon: "../assets/demo-favicons/jiaojiao.svg",
+                    icon: "https://zzx.mikeywa.icu/brand-assets/favicon.png",
                     shot: "../assets/demo-shots/jojoup-ios.jpg",
                     files: [
                         { name: "Demo", meta: "zzx.mikeywa.icu/DEMO", href: "https://zzx.mikeywa.icu/DEMO", icon: "ph-device-mobile" },
@@ -1249,11 +1460,60 @@
             const fileGrid = document.getElementById("file-grid");
             const copyList = document.getElementById("copy-list");
             const toast = document.getElementById("copy-toast");
+            const themeToggle = document.getElementById("theme-toggle");
+            const systemSchemeQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+            let colorMode = document.documentElement.dataset.colorMode || "auto";
             let toastTimer = 0;
             let settleTimer = 0;
             let lastFocus = null;
 
             document.documentElement.classList.remove("index-boot");
+
+            function getColorScheme(mode) {
+                return mode === "dark" || (mode === "auto" && systemSchemeQuery && systemSchemeQuery.matches) ? "dark" : "light";
+            }
+
+            function applyColorMode(mode, shouldPersist = true) {
+                const nextMode = COLOR_MODE_ORDER.includes(mode) ? mode : "auto";
+                const meta = COLOR_MODE_META[nextMode];
+                colorMode = nextMode;
+                document.documentElement.dataset.colorMode = nextMode;
+                document.documentElement.dataset.colorScheme = getColorScheme(nextMode);
+
+                if (themeToggle) {
+                    const label = `主题：${meta.label}，点击切换`;
+                    themeToggle.setAttribute("aria-label", label);
+                    themeToggle.title = label;
+                    themeToggle.innerHTML = `<i class="ph-fill ${meta.icon}" aria-hidden="true"></i>`;
+                }
+
+                if (shouldPersist) {
+                    try {
+                        localStorage.setItem(COLOR_MODE_KEY, nextMode);
+                    } catch (error) {}
+                }
+            }
+
+            function cycleColorMode() {
+                const nextIndex = (COLOR_MODE_ORDER.indexOf(colorMode) + 1) % COLOR_MODE_ORDER.length;
+                applyColorMode(COLOR_MODE_ORDER[nextIndex]);
+            }
+
+            applyColorMode(colorMode, false);
+            if (themeToggle) {
+                themeToggle.addEventListener("click", cycleColorMode);
+            }
+
+            if (systemSchemeQuery) {
+                const syncAutoMode = () => {
+                    if (colorMode === "auto") applyColorMode("auto", false);
+                };
+                if (systemSchemeQuery.addEventListener) {
+                    systemSchemeQuery.addEventListener("change", syncAutoMode);
+                } else if (systemSchemeQuery.addListener) {
+                    systemSchemeQuery.addListener(syncAutoMode);
+                }
+            }
 
             function showToast(message) {
                 toast.textContent = message;
