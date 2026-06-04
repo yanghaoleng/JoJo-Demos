@@ -1305,21 +1305,6 @@
                 </span>
             </button>
 
-            <button class="folder-card" type="button" data-project="jojoDemo" style="--folder-accent: var(--yellow-4); --paper-rotate: 3deg;">
-                <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/webapp.jpg" alt=""></span>
-                    <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="../assets/demo-favicons/app.svg" alt=""></span>
-                </span>
-                <span class="folder-title">
-                    <strong>叫叫 Demo</strong>
-                    <span>4 个入口</span>
-                </span>
-            </button>
-
             <button class="folder-card" type="button" data-project="uiDesign" style="--folder-accent: var(--pro-blue-4); --paper-rotate: 5deg;">
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
@@ -1331,7 +1316,7 @@
                 </span>
                 <span class="folder-title">
                     <strong>叫叫App DesignMD</strong>
-                    <span>1 个文件</span>
+                    <span>5 个入口</span>
                 </span>
             </button>
 
@@ -1346,7 +1331,7 @@
                 </span>
                 <span class="folder-title">
                     <strong>叫叫课中 DesignMD</strong>
-                    <span>1 个文件</span>
+                    <span>2 个入口</span>
                 </span>
             </button>
         </section>
@@ -1461,35 +1446,27 @@
                     ],
                     copies: []
                 },
-                jojoDemo: {
-                    title: "叫叫 Demo",
-                    desc: "之前做过的叫叫体验入口，包含领课链路、官网和成长内容 App 预览。",
-                    accent: "#FCDA00",
-                    icon: "../assets/demo-favicons/app.svg",
+                uiDesign: {
+                    title: "叫叫App DesignMD",
+                    desc: "叫叫 App 设计规范 Markdown 和之前做过的叫叫体验入口，点击即可查看或下载。",
+                    accent: "#528BFF",
+                    icon: "../assets/demo-favicons/index.svg",
                     files: [
                         { name: "领课链路", meta: "登录、选课、评估、报告", href: "/DEMO/login.html", icon: "ph-route" },
                         { name: "叫叫官网", meta: "品牌官网预览", href: "/DEMO/jiaojiao.html", icon: "ph-globe" },
                         { name: "绿豆官网", meta: "英语产品官网预览", href: "/DEMO/lvdou.html", icon: "ph-leaf" },
-                        { name: "成长内容 App", meta: "叫叫 App Demo", href: "/DEMO/app.html", icon: "ph-device-mobile" }
-                    ],
-                    copies: []
-                },
-                uiDesign: {
-                    title: "叫叫App DesignMD",
-                    desc: "叫叫 App 设计规范 Markdown，点击即可下载到本地。",
-                    accent: "#528BFF",
-                    icon: "../assets/demo-favicons/index.svg",
-                    files: [
+                        { name: "成长内容 App", meta: "叫叫 App Demo", href: "/DEMO/app.html", icon: "ph-device-mobile" },
                         { name: "app-design.md", meta: "点击下载", href: "/app-design.md", icon: "ph-download-simple", download: "app-design.md" }
                     ],
                     copies: []
                 },
                 modular: {
                     title: "叫叫课中 DesignMD",
-                    desc: "叫叫课中模块化视觉规范 Markdown，点击即可下载到本地。",
+                    desc: "叫叫课中模块化视觉规范和出题 Demo，点击即可查看或下载。",
                     accent: "#FCDA00",
                     icon: "../assets/demo-favicons/modular-standard-question.svg",
                     files: [
+                        { name: "出题 Demo", meta: "模块化题型预览", href: "/DEMO/modular-standard-question.html", icon: "ph-arrow-up-right" },
                         { name: "course-design.md", meta: "点击下载", href: "/course-design.md", icon: "ph-download-simple", download: "course-design.md" }
                     ],
                     copies: []
