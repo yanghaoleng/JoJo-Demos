@@ -256,7 +256,7 @@
             right: 0;
             bottom: 0;
             z-index: 0;
-            width: clamp(260px, 34vw, 520px);
+            width: clamp(390px, 51vw, 780px);
             aspect-ratio: 4 / 3;
             pointer-events: none;
             opacity: .42;
@@ -1120,7 +1120,7 @@
             }
 
             .halftone-decor {
-                width: min(74vw, 340px);
+                width: min(111vw, 510px);
                 opacity: .34;
                 transform: translate(28%, 24%) rotate(-30deg);
             }
@@ -1284,8 +1284,8 @@
                 const halftone = new window.HalftoneDot(halftoneEl, {
                     src: HALFTONE_SHOTS[0],
                     gradient: ["#FCDA00", "#528BFF"],
-                    cell: 7,
-                    speed: .82
+                    cell: 13,
+                    speed: .46
                 });
                 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
                 let halftoneIndex = 0;
@@ -1295,7 +1295,7 @@
                     window.setInterval(() => {
                         halftoneIndex = (halftoneIndex + 1) % HALFTONE_SHOTS.length;
                         halftone.src(HALFTONE_SHOTS[halftoneIndex]);
-                    }, 3600);
+                    }, 7200);
                 }
             }
 
