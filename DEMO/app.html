@@ -1,0 +1,2489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫成长 App Demo</title>
+    <link rel="icon" href="assets/demo-favicons/app.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        @font-face {
+            font-family: "JOJO Kaiti";
+            src: url("assets/字体/JOJOKaiti-Regular.ttf") format("truetype");
+            font-weight: 400;
+        }
+
+        @font-face {
+            font-family: "Mohr Rounded";
+            src: url("assets/字体/MohrRounded-Bold.ttf") format("truetype");
+            font-weight: 700;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            --ink: #2F2A1F;
+            --white: #FFFFFF;
+            --yellow-1: #FCF9DE;
+            --yellow-2: #FCF3BA;
+            --yellow-3: #FFEB6B;
+            --yellow-4: #FCDA00;
+            --yellow-5: #DBAF00;
+            --yellow-6: #544300;
+            --orange-1: #FFF3EB;
+            --orange-2: #FFEBDE;
+            --orange-4: #FF9045;
+            --orange-6: #6B2D03;
+            --blue-1: #EBF9FF;
+            --blue-2: #DBF3FF;
+            --blue-4: #33BBFF;
+            --blue-6: #0C567A;
+            --green-1: #EFFAEB;
+            --green-2: #D2F7C6;
+            --green-4: #5DC43B;
+            --green-6: #155200;
+            --pink-1: #FFF0F3;
+            --pink-2: #FFDBE4;
+            --pink-4: #FF7A99;
+            --pink-6: #780A23;
+            --purple-1: #F9F5FF;
+            --purple-2: #F3EBFC;
+            --purple-4: #AE84E3;
+            --purple-6: #4E2680;
+            --cyan-1: #EDFBFC;
+            --cyan-4: #00C2D4;
+            --red-1: #FFF2F0;
+            --red-4: #FF715C;
+            --red-6: #781A0C;
+            --pro-gray-1: #F5F8FD;
+            --pro-gray-2: #E1E8F7;
+            --pro-gray-5: #57637C;
+            --pro-gray-6: #1F284D;
+            --radius-xs: 8px;
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --radius-xl: 32px;
+            --radius-pill: 999px;
+            --shadow-soft: 0 12px 36px rgba(64, 64, 64, .08);
+            --shadow-pop: 0 16px 40px rgba(252, 218, 0, .20);
+            --motion-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --motion-standard: cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        html,
+        body {
+            min-height: 100%;
+        }
+
+        body {
+            margin: 0;
+            font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--gray-6);
+            line-height: 1.5;
+            letter-spacing: 0;
+            background:
+                linear-gradient(90deg, rgba(252, 249, 222, .86), rgba(235, 249, 255, .78)),
+                var(--pro-gray-1);
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            border: 0;
+            cursor: pointer;
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+        }
+
+        .app-shell {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            width: min(100%, 480px);
+            height: 100dvh;
+            max-height: 100dvh;
+            margin: 0 auto;
+            overflow: hidden;
+            background: var(--white);
+        }
+
+        .app-main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 18px 96px;
+            scroll-behavior: smooth;
+        }
+
+        .app-main.no-tabbar {
+            padding-bottom: 28px;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 68px;
+            margin: 0 -18px;
+            padding: 14px 18px 10px;
+            background: rgba(255, 255, 255, .94);
+            border-bottom: 1px solid rgba(64, 64, 64, .06);
+            backdrop-filter: blur(16px);
+        }
+
+        .brand-lockup {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .brand-lockup img {
+            width: 86px;
+            height: auto;
+        }
+
+        .brand-lockup strong {
+            display: block;
+            overflow: hidden;
+            color: var(--ink);
+            font-size: 18px;
+            line-height: 1.2;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .brand-lockup span {
+            display: block;
+            color: var(--gray-5);
+            font-size: 12px;
+        }
+
+        .round-icon-button,
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            min-width: 44px;
+            height: 44px;
+            border-radius: var(--radius-pill);
+            color: var(--gray-6);
+            background: var(--gray-1);
+            transition: transform 160ms ease, background 160ms ease;
+        }
+
+        .round-icon-button img,
+        .back-button img {
+            width: 22px;
+            height: 22px;
+            object-fit: contain;
+        }
+
+        .round-icon-button:hover,
+        .back-button:hover {
+            background: var(--yellow-1);
+        }
+
+        .round-icon-button:active,
+        .back-button:active,
+        .primary-action:active,
+        .soft-action:active,
+        .chip:active,
+        .tab-button:active {
+            transform: scale(.96);
+        }
+
+        .hero-band {
+            position: relative;
+            min-height: 180px;
+            margin: 18px 0 18px;
+            padding: 22px;
+            overflow: hidden;
+            border: 1px solid rgba(219, 175, 0, .20);
+            border-radius: var(--radius-xl);
+            background:
+                linear-gradient(135deg, var(--yellow-1), var(--blue-1) 58%, var(--pink-1)),
+                var(--yellow-1);
+        }
+
+        .hero-band.profile {
+            background:
+                linear-gradient(135deg, var(--yellow-1), var(--green-1) 56%, var(--orange-1)),
+                var(--yellow-1);
+        }
+
+        .hero-copy {
+            position: relative;
+            z-index: 2;
+            max-width: 260px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            margin-bottom: 10px;
+            padding: 4px 10px;
+            border: 1px solid rgba(84, 67, 0, .16);
+            border-radius: var(--radius-pill);
+            color: var(--yellow-6);
+            background: rgba(255, 255, 255, .72);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin: 0;
+        }
+
+        h1 {
+            color: var(--ink);
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1.18;
+        }
+
+        h2 {
+            color: var(--ink);
+            font-size: 20px;
+            line-height: 1.25;
+        }
+
+        h3 {
+            color: var(--gray-6);
+            font-size: 17px;
+            line-height: 1.3;
+        }
+
+        .subcopy {
+            margin-top: 8px;
+            color: var(--gray-5);
+            font-size: 14px;
+        }
+
+        .hero-character {
+            position: absolute;
+            right: -6px;
+            bottom: -10px;
+            width: 150px;
+            max-height: 168px;
+            object-fit: contain;
+            transform-origin: bottom center;
+            animation: float-soft 2400ms ease-in-out infinite;
+        }
+
+        .hero-pill-row,
+        .chip-row,
+        .segment-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 2px 0 8px;
+            scrollbar-width: none;
+        }
+
+        .hero-pill-row::-webkit-scrollbar,
+        .chip-row::-webkit-scrollbar,
+        .segment-row::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hero-pill-row {
+            position: relative;
+            z-index: 2;
+            margin-top: 18px;
+        }
+
+        .data-pill,
+        .chip,
+        .mini-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+            white-space: nowrap;
+            border-radius: var(--radius-pill);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .data-pill {
+            padding: 5px 10px;
+            color: var(--gray-6);
+            background: rgba(255, 255, 255, .78);
+            border: 1px solid rgba(64, 64, 64, .08);
+        }
+
+        .chip {
+            min-height: 38px;
+            padding: 0 14px;
+            color: var(--gray-5);
+            background: var(--gray-1);
+            border: 1px solid var(--gray-2);
+            transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+        }
+
+        .chip.is-active {
+            color: var(--yellow-6);
+            background: var(--yellow-2);
+            border-color: var(--yellow-3);
+        }
+
+        .section-head {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 24px 0 12px;
+        }
+
+        .section-head p {
+            color: var(--gray-5);
+            font-size: 12px;
+            text-align: right;
+        }
+
+        .course-list,
+        .media-list,
+        .feed-list,
+        .profile-list,
+        .benefit-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .course-card,
+        .content-card,
+        .feed-card,
+        .progress-card,
+        .achievement-card,
+        .tool-tile,
+        .detail-block {
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: var(--radius-lg);
+            background: var(--white);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .44);
+        }
+
+        .course-card,
+        .content-card,
+        .feed-card,
+        .achievement-card,
+        .progress-card {
+            padding: 14px;
+        }
+
+        .course-card {
+            display: grid;
+            grid-template-columns: 84px minmax(0, 1fr);
+            gap: 14px;
+            min-height: 142px;
+            text-align: left;
+            transition: transform 180ms var(--motion-standard), border-color 180ms ease, box-shadow 180ms ease;
+        }
+
+        .course-card:hover,
+        .content-card:hover,
+        .feed-card:hover,
+        .achievement-card:hover {
+            border-color: rgba(64, 64, 64, .14);
+            box-shadow: var(--shadow-soft);
+            transform: translateY(-2px);
+        }
+
+        .course-art,
+        .media-art {
+            display: grid;
+            place-items: center;
+            align-self: stretch;
+            min-height: 112px;
+            border-radius: var(--radius-md);
+        }
+
+        .course-art img {
+            width: 62px;
+            height: 62px;
+            object-fit: contain;
+        }
+
+        .course-card.orange .course-art {
+            background: var(--orange-1);
+        }
+
+        .course-card.pink .course-art {
+            background: var(--pink-1);
+        }
+
+        .course-card.blue .course-art {
+            background: var(--blue-1);
+        }
+
+        .course-card.purple .course-art {
+            background: var(--purple-1);
+        }
+
+        .course-card.green .course-art {
+            background: var(--green-1);
+        }
+
+        .card-meta {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 7px;
+        }
+
+        .mini-tag {
+            min-height: 25px;
+            padding: 3px 8px;
+            color: var(--gray-5);
+            background: var(--gray-1);
+            border: 1px solid var(--gray-2);
+        }
+
+        .mini-tag.yellow {
+            color: var(--yellow-6);
+            background: var(--yellow-1);
+            border-color: var(--yellow-2);
+        }
+
+        .mini-tag.orange {
+            color: var(--orange-6);
+            background: var(--orange-1);
+            border-color: var(--orange-2);
+        }
+
+        .mini-tag.blue {
+            color: var(--blue-6);
+            background: var(--blue-1);
+            border-color: var(--blue-2);
+        }
+
+        .mini-tag.green {
+            color: var(--green-6);
+            background: var(--green-1);
+            border-color: var(--green-2);
+        }
+
+        .mini-tag.pink {
+            color: var(--pink-6);
+            background: var(--pink-1);
+            border-color: var(--pink-2);
+        }
+
+        .mini-tag.purple {
+            color: var(--purple-6);
+            background: var(--purple-1);
+            border-color: var(--purple-2);
+        }
+
+        .card-desc {
+            display: -webkit-box;
+            overflow: hidden;
+            color: var(--gray-5);
+            font-size: 13px;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+
+        .price-row,
+        .media-row,
+        .feed-actions,
+        .profile-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .price-row {
+            margin-top: 12px;
+        }
+
+        .price {
+            color: var(--ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .price small {
+            color: var(--gray-5);
+            font-family: "PingFang SC", sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .arrow {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-pill);
+            background: var(--yellow-2);
+            display: inline-grid;
+            place-items: center;
+            flex: 0 0 auto;
+        }
+
+        .arrow i {
+            color: var(--yellow-6);
+            font-size: 16px;
+        }
+
+        .primary-action,
+        .soft-action,
+        .ghost-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 18px;
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            font-weight: 800;
+            transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+        }
+
+        .primary-action {
+            color: var(--yellow-6);
+            background: var(--yellow-4);
+            box-shadow: var(--shadow-pop);
+        }
+
+        .primary-action.confirming {
+            animation: jojo-focus-color 2000ms ease-in-out infinite;
+            box-shadow: none;
+        }
+
+        .soft-action {
+            color: var(--gray-6);
+            background: var(--gray-1);
+            border: 1px solid var(--gray-2);
+        }
+
+        .ghost-action {
+            color: var(--gray-6);
+            background: transparent;
+        }
+
+        .primary-action img,
+        .soft-action img {
+            width: 18px;
+            height: 18px;
+        }
+
+        .bundle-strip {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) 112px;
+            gap: 12px;
+            align-items: center;
+            margin-top: 14px;
+            padding: 16px;
+            border: 1px solid rgba(0, 154, 168, .16);
+            border-radius: var(--radius-lg);
+            background: var(--cyan-1);
+        }
+
+        .bundle-strip img {
+            justify-self: center;
+            width: 94px;
+            max-height: 96px;
+            object-fit: contain;
+        }
+
+        .bundle-strip p {
+            margin-top: 6px;
+            color: var(--pro-gray-5);
+            font-size: 13px;
+        }
+
+        .media-hero {
+            margin: 18px 0;
+            overflow: hidden;
+            border-radius: var(--radius-xl);
+            background: var(--pro-gray-6);
+            color: var(--white);
+        }
+
+        .player-stage {
+            position: relative;
+            min-height: 220px;
+            padding: 20px;
+            background:
+                linear-gradient(135deg, rgba(47, 42, 31, .70), rgba(31, 40, 77, .88)),
+                var(--pro-gray-6);
+        }
+
+        .player-character {
+            position: absolute;
+            right: 16px;
+            bottom: 0;
+            width: 132px;
+            max-height: 154px;
+            object-fit: contain;
+        }
+
+        .player-copy {
+            position: relative;
+            z-index: 2;
+            max-width: 254px;
+        }
+
+        .player-copy h1 {
+            color: var(--white);
+        }
+
+        .player-copy .subcopy {
+            color: rgba(255, 255, 255, .75);
+        }
+
+        .player-controls {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .play-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            border-radius: var(--radius-pill);
+            background: var(--yellow-4);
+            box-shadow: 0 12px 28px rgba(252, 218, 0, .24);
+        }
+
+        .play-button img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .progress-line {
+            flex: 1;
+            height: 8px;
+            overflow: hidden;
+            border-radius: var(--radius-pill);
+            background: rgba(255, 255, 255, .18);
+        }
+
+        .progress-line span {
+            display: block;
+            width: 58%;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--yellow-4);
+        }
+
+        .content-card {
+            display: grid;
+            grid-template-columns: 92px minmax(0, 1fr);
+            gap: 14px;
+            text-align: left;
+            transition: transform 180ms var(--motion-standard), border-color 180ms ease, box-shadow 180ms ease;
+        }
+
+        .media-art {
+            min-height: 92px;
+            background: var(--gray-1);
+            overflow: hidden;
+        }
+
+        .media-art img {
+            width: 78px;
+            max-height: 88px;
+            object-fit: contain;
+        }
+
+        .media-row {
+            margin-top: 10px;
+        }
+
+        .duration {
+            color: var(--gray-5);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 13px;
+        }
+
+        .teacher-strip {
+            display: grid;
+            grid-template-columns: 54px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            background: var(--pro-gray-1);
+            border: 1px solid var(--pro-gray-2);
+        }
+
+        .teacher-strip img {
+            width: 54px;
+            height: 54px;
+            border-radius: var(--radius-pill);
+            object-fit: cover;
+        }
+
+        .teacher-strip strong {
+            display: block;
+            color: var(--pro-gray-6);
+            font-size: 15px;
+        }
+
+        .teacher-strip span {
+            display: block;
+            color: var(--pro-gray-5);
+            font-size: 12px;
+        }
+
+        .feed-card {
+            text-align: left;
+        }
+
+        .feed-author {
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .feed-author img {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-pill);
+            object-fit: cover;
+            background: var(--gray-1);
+        }
+
+        .feed-author strong {
+            display: block;
+            font-size: 15px;
+        }
+
+        .feed-author span {
+            display: block;
+            color: var(--gray-5);
+            font-size: 12px;
+        }
+
+        .feed-media {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 86px;
+            gap: 12px;
+            align-items: center;
+            min-height: 104px;
+            margin: 12px 0;
+            padding: 14px;
+            border-radius: var(--radius-md);
+            background: var(--yellow-1);
+            border: 1px solid var(--yellow-2);
+        }
+
+        .feed-media p {
+            color: var(--gray-5);
+            font-size: 13px;
+        }
+
+        .feed-media img {
+            width: 84px;
+            max-height: 92px;
+            object-fit: contain;
+        }
+
+        .reaction-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 36px;
+            padding: 0 10px;
+            border-radius: var(--radius-pill);
+            color: var(--gray-5);
+            background: var(--gray-1);
+            border: 1px solid var(--gray-2);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .reaction-button.is-liked {
+            color: var(--pink-6);
+            background: var(--pink-1);
+            border-color: var(--pink-2);
+        }
+
+        .safe-note {
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
+            gap: 10px;
+            align-items: center;
+            margin: 16px 0 4px;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            background: var(--green-1);
+            border: 1px solid var(--green-2);
+        }
+
+        .safe-note img {
+            width: 42px;
+            height: 42px;
+            object-fit: contain;
+        }
+
+        .safe-note strong {
+            display: block;
+            color: var(--green-6);
+            font-size: 14px;
+        }
+
+        .safe-note span {
+            display: block;
+            color: var(--gray-5);
+            font-size: 12px;
+        }
+
+        .profile-summary {
+            display: grid;
+            grid-template-columns: 92px minmax(0, 1fr);
+            gap: 14px;
+            align-items: center;
+        }
+
+        .avatar-frame {
+            position: relative;
+            display: grid;
+            place-items: center;
+            width: 92px;
+            height: 92px;
+            border-radius: 28px;
+            background: var(--white);
+            border: 1px solid rgba(64, 64, 64, .08);
+        }
+
+        .avatar-frame img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+        }
+
+        .level-badge {
+            position: absolute;
+            right: -6px;
+            bottom: -6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            min-height: 26px;
+            padding: 0 8px;
+            border-radius: var(--radius-pill);
+            color: var(--yellow-6);
+            background: var(--yellow-4);
+            border: 2px solid var(--white);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .stat-tile {
+            min-height: 72px;
+            padding: 10px 8px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, .74);
+            border: 1px solid rgba(64, 64, 64, .06);
+            text-align: center;
+        }
+
+        .stat-tile strong {
+            display: block;
+            color: var(--ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 20px;
+            line-height: 1.1;
+        }
+
+        .stat-tile span {
+            display: block;
+            margin-top: 5px;
+            color: var(--gray-5);
+            font-size: 12px;
+        }
+
+        .encourage-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 88px;
+            gap: 12px;
+            align-items: center;
+            margin-top: 14px;
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            background: var(--orange-1);
+            border: 1px solid var(--orange-2);
+        }
+
+        .encourage-card p {
+            margin-top: 6px;
+            color: var(--gray-5);
+            font-size: 13px;
+        }
+
+        .encourage-card img {
+            width: 88px;
+            max-height: 94px;
+            object-fit: contain;
+        }
+
+        .wardrobe-preview {
+            display: grid;
+            grid-template-columns: 126px minmax(0, 1fr);
+            gap: 14px;
+            align-items: center;
+            padding: 14px;
+            border-radius: var(--radius-lg);
+            background: var(--blue-1);
+            border: 1px solid var(--blue-2);
+        }
+
+        .dress-stage {
+            position: relative;
+            display: grid;
+            place-items: center;
+            min-height: 150px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, .76);
+            overflow: hidden;
+        }
+
+        .dress-stage img {
+            width: 104px;
+            max-height: 128px;
+            object-fit: contain;
+        }
+
+        .outfit-mark {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            padding: 4px 8px;
+            border-radius: var(--radius-pill);
+            color: var(--blue-6);
+            background: var(--blue-2);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .wardrobe-preview p {
+            margin: 7px 0 12px;
+            color: var(--gray-5);
+            font-size: 13px;
+        }
+
+        .achievement-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .achievement-card {
+            display: grid;
+            gap: 8px;
+            min-height: 134px;
+            text-align: left;
+        }
+
+        .achievement-icon {
+            display: grid;
+            place-items: center;
+            width: 46px;
+            height: 46px;
+            border-radius: var(--radius-md);
+            background: var(--yellow-1);
+        }
+
+        .achievement-icon img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .achievement-card p {
+            color: var(--gray-5);
+            font-size: 12px;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .tool-tile {
+            display: grid;
+            gap: 8px;
+            place-items: center;
+            min-height: 82px;
+            padding: 10px 6px;
+            color: var(--gray-6);
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .tool-tile img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .detail-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr) 44px;
+            gap: 10px;
+            align-items: center;
+            min-height: 66px;
+            margin: 0 -18px;
+            padding: 12px 18px 10px;
+            background: rgba(255, 255, 255, .94);
+            border-bottom: 1px solid rgba(64, 64, 64, .06);
+            backdrop-filter: blur(16px);
+        }
+
+        .detail-title {
+            overflow: hidden;
+            color: var(--ink);
+            font-size: 17px;
+            font-weight: 800;
+            text-align: center;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .detail-hero {
+            margin: 18px 0 14px;
+            padding: 20px;
+            border-radius: var(--radius-xl);
+            background: var(--yellow-1);
+            border: 1px solid var(--yellow-2);
+        }
+
+        .detail-hero.course {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 110px;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .detail-hero.course img {
+            width: 110px;
+            max-height: 124px;
+            object-fit: contain;
+        }
+
+        .detail-hero.media {
+            background: var(--pro-gray-6);
+            color: var(--white);
+            border-color: transparent;
+        }
+
+        .detail-hero.media h1,
+        .detail-hero.media .subcopy {
+            color: var(--white);
+        }
+
+        .detail-block {
+            margin-top: 12px;
+            padding: 16px;
+        }
+
+        .detail-block h2 {
+            margin-bottom: 10px;
+        }
+
+        .detail-list {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .detail-list li {
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr);
+            gap: 8px;
+            align-items: start;
+            color: var(--gray-5);
+            font-size: 14px;
+        }
+
+        .detail-list img {
+            width: 22px;
+            height: 22px;
+            object-fit: contain;
+        }
+
+        .timeline {
+            display: grid;
+            gap: 10px;
+        }
+
+        .timeline-item {
+            display: grid;
+            grid-template-columns: 62px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
+            padding: 10px;
+            border-radius: var(--radius-md);
+            background: var(--gray-1);
+        }
+
+        .timeline-item strong {
+            color: var(--ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+        }
+
+        .timeline-item span {
+            color: var(--gray-5);
+            font-size: 13px;
+        }
+
+        .bottom-cta {
+            position: sticky;
+            bottom: 0;
+            z-index: 25;
+            display: flex;
+            gap: 10px;
+            margin: 18px -18px -28px;
+            padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+            background: rgba(255, 255, 255, .94);
+            border-top: 1px solid rgba(64, 64, 64, .08);
+            backdrop-filter: blur(16px);
+        }
+
+        .bottom-cta .primary-action,
+        .bottom-cta .soft-action {
+            flex: 1;
+        }
+
+        .outfit-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .outfit-card {
+            min-height: 116px;
+            padding: 12px;
+            border-radius: var(--radius-lg);
+            background: var(--white);
+            border: 1px solid var(--gray-2);
+            text-align: left;
+        }
+
+        .outfit-card.is-selected {
+            border-color: var(--yellow-4);
+            background: var(--yellow-1);
+            animation: jojo-focus-color 2000ms ease-in-out infinite;
+        }
+
+        .outfit-card img {
+            width: 58px;
+            height: 58px;
+            margin-bottom: 8px;
+            object-fit: contain;
+        }
+
+        .outfit-card strong {
+            display: block;
+            color: var(--ink);
+            font-size: 14px;
+        }
+
+        .outfit-card span {
+            display: block;
+            color: var(--gray-5);
+            font-size: 12px;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 96px;
+            z-index: 80;
+            width: min(328px, calc(100% - 40px));
+            padding: 12px 14px;
+            border-radius: var(--radius-pill);
+            color: var(--yellow-6);
+            background: var(--yellow-2);
+            border: 1px solid var(--yellow-3);
+            box-shadow: var(--shadow-soft);
+            font-size: 14px;
+            font-weight: 800;
+            text-align: center;
+            transform: translateX(-50%);
+            animation: toast-in 260ms var(--motion-spring);
+        }
+
+        .tabbar {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 40;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 4px;
+            min-height: 78px;
+            padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+            background: rgba(255, 255, 255, .96);
+            border-top: 1px solid rgba(64, 64, 64, .08);
+            backdrop-filter: blur(18px);
+        }
+
+        .tabbar[hidden] {
+            display: none;
+        }
+
+        .tab-button {
+            display: grid;
+            gap: 4px;
+            place-items: center;
+            min-height: 58px;
+            border-radius: var(--radius-md);
+            color: var(--gray-5);
+            background: transparent;
+            font-size: 12px;
+            font-weight: 800;
+            transition: color 160ms ease, background 160ms ease, transform 160ms ease;
+        }
+
+        .tab-button img,
+        .tab-button i {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            filter: grayscale(1);
+            opacity: .72;
+        }
+
+        .tab-button i {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .tab-button.is-active {
+            color: var(--yellow-6);
+            background: var(--yellow-1);
+        }
+
+        .tab-button.is-active img,
+        .tab-button.is-active i {
+            filter: none;
+            opacity: 1;
+        }
+
+        .empty-state {
+            display: grid;
+            place-items: center;
+            gap: 10px;
+            padding: 34px 18px;
+            color: var(--gray-5);
+            text-align: center;
+        }
+
+        .empty-state img {
+            width: 120px;
+            max-height: 120px;
+            object-fit: contain;
+        }
+
+        .focus-visible,
+        button:focus-visible,
+        a:focus-visible {
+            outline: 3px solid rgba(82, 139, 255, .56);
+            outline-offset: 3px;
+        }
+
+        @keyframes jojo-focus-color {
+            0%, 100% {
+                background: #FCF7BD;
+            }
+            25% {
+                background: #D9ECFF;
+            }
+            50% {
+                background: #FFE8CC;
+            }
+            75% {
+                background: #E7DDFF;
+            }
+        }
+
+        @keyframes float-soft {
+            0%, 100% {
+                transform: translateY(0) rotate(0);
+            }
+            50% {
+                transform: translateY(-8px) rotate(1deg);
+            }
+        }
+
+        @keyframes toast-in {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 12px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        @media (min-width: 900px) {
+            body {
+                display: grid;
+                place-items: center;
+                min-height: 100dvh;
+                padding: 28px;
+            }
+
+            .app-shell {
+                height: min(900px, calc(100dvh - 56px));
+                max-height: min(900px, calc(100dvh - 56px));
+                border: 1px solid rgba(64, 64, 64, .08);
+                border-radius: 34px;
+                box-shadow: 0 24px 80px rgba(31, 40, 77, .14);
+            }
+        }
+
+        @media (max-width: 390px) {
+            .app-main {
+                padding-right: 14px;
+                padding-left: 14px;
+            }
+
+            .topbar,
+            .detail-topbar,
+            .bottom-cta {
+                margin-right: -14px;
+                margin-left: -14px;
+                padding-right: 14px;
+                padding-left: 14px;
+            }
+
+            .hero-band {
+                padding: 18px;
+            }
+
+            .hero-copy {
+                max-width: 226px;
+            }
+
+            h1 {
+                font-size: 25px;
+            }
+
+            .course-card,
+            .content-card {
+                grid-template-columns: 76px minmax(0, 1fr);
+                gap: 12px;
+            }
+
+            .course-art,
+            .media-art {
+                min-height: 86px;
+            }
+
+            .feed-media,
+            .bundle-strip,
+            .encourage-card,
+            .wardrobe-preview {
+                grid-template-columns: 1fr;
+            }
+
+            .feed-media img,
+            .bundle-strip img,
+            .encourage-card img {
+                justify-self: end;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 1ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 1ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell" id="shell">
+        <main class="app-main" id="app" tabindex="-1"></main>
+        <nav class="tabbar" id="tabbar" aria-label="主导航"></nav>
+        <div id="toast-root" aria-live="polite"></div>
+    </div>
+
+    <script>
+        const A = "assets/";
+        const icons = {
+            logo: `${A}品牌logo/叫叫 Logo - 基础.svg`,
+            appIcon: `${A}品牌logo/叫叫app启动icon.png`,
+            arrow: `${A}控件icon/箭头.svg`,
+            back: `${A}控件icon/返回.svg`,
+            share: `${A}控件icon/分享.svg`,
+            play: `${A}控件icon/功能=播放.svg`,
+            pause: `${A}控件icon/功能=暂停.svg`,
+            check: `${A}控件icon/对钩.svg`,
+            lock: `${A}控件icon/功能=锁定.svg`,
+            unlock: `${A}控件icon/功能=解锁.svg`,
+            report: `${A}功能icon/学习报告.svg`,
+            bean: `${A}功能icon/成长豆.svg`,
+            coupon: `${A}功能icon/优惠券.svg`,
+            message: `${A}功能icon/消息.svg`,
+            order: `${A}功能icon/订单查询.svg`,
+            parent: `${A}功能icon/家长中心.svg`,
+            activity: `${A}功能icon/活动.svg`,
+            reading: `${A}品牌logo/学科-阅读, 是否描线-on.svg`,
+            english: `${A}品牌logo/学科-英语, 是否描线-on.svg`,
+            thinking: `${A}品牌logo/学科-益智, 是否描线-on.svg`,
+            art: `${A}品牌logo/学科-美育, 是否描线-on.svg`,
+            writing: `${A}品牌logo/学科-小作家, 是否描线-on.svg`,
+            girl: `${A}美术素材/头像/用户头像-女孩.png`,
+            boy: `${A}美术素材/头像/用户头像-男孩.png`,
+            teacher: `${A}美术素材/头像/示例指导师头像.png`,
+            jojo: `${A}美术素材/头像/默认头像-叫叫.png`,
+            empty: `${A}美术素材/空页面占位图/叫叫-课程结束或无课.svg`,
+            friend: `${A}美术素材/叫叫小分队-情感化形象/叫叫-斗志满满，握拳，昂扬.svg`,
+            thinkingRole: `${A}美术素材/叫叫小分队-情感化形象/叫叫-托腮思索，灵动，俏皮.svg`,
+            starRole: `${A}美术素材/叫叫小分队-情感化形象/叫叫-星星眼花，闪亮，激动.svg`,
+            loveRole: `${A}美术素材/叫叫小分队-情感化形象/叫叫-爱心比心，甜蜜，软萌.svg`,
+            coolRole: `${A}美术素材/叫叫小分队-情感化形象/叫叫-墨镜耍酷，潇洒，拽帅.svg`,
+            seriousRole: `${A}美术素材/叫叫小分队-情感化形象/叫叫-一本正经，说正事.svg`,
+            heroRole: `${A}美术素材/叫叫小分队-情感化形象/叫叫-指点江山，自信，神气.svg`,
+            pigHappy: `${A}美术素材/叫叫小分队-情感化形象/猪小弟-开心挥手，愉悦，软萌.svg`,
+            pigShy: `${A}美术素材/叫叫小分队-情感化形象/猪小弟-乖巧探头，呆萌，腼腆.svg`,
+            bellHappy: `${A}美术素材/叫叫小分队-情感化形象/铃铛-开心得意.svg`,
+            bellSerious: `${A}美术素材/叫叫小分队-情感化形象/铃铛-严肃认真.svg`
+        };
+
+        const state = {
+            tab: "plaza",
+            view: null,
+            activeSubject: "全部",
+            mediaKind: "全部",
+            feedMode: "精选",
+            mediaPlaying: false,
+            liked: new Set(["post-1"]),
+            pendingConfirm: null,
+            outfit: "writer",
+            toastTimer: null
+        };
+
+        const tabs = [
+            { id: "plaza", label: "广场", iconClass: "ph-storefront" },
+            { id: "media", label: "内容", iconClass: "ph-play-circle" },
+            { id: "community", label: "社区", iconClass: "ph-chat-circle-dots" },
+            { id: "profile", label: "我的", iconClass: "ph-user-circle" }
+        ];
+
+        const courses = [
+            {
+                id: "reading-l2",
+                subject: "阅读",
+                tone: "orange",
+                title: "阅读表达力 L2",
+                desc: "从故事线索、人物动机到观点表达，帮助孩子把读懂变成说清楚。",
+                price: "¥199",
+                oldPrice: "体验价",
+                weeks: "8周",
+                lessons: "32课",
+                icon: icons.reading,
+                character: icons.heroRole,
+                fit: "适合 6-8 岁",
+                benefits: ["每周 4 次短课，单次 12 分钟", "故事阅读、复述、表达练习连在一起", "课后给家长一页可读报告"],
+                syllabus: [
+                    ["01", "看见故事线索", "找到人物、地点和事件顺序"],
+                    ["02", "理解人物想法", "用证据说出角色为什么这样做"],
+                    ["03", "复述与扩写", "把故事讲完整，并加入自己的观察"]
+                ]
+            },
+            {
+                id: "english-talk",
+                subject: "英语",
+                tone: "pink",
+                title: "英语开口说营",
+                desc: "用儿歌、动画和情境对话，完成从听懂到敢说的轻量进阶。",
+                price: "¥259",
+                oldPrice: "含口语反馈",
+                weeks: "6周",
+                lessons: "24课",
+                icon: icons.english,
+                character: icons.loveRole,
+                fit: "适合 5-7 岁",
+                benefits: ["主题词句和生活场景绑定", "每节课保留一段孩子口语作品", "指导师每周给出一次鼓励反馈"],
+                syllabus: [
+                    ["01", "Hello, My Day", "用短句介绍一天安排"],
+                    ["02", "Food Party", "在点餐情境里练习表达偏好"],
+                    ["03", "Little Show", "完成一次 30 秒英文小展示"]
+                ]
+            },
+            {
+                id: "thinking-lab",
+                subject: "思维",
+                tone: "blue",
+                title: "思维探索实验室",
+                desc: "用图形、路线、规律和推理任务，训练孩子清晰观察和有条理地尝试。",
+                price: "¥229",
+                oldPrice: "新课首发",
+                weeks: "7周",
+                lessons: "28课",
+                icon: icons.thinking,
+                character: icons.thinkingRole,
+                fit: "适合 6-9 岁",
+                benefits: ["观察、分类、推理、验证四步练习", "任务短小，适合放学后完成", "错题不贴标签，只给下一步提示"],
+                syllabus: [
+                    ["01", "图形规律", "从颜色、形状和位置里发现规律"],
+                    ["02", "路线规划", "用条件排除找到更优路径"],
+                    ["03", "推理挑战", "把已知条件转成清楚的判断"]
+                ]
+            },
+            {
+                id: "art-story",
+                subject: "美育",
+                tone: "purple",
+                title: "艺术故事馆",
+                desc: "通过名画、音乐和小创作，带孩子用自己的语言描述美和感受。",
+                price: "¥189",
+                oldPrice: "含创作包",
+                weeks: "5周",
+                lessons: "20课",
+                icon: icons.art,
+                character: icons.bellHappy,
+                fit: "适合 5-10 岁",
+                benefits: ["作品观察、情绪表达、动手创作结合", "不要求画得像，鼓励说出想法", "每周收集一件小作品"],
+                syllabus: [
+                    ["01", "颜色会说话", "观察色彩带来的情绪"],
+                    ["02", "线条去旅行", "用线条表达速度和方向"],
+                    ["03", "我的小展览", "整理并介绍自己的作品"]
+                ]
+            },
+            {
+                id: "writer-boot",
+                subject: "小作家",
+                tone: "green",
+                title: "小作家灵感营",
+                desc: "从观察、造句到短篇创作，让孩子把脑海里的画面落到纸上。",
+                price: "¥219",
+                oldPrice: "作品集模式",
+                weeks: "8周",
+                lessons: "32课",
+                icon: icons.writing,
+                character: icons.pigHappy,
+                fit: "适合 7-10 岁",
+                benefits: ["每天一个观察任务，积累写作素材", "句子、段落、短篇逐步搭建", "结营生成一份孩子作品集"],
+                syllabus: [
+                    ["01", "观察五感", "从看到、听到、闻到开始写"],
+                    ["02", "句子变丰富", "给普通句子加入动作和感受"],
+                    ["03", "完成小故事", "让开头、经过、结尾自然连起来"]
+                ]
+            }
+        ];
+
+        const mediaItems = [
+            {
+                id: "media-forest",
+                kind: "视频",
+                title: "森林里的问号商店",
+                desc: "用 9 分钟动画讲清楚提问、猜想和验证的关系。",
+                duration: "09:12",
+                progress: "已看 58%",
+                tone: "green",
+                art: icons.pigShy,
+                tags: ["思维", "动画", "探究"],
+                chapters: ["问号商店开门", "小伙伴提出猜想", "一起验证答案"]
+            },
+            {
+                id: "media-moon",
+                kind: "音频",
+                title: "月亮给我写回信",
+                desc: "睡前故事音频，适合跟读一句喜欢的句子。",
+                duration: "12:30",
+                progress: "未开始",
+                tone: "blue",
+                art: icons.bellHappy,
+                tags: ["阅读", "睡前", "表达"],
+                chapters: ["听故事", "选一句喜欢的话", "录下自己的回信"]
+            },
+            {
+                id: "media-picture",
+                kind: "绘本",
+                title: "一张会变大的画",
+                desc: "从局部观察到整体想象，带孩子练习描述画面。",
+                duration: "18页",
+                progress: "读到 6 页",
+                tone: "purple",
+                art: icons.starRole,
+                tags: ["美育", "绘本", "观察"],
+                chapters: ["看见局部", "猜猜画外", "讲出完整画面"]
+            },
+            {
+                id: "media-talk",
+                kind: "练习",
+                title: "今天我来当小主持",
+                desc: "给孩子一段可模仿的开场白，练习自然表达。",
+                duration: "06:00",
+                progress: "可挑战",
+                tone: "orange",
+                art: icons.coolRole,
+                tags: ["表达", "口语", "作品"],
+                chapters: ["听示范", "跟读开场", "录制 30 秒作品"]
+            }
+        ];
+
+        const posts = [
+            {
+                id: "post-1",
+                mode: "精选",
+                name: "小雨",
+                age: "7岁",
+                avatar: icons.girl,
+                badge: "阅读星",
+                text: "我今天把《森林里的问号商店》讲给爸爸听了，还给结尾加了一个新的小机关。",
+                mediaTitle: "我的 38 秒复述",
+                mediaDesc: "指导师评价：线索完整，结尾想象很有画面感。",
+                art: icons.heroRole,
+                likes: 36,
+                replies: 8,
+                tag: "老师精选"
+            },
+            {
+                id: "post-2",
+                mode: "同龄",
+                name: "安安",
+                age: "8岁",
+                avatar: icons.boy,
+                badge: "思维探险家",
+                text: "路线题我一开始走错了，后来发现要先排除不能经过的格子。",
+                mediaTitle: "我的路线草稿",
+                mediaDesc: "同学们给了 12 个鼓励贴纸。",
+                art: icons.thinkingRole,
+                likes: 28,
+                replies: 5,
+                tag: "同龄作品"
+            },
+            {
+                id: "post-3",
+                mode: "家长可见",
+                name: "棉棉",
+                age: "6岁",
+                avatar: icons.girl,
+                badge: "艺术观察员",
+                text: "我觉得这张画像下雨以后变亮了，因为黄色像灯。",
+                mediaTitle: "颜色观察卡",
+                mediaDesc: "家长已收到本周作品摘要。",
+                art: icons.bellHappy,
+                likes: 42,
+                replies: 6,
+                tag: "家长可见"
+            }
+        ];
+
+        const achievements = [
+            { title: "连续学习 7 天", desc: "保持短课节奏，已经形成稳定习惯。", icon: icons.check, tone: "yellow" },
+            { title: "表达作品 12 个", desc: "完成复述、主持和观察表达任务。", icon: icons.message, tone: "orange" },
+            { title: "故事探索者", desc: "读完 5 个主题故事并留下想法。", icon: icons.reading, tone: "green" },
+            { title: "灵感收集家", desc: "收集 18 条写作素材。", icon: icons.writing, tone: "blue" }
+        ];
+
+        const outfits = [
+            { id: "writer", name: "小作家披风", desc: "表达作品 +12", role: icons.heroRole, mark: "表达" },
+            { id: "star", name: "星星观察镜", desc: "阅读探索 +9", role: icons.starRole, mark: "阅读" },
+            { id: "cool", name: "闪亮主持人", desc: "口语挑战 +5", role: icons.coolRole, mark: "口语" },
+            { id: "heart", name: "鼓励小队服", desc: "社区鼓励 +18", role: icons.loveRole, mark: "社区" }
+        ];
+
+        function topbar(title, subtitle, options = {}) {
+            return `
+                <header class="topbar">
+                    <div class="brand-lockup">
+                        <img src="${icons.logo}" alt="叫叫">
+                        <div>
+                            <strong>${title}</strong>
+                            <span>${subtitle}</span>
+                        </div>
+                    </div>
+                    <button class="round-icon-button" type="button" data-action="${options.action || "share"}" aria-label="${options.label || "分享"}">
+                        <img src="${options.icon || icons.share}" alt="">
+                    </button>
+                </header>
+            `;
+        }
+
+        function detailTopbar(title) {
+            return `
+                <header class="detail-topbar">
+                    <button class="back-button" type="button" data-action="back" aria-label="返回">
+                        <img src="${icons.back}" alt="">
+                    </button>
+                    <div class="detail-title">${title}</div>
+                    <button class="round-icon-button" type="button" data-action="share" aria-label="分享">
+                        <img src="${icons.share}" alt="">
+                    </button>
+                </header>
+            `;
+        }
+
+        function arrow() {
+            return `<span class="arrow" aria-hidden="true"><i class="ph-fill ph-arrow-right"></i></span>`;
+        }
+
+        function tabsHtml() {
+            return tabs.map(tab => `
+                <button class="tab-button ${state.tab === tab.id ? "is-active" : ""}" type="button" data-tab="${tab.id}" aria-current="${state.tab === tab.id ? "page" : "false"}">
+                    <i class="ph-fill ${tab.iconClass}" aria-hidden="true"></i>
+                    <span>${tab.label}</span>
+                </button>
+            `).join("");
+        }
+
+        function renderPlaza() {
+            const subjects = ["全部", "阅读", "英语", "思维", "美育", "小作家"];
+            const filtered = state.activeSubject === "全部"
+                ? courses
+                : courses.filter(course => course.subject === state.activeSubject);
+
+            return `
+                ${topbar("课程广场", "为孩子选下一段成长旅程", { icon: icons.message, label: "消息", action: "toast:有 3 条课程提醒" })}
+                <section class="hero-band">
+                    <div class="hero-copy">
+                        <span class="eyebrow">本周推荐</span>
+                        <h1>把兴趣变成持续学习的小步子</h1>
+                        <p class="subcopy">短课、作品、报告和指导师反馈串在一起，适合放学后的固定节奏。</p>
+                    </div>
+                    <img class="hero-character" src="${icons.friend}" alt="">
+                    <div class="hero-pill-row">
+                        <span class="data-pill">5 大学科</span>
+                        <span class="data-pill">12 分钟短课</span>
+                        <span class="data-pill">作品式反馈</span>
+                    </div>
+                </section>
+                <div class="chip-row" aria-label="课程筛选">
+                    ${subjects.map(subject => `<button class="chip ${state.activeSubject === subject ? "is-active" : ""}" type="button" data-subject="${subject}">${subject}</button>`).join("")}
+                </div>
+                <section>
+                    <div class="section-head">
+                        <h2>可报名课程</h2>
+                        <p>${filtered.length} 个适合当前筛选</p>
+                    </div>
+                    <div class="course-list">
+                        ${filtered.map(courseCard).join("")}
+                    </div>
+                </section>
+                <section class="bundle-strip">
+                    <div>
+                        <span class="mini-tag blue">组合方案</span>
+                        <h2>阅读 + 表达成长包</h2>
+                        <p>先用故事建立兴趣，再用复述和小主持练习表达，适合想让孩子多开口的家庭。</p>
+                    </div>
+                    <img src="${icons.loveRole}" alt="">
+                </section>
+                <section>
+                    <div class="section-head">
+                        <h2>家长安心信息</h2>
+                        <p>克制承诺，清楚呈现</p>
+                    </div>
+                    <div class="teacher-strip">
+                        <img src="${icons.teacher}" alt="">
+                        <div>
+                            <strong>指导师每周看一次作品</strong>
+                            <span>课程报告聚焦习惯、表达和下一步建议，不做夸张成绩承诺。</span>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function courseCard(course) {
+            return `
+                <button class="course-card ${course.tone}" type="button" data-view="course" data-id="${course.id}">
+                    <span class="course-art"><img src="${course.icon}" alt=""></span>
+                    <span>
+                        <span class="card-meta">
+                            <span class="mini-tag ${course.tone}">${course.subject}</span>
+                            <span class="mini-tag">${course.weeks}</span>
+                            <span class="mini-tag">${course.lessons}</span>
+                        </span>
+                        <h3>${course.title}</h3>
+                        <span class="card-desc">${course.desc}</span>
+                        <span class="price-row">
+                            <span class="price">${course.price} <small>${course.oldPrice}</small></span>
+                            ${arrow()}
+                        </span>
+                    </span>
+                </button>
+            `;
+        }
+
+        function renderMedia() {
+            const kinds = ["全部", "视频", "音频", "绘本", "练习"];
+            const filtered = state.mediaKind === "全部"
+                ? mediaItems
+                : mediaItems.filter(item => item.kind === state.mediaKind);
+
+            return `
+                ${topbar("内容剧场", "看、听、读、练都在这里", { icon: icons.parent, label: "家长中心", action: "toast:家长中心已同步今日进度" })}
+                <section class="media-hero">
+                    <div class="player-stage">
+                        <div class="player-copy">
+                            <span class="eyebrow">继续观看</span>
+                            <h1>森林里的问号商店</h1>
+                            <p class="subcopy">上次看到：小伙伴们开始验证第一个猜想。</p>
+                            <div class="player-controls">
+                                <button class="play-button" type="button" data-action="toggle-play" aria-label="${state.mediaPlaying ? "暂停" : "播放"}">
+                                    <img src="${state.mediaPlaying ? icons.pause : icons.play}" alt="">
+                                </button>
+                                <div class="progress-line" aria-label="观看进度"><span></span></div>
+                            </div>
+                        </div>
+                        <img class="player-character" src="${icons.thinkingRole}" alt="">
+                    </div>
+                </section>
+                <div class="chip-row" aria-label="内容筛选">
+                    ${kinds.map(kind => `<button class="chip ${state.mediaKind === kind ? "is-active" : ""}" type="button" data-kind="${kind}">${kind}</button>`).join("")}
+                </div>
+                <section>
+                    <div class="section-head">
+                        <h2>今日内容</h2>
+                        <p>按孩子可完成的节奏排序</p>
+                    </div>
+                    <div class="media-list">
+                        ${filtered.map(mediaCard).join("")}
+                    </div>
+                </section>
+                <section>
+                    <div class="section-head">
+                        <h2>本周进度</h2>
+                        <p>内容消费不是刷量</p>
+                    </div>
+                    <div class="progress-card">
+                        <div class="media-row">
+                            <strong>已完成 5 / 8 个内容任务</strong>
+                            <span class="mini-tag yellow">稳定</span>
+                        </div>
+                        <p class="subcopy">表达类内容完成较好，绘本阅读可以安排在周末慢一点读。</p>
+                    </div>
+                </section>
+            `;
+        }
+
+        function mediaCard(item) {
+            return `
+                <button class="content-card" type="button" data-view="media-detail" data-id="${item.id}">
+                    <span class="media-art" style="background: var(--${item.tone}-1);"><img src="${item.art}" alt=""></span>
+                    <span>
+                        <span class="card-meta">
+                            <span class="mini-tag ${item.tone}">${item.kind}</span>
+                            <span class="mini-tag">${item.progress}</span>
+                        </span>
+                        <h3>${item.title}</h3>
+                        <span class="card-desc">${item.desc}</span>
+                        <span class="media-row">
+                            <span class="duration">${item.duration}</span>
+                            ${arrow()}
+                        </span>
+                    </span>
+                </button>
+            `;
+        }
+
+        function renderCommunity() {
+            const modes = ["精选", "同龄", "家长可见"];
+            const filtered = state.feedMode === "精选"
+                ? posts
+                : posts.filter(post => post.mode === state.feedMode || post.tag === state.feedMode);
+
+            return `
+                ${topbar("作品社区", "孩子友好的表达信息流", { icon: icons.check, label: "守护状态", action: "toast:社区内容已开启导师守护" })}
+                <section class="hero-band">
+                    <div class="hero-copy">
+                        <span class="eyebrow">安全互动</span>
+                        <h1>分享作品，收到具体鼓励</h1>
+                        <p class="subcopy">信息流围绕学习作品展开，展示同伴想法、指导师反馈和家长可见摘要。</p>
+                    </div>
+                    <img class="hero-character" src="${icons.bellSerious}" alt="">
+                    <div class="hero-pill-row">
+                        <span class="data-pill">无私聊入口</span>
+                        <span class="data-pill">导师精选</span>
+                        <span class="data-pill">作品优先</span>
+                    </div>
+                </section>
+                <div class="chip-row" aria-label="信息流筛选">
+                    ${modes.map(mode => `<button class="chip ${state.feedMode === mode ? "is-active" : ""}" type="button" data-feed-mode="${mode}">${mode}</button>`).join("")}
+                </div>
+                <section>
+                    <div class="section-head">
+                        <h2>同伴作品</h2>
+                        <p>${filtered.length} 条动态</p>
+                    </div>
+                    <div class="feed-list">
+                        ${filtered.map(feedCard).join("")}
+                    </div>
+                </section>
+                <section class="safe-note">
+                    <img src="${icons.lock}" alt="">
+                    <div>
+                        <strong>社区互动仅围绕作品</strong>
+                        <span>点赞、鼓励和评论模板都经过限制，避免孩子进入开放式社交压力。</span>
+                    </div>
+                </section>
+            `;
+        }
+
+        function feedCard(post) {
+            const liked = state.liked.has(post.id);
+            return `
+                <article class="feed-card">
+                    <button class="feed-author" type="button" data-view="post" data-id="${post.id}">
+                        <img src="${post.avatar}" alt="">
+                        <span>
+                            <strong>${post.name}</strong>
+                            <span>${post.age} · ${post.badge}</span>
+                        </span>
+                        <span class="mini-tag yellow">${post.tag}</span>
+                    </button>
+                    <p>${post.text}</p>
+                    <button class="feed-media" type="button" data-view="post" data-id="${post.id}">
+                        <span>
+                            <strong>${post.mediaTitle}</strong>
+                            <p>${post.mediaDesc}</p>
+                        </span>
+                        <img src="${post.art}" alt="">
+                    </button>
+                    <div class="feed-actions">
+                        <button class="reaction-button ${liked ? "is-liked" : ""}" type="button" data-like="${post.id}">
+                            <span>${liked ? "已鼓励" : "鼓励"}</span>
+                            <span>${post.likes + (liked && post.id !== "post-1" ? 1 : 0)}</span>
+                        </button>
+                        <span class="mini-tag">${post.replies} 条具体反馈</span>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderProfile() {
+            const selected = outfits.find(item => item.id === state.outfit) || outfits[0];
+            return `
+                ${topbar("我的", "成长、装扮和成就", { icon: icons.order, label: "订单", action: "toast:订单与课程记录已同步" })}
+                <section class="hero-band profile">
+                    <div class="profile-summary">
+                        <div class="avatar-frame">
+                            <img src="${icons.girl}" alt="小雨头像">
+                            <span class="level-badge">Lv.8</span>
+                        </div>
+                        <div>
+                            <span class="eyebrow">小雨的成长页</span>
+                            <h1>今天也有认真完成一小步</h1>
+                            <p class="subcopy">保持节奏比一次学很多更重要。</p>
+                        </div>
+                    </div>
+                    <div class="stat-grid">
+                        <div class="stat-tile"><strong>7</strong><span>连续天数</span></div>
+                        <div class="stat-tile"><strong>38</strong><span>累计作品</span></div>
+                        <div class="stat-tile"><strong>1260</strong><span>成长豆</span></div>
+                    </div>
+                </section>
+                <section class="encourage-card">
+                    <div>
+                        <span class="mini-tag orange">今日鼓励</span>
+                        <h2>你已经能把故事讲得更完整了</h2>
+                        <p>下一次可以试试先说“我发现”，再说“我觉得”。</p>
+                    </div>
+                    <img src="${icons.loveRole}" alt="">
+                </section>
+                <section>
+                    <div class="section-head">
+                        <h2>个人形象</h2>
+                        <p>${selected.name}</p>
+                    </div>
+                    <div class="wardrobe-preview">
+                        <div class="dress-stage">
+                            <span class="outfit-mark">${selected.mark}</span>
+                            <img src="${selected.role}" alt="">
+                        </div>
+                        <div>
+                            <h3>${selected.name}</h3>
+                            <p>${selected.desc}，继续完成任务可以解锁更多部件。</p>
+                            <button class="soft-action" type="button" data-view="wardrobe">进入装扮</button>
+                        </div>
+                    </div>
+                </section>
+                <section>
+                    <div class="section-head">
+                        <h2>个人成就</h2>
+                        <p>已点亮 ${achievements.length} 枚</p>
+                    </div>
+                    <div class="achievement-grid">
+                        ${achievements.map(achievementCard).join("")}
+                    </div>
+                </section>
+                <section>
+                    <div class="section-head">
+                        <h2>常用入口</h2>
+                        <p>家长和孩子都能找到</p>
+                    </div>
+                    <div class="tool-grid">
+                        ${[
+                            ["学习报告", icons.report],
+                            ["成长豆", icons.bean],
+                            ["优惠券", icons.coupon],
+                            ["消息", icons.message],
+                            ["订单", icons.order],
+                            ["家长中心", icons.parent],
+                            ["活动", icons.activity],
+                            ["内容兑换", icons.unlock]
+                        ].map(([label, icon]) => `
+                            <button class="tool-tile" type="button" data-action="toast:${label}入口已打开">
+                                <img src="${icon}" alt="">
+                                <span>${label}</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                </section>
+            `;
+        }
+
+        function achievementCard(item) {
+            return `
+                <button class="achievement-card" type="button" data-view="achievements">
+                    <span class="achievement-icon" style="background: var(--${item.tone}-1);"><img src="${item.icon}" alt=""></span>
+                    <h3>${item.title}</h3>
+                    <p>${item.desc}</p>
+                </button>
+            `;
+        }
+
+        function renderCourseDetail(id) {
+            const course = courses.find(item => item.id === id) || courses[0];
+            const confirmKey = `enroll-${course.id}`;
+            const confirming = state.pendingConfirm === confirmKey;
+
+            return `
+                ${detailTopbar(course.title)}
+                <section class="detail-hero course" style="background: var(--${course.tone}-1); border-color: var(--${course.tone}-2);">
+                    <div>
+                        <span class="mini-tag ${course.tone}">${course.subject} · ${course.fit}</span>
+                        <h1>${course.title}</h1>
+                        <p class="subcopy">${course.desc}</p>
+                        <div class="hero-pill-row">
+                            <span class="data-pill">${course.weeks}</span>
+                            <span class="data-pill">${course.lessons}</span>
+                            <span class="data-pill">${course.oldPrice}</span>
+                        </div>
+                    </div>
+                    <img src="${course.character}" alt="">
+                </section>
+                <section class="detail-block">
+                    <h2>课程适合这样开始</h2>
+                    <ul class="detail-list">
+                        ${course.benefits.map(item => `<li><img src="${icons.check}" alt=""><span>${item}</span></li>`).join("")}
+                    </ul>
+                </section>
+                <section class="detail-block">
+                    <h2>阶段安排</h2>
+                    <div class="timeline">
+                        ${course.syllabus.map(item => `
+                            <div class="timeline-item">
+                                <strong>${item[0]}</strong>
+                                <span><b>${item[1]}</b><br>${item[2]}</span>
+                            </div>
+                        `).join("")}
+                    </div>
+                </section>
+                <section class="teacher-strip">
+                    <img src="${icons.teacher}" alt="">
+                    <div>
+                        <strong>指导师关注：兴趣、习惯、表达</strong>
+                        <span>报名后会生成第一周计划，家长端可以看到每周报告。</span>
+                    </div>
+                </section>
+                <div class="bottom-cta">
+                    <button class="soft-action" type="button" data-action="toast:已收藏 ${course.title}">
+                        <img src="${icons.check}" alt="">收藏
+                    </button>
+                    <button class="primary-action ${confirming ? "confirming" : ""}" type="button" data-confirm="${confirmKey}" data-confirm-message="已加入 ${course.title} 报名清单">
+                        ${confirming ? "再点确认报名" : `${course.price} 报名`}
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderMediaDetail(id) {
+            const item = mediaItems.find(media => media.id === id) || mediaItems[0];
+
+            return `
+                ${detailTopbar(item.title)}
+                <section class="detail-hero media">
+                    <div class="player-copy">
+                        <span class="eyebrow">${item.kind} · ${item.duration}</span>
+                        <h1>${item.title}</h1>
+                        <p class="subcopy">${item.desc}</p>
+                        <div class="player-controls">
+                            <button class="play-button" type="button" data-action="toggle-play" aria-label="${state.mediaPlaying ? "暂停" : "播放"}">
+                                <img src="${state.mediaPlaying ? icons.pause : icons.play}" alt="">
+                            </button>
+                            <div class="progress-line"><span style="width:${item.progress.includes("58") ? "58%" : "24%"}"></span></div>
+                        </div>
+                    </div>
+                </section>
+                <section class="detail-block">
+                    <h2>内容结构</h2>
+                    <div class="timeline">
+                        ${item.chapters.map((chapter, index) => `
+                            <div class="timeline-item">
+                                <strong>${String(index + 1).padStart(2, "0")}</strong>
+                                <span>${chapter}</span>
+                            </div>
+                        `).join("")}
+                    </div>
+                </section>
+                <section class="detail-block">
+                    <h2>相关任务</h2>
+                    <ul class="detail-list">
+                        <li><img src="${icons.play}" alt=""><span>看完后选择一句最喜欢的话。</span></li>
+                        <li><img src="${icons.message}" alt=""><span>录一段 30 秒表达作品，提交给指导师。</span></li>
+                        <li><img src="${icons.report}" alt=""><span>完成后会进入本周内容报告。</span></li>
+                    </ul>
+                </section>
+                <div class="bottom-cta">
+                    <button class="soft-action" type="button" data-action="toast:已加入稍后看">
+                        <img src="${icons.check}" alt="">稍后看
+                    </button>
+                    <button class="primary-action" type="button" data-action="toggle-play">
+                        <img src="${state.mediaPlaying ? icons.pause : icons.play}" alt="">${state.mediaPlaying ? "暂停播放" : "开始播放"}
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderPostDetail(id) {
+            const post = posts.find(item => item.id === id) || posts[0];
+            const liked = state.liked.has(post.id);
+
+            return `
+                ${detailTopbar("作品详情")}
+                <article class="feed-card" style="margin-top:18px;">
+                    <div class="feed-author">
+                        <img src="${post.avatar}" alt="">
+                        <span>
+                            <strong>${post.name}</strong>
+                            <span>${post.age} · ${post.badge}</span>
+                        </span>
+                        <span class="mini-tag yellow">${post.tag}</span>
+                    </div>
+                    <p>${post.text}</p>
+                    <div class="feed-media">
+                        <span>
+                            <strong>${post.mediaTitle}</strong>
+                            <p>${post.mediaDesc}</p>
+                        </span>
+                        <img src="${post.art}" alt="">
+                    </div>
+                    <div class="feed-actions">
+                        <button class="reaction-button ${liked ? "is-liked" : ""}" type="button" data-like="${post.id}">
+                            <span>${liked ? "已鼓励" : "鼓励一下"}</span>
+                            <span>${post.likes + (liked && post.id !== "post-1" ? 1 : 0)}</span>
+                        </button>
+                        <button class="reaction-button" type="button" data-action="toast:已发送一句具体鼓励">具体鼓励</button>
+                    </div>
+                </article>
+                <section class="detail-block">
+                    <h2>指导师反馈</h2>
+                    <ul class="detail-list">
+                        <li><img src="${icons.check}" alt=""><span>先说发生了什么，再说自己的想法，表达顺序很清楚。</span></li>
+                        <li><img src="${icons.message}" alt=""><span>下一次可以补一句“我为什么这样想”。</span></li>
+                    </ul>
+                </section>
+                <section class="safe-note">
+                    <img src="${icons.lock}" alt="">
+                    <div>
+                        <strong>这条作品对家长可见</strong>
+                        <span>评论只支持鼓励模板和指导师反馈，保护孩子的表达安全感。</span>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderWardrobe() {
+            const selected = outfits.find(item => item.id === state.outfit) || outfits[0];
+
+            return `
+                ${detailTopbar("个人装扮")}
+                <section class="detail-hero course" style="background: var(--blue-1); border-color: var(--blue-2);">
+                    <div>
+                        <span class="mini-tag blue">当前形象</span>
+                        <h1>${selected.name}</h1>
+                        <p class="subcopy">${selected.desc}。装扮只来自学习和作品成就。</p>
+                    </div>
+                    <img src="${selected.role}" alt="">
+                </section>
+                <section class="detail-block">
+                    <h2>可切换装扮</h2>
+                    <div class="outfit-grid">
+                        ${outfits.map(outfit => `
+                            <button class="outfit-card ${state.outfit === outfit.id ? "is-selected" : ""}" type="button" data-outfit="${outfit.id}">
+                                <img src="${outfit.role}" alt="">
+                                <strong>${outfit.name}</strong>
+                                <span>${outfit.desc}</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                </section>
+                <section class="detail-block">
+                    <h2>下一件可解锁</h2>
+                    <ul class="detail-list">
+                        <li><img src="${icons.lock}" alt=""><span>完成 3 个表达作品后解锁“故事主持徽章”。</span></li>
+                        <li><img src="${icons.bean}" alt=""><span>使用 300 成长豆可兑换新的背景贴纸。</span></li>
+                    </ul>
+                </section>
+            `;
+        }
+
+        function renderAchievements() {
+            return `
+                ${detailTopbar("成就墙")}
+                <section class="detail-hero course" style="background: var(--yellow-1); border-color: var(--yellow-2);">
+                    <div>
+                        <span class="mini-tag yellow">阶段成就</span>
+                        <h1>把努力看得见</h1>
+                        <p class="subcopy">成就围绕习惯、作品、表达和探索，不用排名给孩子制造压力。</p>
+                    </div>
+                    <img src="${icons.starRole}" alt="">
+                </section>
+                <section class="detail-block">
+                    <h2>已点亮</h2>
+                    <div class="achievement-grid">
+                        ${achievements.map(achievementCard).join("")}
+                    </div>
+                </section>
+                <section class="detail-block">
+                    <h2>接下来</h2>
+                    <div class="timeline">
+                        <div class="timeline-item"><strong>15</strong><span><b>表达作品 15 个</b><br>再提交 3 个作品即可点亮。</span></div>
+                        <div class="timeline-item"><strong>10</strong><span><b>连续学习 10 天</b><br>保持短课节奏，不需要一次学太久。</span></div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderCurrent() {
+            const app = document.getElementById("app");
+            const tabbar = document.getElementById("tabbar");
+            let html = "";
+
+            if (state.view) {
+                app.classList.add("no-tabbar");
+                tabbar.hidden = true;
+                if (state.view.type === "course") html = renderCourseDetail(state.view.id);
+                if (state.view.type === "media-detail") html = renderMediaDetail(state.view.id);
+                if (state.view.type === "post") html = renderPostDetail(state.view.id);
+                if (state.view.type === "wardrobe") html = renderWardrobe();
+                if (state.view.type === "achievements") html = renderAchievements();
+            } else {
+                app.classList.remove("no-tabbar");
+                tabbar.hidden = false;
+                tabbar.innerHTML = tabsHtml();
+                if (state.tab === "plaza") html = renderPlaza();
+                if (state.tab === "media") html = renderMedia();
+                if (state.tab === "community") html = renderCommunity();
+                if (state.tab === "profile") html = renderProfile();
+            }
+
+            app.innerHTML = html || emptyState();
+            app.scrollTop = 0;
+        }
+
+        function emptyState() {
+            return `
+                ${detailTopbar("暂未开放")}
+                <div class="empty-state">
+                    <img src="${icons.empty}" alt="">
+                    <strong>这一页还在准备中</strong>
+                    <span>先回到主页面看看其他内容。</span>
+                </div>
+            `;
+        }
+
+        function showToast(message) {
+            const root = document.getElementById("toast-root");
+            root.innerHTML = `<div class="toast">${message}</div>`;
+            clearTimeout(state.toastTimer);
+            state.toastTimer = setTimeout(() => {
+                root.innerHTML = "";
+            }, 1800);
+        }
+
+        function handleConfirm(button) {
+            const key = button.dataset.confirm;
+            if (state.pendingConfirm === key) {
+                const message = button.dataset.confirmMessage || "已确认";
+                state.pendingConfirm = null;
+                renderCurrent();
+                showToast(message);
+                return;
+            }
+
+            state.pendingConfirm = key;
+            renderCurrent();
+            showToast("再点一次完成确认");
+            setTimeout(() => {
+                if (state.pendingConfirm === key) {
+                    state.pendingConfirm = null;
+                    renderCurrent();
+                }
+            }, 2000);
+        }
+
+        document.addEventListener("click", event => {
+            const tabButton = event.target.closest("[data-tab]");
+            if (tabButton) {
+                state.tab = tabButton.dataset.tab;
+                state.view = null;
+                state.pendingConfirm = null;
+                renderCurrent();
+                return;
+            }
+
+            const subjectButton = event.target.closest("[data-subject]");
+            if (subjectButton) {
+                state.activeSubject = subjectButton.dataset.subject;
+                renderCurrent();
+                return;
+            }
+
+            const kindButton = event.target.closest("[data-kind]");
+            if (kindButton) {
+                state.mediaKind = kindButton.dataset.kind;
+                renderCurrent();
+                return;
+            }
+
+            const feedButton = event.target.closest("[data-feed-mode]");
+            if (feedButton) {
+                state.feedMode = feedButton.dataset.feedMode;
+                renderCurrent();
+                return;
+            }
+
+            const viewButton = event.target.closest("[data-view]");
+            if (viewButton) {
+                state.view = {
+                    type: viewButton.dataset.view,
+                    id: viewButton.dataset.id || null
+                };
+                state.pendingConfirm = null;
+                renderCurrent();
+                return;
+            }
+
+            const likeButton = event.target.closest("[data-like]");
+            if (likeButton) {
+                const id = likeButton.dataset.like;
+                if (state.liked.has(id)) {
+                    state.liked.delete(id);
+                    showToast("已收回鼓励");
+                } else {
+                    state.liked.add(id);
+                    showToast("已送出鼓励");
+                }
+                renderCurrent();
+                return;
+            }
+
+            const outfitButton = event.target.closest("[data-outfit]");
+            if (outfitButton) {
+                state.outfit = outfitButton.dataset.outfit;
+                renderCurrent();
+                showToast("装扮已更新");
+                return;
+            }
+
+            const confirmButton = event.target.closest("[data-confirm]");
+            if (confirmButton) {
+                handleConfirm(confirmButton);
+                return;
+            }
+
+            const actionButton = event.target.closest("[data-action]");
+            if (actionButton) {
+                const action = actionButton.dataset.action;
+                if (action === "back") {
+                    state.view = null;
+                    state.pendingConfirm = null;
+                    renderCurrent();
+                    return;
+                }
+                if (action === "share") {
+                    showToast("已生成分享卡片");
+                    return;
+                }
+                if (action === "toggle-play") {
+                    state.mediaPlaying = !state.mediaPlaying;
+                    renderCurrent();
+                    showToast(state.mediaPlaying ? "开始播放" : "已暂停");
+                    return;
+                }
+                if (action.startsWith("toast:")) {
+                    showToast(action.replace("toast:", ""));
+                }
+            }
+        });
+
+        renderCurrent();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>

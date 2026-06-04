@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫 - 选择科目</title>
+    <link rel="icon" href="assets/demo-favicons/subjects.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        /* 引入字体 */
+        @font-face {
+            font-family: 'PingFang SC';
+            src: local('PingFang SC');
+        }
+        @font-face {
+            font-family: 'JOJO Kaiti';
+            src: url('assets/字体/JOJOKaiti-Regular.ttf');
+        }
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf');
+        }
+
+        /* 设计系统变量 */
+        :root {
+            /* 颜色 */
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            
+            --yellow-4: #FCDA00;
+            --yellow-6: #544300;
+
+            /* 学科色 */
+            --orange-4: #FF9045;
+            --pink-4: #FF7A99;
+            --blue-4: #5AC8FA;
+            --purple-4: #AE84E3;
+            --green-4: #78C562;
+
+            /* 圆角 */
+            --radius-button: 50px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+
+            /* 间距 */
+            --spacing-xs: 4px;
+            --spacing-sm: 14px;
+            --spacing-md: 20px;
+            --spacing-lg: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--gray-1);
+            min-height: 100vh;
+            padding: var(--spacing-md);
+        }
+
+        .header {
+            text-align: center;
+            margin-top: 60px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: var(--gray-5);
+        }
+
+        .subjects-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+
+        .subject-card {
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            text-decoration: none;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 180px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .subject-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.2);
+            box-shadow: inset 0px -4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .subject-icon {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            z-index: 1;
+        }
+
+        .subject-info {
+            z-index: 1;
+        }
+
+        .subject-name {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .subject-desc {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 150%;
+        }
+
+        /* 各学科颜色 */
+        .subject-reading {
+            background-color: var(--orange-4);
+        }
+
+        .subject-english {
+            background-color: var(--pink-4);
+        }
+
+        .subject-math {
+            background-color: var(--blue-4);
+        }
+
+        .subject-art {
+            background-color: var(--purple-4);
+        }
+
+        .subject-writing {
+            background-color: var(--green-4);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--gray-6);
+            font-size: 16px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .back-button::before {
+            content: '<';
+            margin-right: var(--spacing-xs);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="login.html" class="back-button">返回</a>
+        
+        <div class="header">
+            <h1 class="page-title">选择你的学习科目</h1>
+            <p class="page-subtitle">我们会为你定制专属的学习计划</p>
+        </div>
+
+        <div class="subjects-grid">
+            <a href="assessment.html?subject=reading" class="subject-card subject-reading">
+                <div class="subject-icon"><i class="ph-fill ph-book-open-text"></i></div>
+                <div class="subject-info">
+                    <div class="subject-name">阅读</div>
+                    <div class="subject-desc">培养阅读理解能力，激发阅读兴趣</div>
+                </div>
+            </a>
+
+            <a href="assessment.html?subject=english" class="subject-card subject-english">
+                <div class="subject-icon"><i class="ph-fill ph-microphone-stage"></i></div>
+                <div class="subject-info">
+                    <div class="subject-name">英语</div>
+                    <div class="subject-desc">沉浸式英语学习，提升口语和听力</div>
+                </div>
+            </a>
+
+            <a href="assessment.html?subject=math" class="subject-card subject-math">
+                <div class="subject-icon"><i class="ph-fill ph-calculator"></i></div>
+                <div class="subject-info">
+                    <div class="subject-name">思维</div>
+                    <div class="subject-desc">锻炼逻辑思维，提升数学能力</div>
+                </div>
+            </a>
+
+            <a href="assessment.html?subject=art" class="subject-card subject-art">
+                <div class="subject-icon"><i class="ph-fill ph-palette"></i></div>
+                <div class="subject-info">
+                    <div class="subject-name">美育</div>
+                    <div class="subject-desc">培养审美能力，激发创造力</div>
+                </div>
+            </a>
+
+            <a href="assessment.html?subject=writing" class="subject-card subject-writing">
+                <div class="subject-icon"><i class="ph-fill ph-pencil-simple-line"></i></div>
+                <div class="subject-info">
+                    <div class="subject-name">小作家</div>
+                    <div class="subject-desc">提升写作能力，表达自我想法</div>
+                </div>
+            </a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>

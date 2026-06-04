@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>模块化标准题 Demo</title>
+    <link rel="icon" href="assets/demo-favicons/modular-standard-question.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <style>
+        @font-face {
+            font-family: "Mohr Rounded";
+            src: url("assets/字体/MohrRounded-Bold.ttf") format("truetype");
+            font-weight: 700;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            --white: #FFFFFF;
+            --brown-1: #FEF7E5;
+            --brown-3: #E0BF94;
+            --jojo-radius-min: 8px;
+            --jojo-radius-option: 12px;
+            --jojo-radius-small: 24px;
+            --jojo-radius-large: 52px;
+            --jojo-radius-max: 92px;
+            --jojo-space-page: 20px;
+            --jojo-space-small: 16px;
+            --jojo-space-medium: 28px;
+            --jojo-space-large: 40px;
+            --success: #5DC43B;
+            --danger: #FF715C;
+            --focus: rgba(82, 139, 255, .46);
+        }
+
+        body[data-theme="sunny"] {
+            --theme-name: "轻松黄";
+            --theme-bg: #FCF3BA;
+            --theme-board: #FFEB6B;
+            --theme-soft: #FCF9DE;
+            --theme-accent: #FCDA00;
+            --theme-accent-deep: #DBAF00;
+            --theme-ink: #544300;
+            --theme-button-text: #544300;
+            --theme-shadow: rgba(219, 175, 0, .22);
+        }
+
+        body[data-theme="blue"] {
+            --theme-name: "轻松蓝";
+            --theme-bg: #DBF3FF;
+            --theme-board: #87D7FF;
+            --theme-soft: #EBF9FF;
+            --theme-accent: #33BBFF;
+            --theme-accent-deep: #0090D9;
+            --theme-ink: #0C567A;
+            --theme-button-text: #FFFFFF;
+            --theme-shadow: rgba(0, 144, 217, .20);
+        }
+
+        body[data-theme="purple"] {
+            --theme-name: "挑战紫";
+            --theme-bg: #C8A0FA;
+            --theme-board: #AE84E3;
+            --theme-soft: #F3EBFC;
+            --theme-accent: #8D4BDE;
+            --theme-accent-deep: #6F35B6;
+            --theme-ink: #4E2680;
+            --theme-button-text: #FFFFFF;
+            --theme-shadow: rgba(78, 38, 128, .22);
+        }
+
+        body[data-theme="paper"] {
+            --theme-name: "专注白";
+            --theme-bg: #FAFAFA;
+            --theme-board: #FFFFFF;
+            --theme-soft: #F5F4F4;
+            --theme-accent: #FCDA00;
+            --theme-accent-deep: #DBAF00;
+            --theme-ink: #404040;
+            --theme-button-text: #544300;
+            --theme-shadow: rgba(64, 64, 64, .12);
+        }
+
+        html,
+        body {
+            min-height: 100%;
+        }
+
+        body {
+            margin: 0;
+            color: var(--gray-6);
+            font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            letter-spacing: 0;
+            background: var(--theme-bg);
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            transition: background 220ms ease;
+        }
+
+        button {
+            border: 0;
+            font: inherit;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        button:focus-visible,
+        a:focus-visible {
+            outline: 3px solid var(--focus);
+            outline-offset: 4px;
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+        }
+
+        .jojo-adaptive-stage {
+            display: grid;
+            place-items: center;
+            min-height: 100dvh;
+            padding: clamp(10px, 1.7vw, 24px);
+        }
+
+        .jojo-adaptive-root {
+            width: min(calc(100vw - 24px), calc((100dvh - 24px) * 2.167901), 1560px);
+            aspect-ratio: 1756 / 810;
+            font-size: clamp(7px, .98vw, 16px);
+        }
+
+        .jojo-quiz-screen {
+            position: relative;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 1.1em;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            padding: 1.25em;
+            border-radius: clamp(28px, 5.2vw, var(--jojo-radius-max));
+            background: var(--theme-bg);
+            box-shadow: 0 1.8em 5em var(--theme-shadow);
+            transition: background 220ms ease, box-shadow 220ms ease;
+        }
+
+        .quiz-topbar {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 1em;
+            min-height: 4.55em;
+        }
+
+        .top-left,
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: .75em;
+        }
+
+        .round-button {
+            display: inline-grid;
+            place-items: center;
+            width: 3.8em;
+            height: 3.8em;
+            border-radius: 999px;
+            color: var(--theme-ink);
+            background: rgba(255, 255, 255, .76);
+            box-shadow: inset 0 0 0 1px rgba(64, 64, 64, .06);
+            transition: transform 180ms ease, background 180ms ease;
+        }
+
+        .round-button i {
+            font-size: 1.45em;
+        }
+
+        .brand-lockup {
+            display: flex;
+            align-items: center;
+            gap: .75em;
+            min-width: 0;
+            color: var(--theme-ink);
+        }
+
+        .brand-lockup img {
+            width: 6.2em;
+            height: auto;
+        }
+
+        .brand-lockup span {
+            display: block;
+            overflow: hidden;
+            max-width: 18em;
+            color: rgba(64, 64, 64, .78);
+            font-size: 1.05em;
+            font-weight: 700;
+            line-height: 1.2;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .progress-wrap {
+            justify-self: center;
+            display: grid;
+            gap: .5em;
+            width: min(31em, 100%);
+        }
+
+        .progress-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--theme-ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 1.1em;
+            line-height: 1;
+        }
+
+        .progress-track {
+            height: .76em;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .74);
+            box-shadow: inset 0 0 0 1px rgba(64, 64, 64, .06);
+        }
+
+        .progress-fill {
+            width: 20%;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--theme-accent);
+            transition: width 280ms ease;
+        }
+
+        .jojo-board {
+            position: relative;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            gap: 1.25em;
+            min-height: 0;
+            padding: 2em;
+            border-radius: clamp(22px, 3.2vw, var(--jojo-radius-large));
+            background: var(--white);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .55);
+            transition: background 220ms ease;
+        }
+
+        .jojo-question {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: 1.18em;
+            min-height: 6.15em;
+            padding: .45em .75em .75em;
+            border-radius: var(--jojo-radius-small);
+            background: var(--white);
+        }
+
+        .voice-button {
+            position: relative;
+            display: inline-grid;
+            place-items: center;
+            width: 4.25em;
+            height: 4.25em;
+            border-radius: 999px;
+            color: var(--theme-ink);
+            background: var(--theme-accent);
+            box-shadow: 0 .7em 1.5em var(--theme-shadow);
+        }
+
+        .voice-button::after {
+            content: "";
+            position: absolute;
+            right: -.15em;
+            top: -.08em;
+            width: .92em;
+            height: .92em;
+            border-radius: 999px;
+            background: var(--white);
+            box-shadow: 0 0 0 .25em rgba(255, 255, 255, .34);
+        }
+
+        .voice-button i {
+            font-size: 1.72em;
+        }
+
+        .question-copy {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .question-title {
+            margin: 0;
+            color: var(--gray-6);
+            font-size: 2.78em;
+            font-weight: 900;
+            line-height: 1.16;
+        }
+
+        .jojo-choice-region {
+            display: grid;
+            grid-template-columns: minmax(22em, 1fr) minmax(0, .92fr);
+            gap: 1.35em;
+            min-height: 0;
+            padding: 0;
+            border-radius: var(--jojo-radius-small);
+            background: var(--white);
+        }
+
+        .material-card {
+            position: relative;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            min-height: 0;
+            overflow: hidden;
+            padding: 1.65em;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .material-card::before {
+            content: none;
+        }
+
+        .material-title {
+            position: relative;
+            z-index: 1;
+            color: var(--theme-ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 1.85em;
+            line-height: 1.25;
+        }
+
+        .material-main {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            align-content: center;
+            gap: .95em;
+            min-height: 0;
+        }
+
+        .material-figure {
+            display: grid;
+            grid-template-columns: 7.5em minmax(0, 1fr);
+            align-items: center;
+            gap: 1.15em;
+        }
+
+        .mascot-bubble {
+            display: grid;
+            place-items: end center;
+            width: 7.5em;
+            height: 7.5em;
+            overflow: hidden;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .mascot-bubble img {
+            width: 6.7em;
+            max-height: 7.4em;
+            object-fit: contain;
+        }
+
+        .formula-card {
+            display: grid;
+            gap: .45em;
+            min-width: 0;
+            padding: .35em 0;
+            border-radius: 0;
+            color: var(--theme-ink);
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .formula-card strong {
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 2.25em;
+            line-height: 1.05;
+        }
+
+        .formula-card span {
+            color: var(--gray-5);
+            font-size: 1.05em;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .material-note {
+            position: relative;
+            z-index: 1;
+            color: var(--gray-5);
+            font-size: 1.25em;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .choice-stack {
+            display: grid;
+            align-content: center;
+            gap: 1.05em;
+            justify-self: end;
+            width: min(100%, 44em);
+            min-height: 0;
+        }
+
+        .jojo-choice-option {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 5.25em;
+            align-items: stretch;
+            gap: .75em;
+            min-height: 5.18em;
+            color: var(--gray-6);
+            background: transparent;
+            text-align: left;
+        }
+
+        .option-text,
+        .option-sound {
+            border-radius: var(--jojo-radius-option);
+            background: var(--white);
+            box-shadow: inset 0 0 0 2px var(--gray-3), 0 .24em 0 rgba(64, 64, 64, .06);
+            transition: box-shadow 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+
+        .option-text {
+            display: grid;
+            grid-template-columns: 3.05em minmax(0, 1fr) auto;
+            align-items: center;
+            gap: .72em;
+            padding: .82em 1em;
+        }
+
+        .option-letter {
+            display: inline-grid;
+            place-items: center;
+            width: 2.5em;
+            height: 2.5em;
+            border-radius: 999px;
+            color: var(--gray-4);
+            background: var(--gray-1);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 1em;
+        }
+
+        .option-value {
+            overflow-wrap: anywhere;
+            font-size: 2.18em;
+            font-weight: 800;
+            line-height: 1.15;
+        }
+
+        .option-mark {
+            display: inline-grid;
+            place-items: center;
+            width: 2.25em;
+            height: 2.25em;
+            border-radius: 999px;
+            color: var(--white);
+            opacity: 0;
+            transform: scale(.82);
+            transition: opacity 180ms ease, transform 180ms ease, background 180ms ease;
+        }
+
+        .option-mark i {
+            font-size: 1.25em;
+        }
+
+        .option-sound {
+            display: grid;
+            place-items: center;
+            color: var(--theme-ink);
+        }
+
+        .option-sound i {
+            font-size: 1.55em;
+        }
+
+        .jojo-choice-option:hover .option-text,
+        .jojo-choice-option:hover .option-sound {
+            background: var(--white);
+            box-shadow: inset 0 0 0 2px var(--gray-3), 0 .24em 0 rgba(64, 64, 64, .08);
+        }
+
+        .jojo-choice-option.is-selected .option-text,
+        .jojo-choice-option.is-selected .option-sound {
+            background: var(--white);
+            box-shadow: inset 0 0 0 3px var(--theme-accent), 0 .24em 0 rgba(64, 64, 64, .06);
+        }
+
+        .jojo-choice-option.is-correct .option-text,
+        .jojo-choice-option.is-correct .option-sound {
+            background: var(--white);
+            box-shadow: inset 0 0 0 3px var(--success), 0 .24em 0 rgba(64, 64, 64, .06);
+        }
+
+        .jojo-choice-option.is-wrong .option-text,
+        .jojo-choice-option.is-wrong .option-sound {
+            background: var(--white);
+            box-shadow: inset 0 0 0 3px var(--danger), 0 .24em 0 rgba(64, 64, 64, .06);
+        }
+
+        .jojo-choice-option.is-correct .option-mark,
+        .jojo-choice-option.is-wrong .option-mark {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .jojo-choice-option.is-correct .option-mark {
+            background: var(--success);
+        }
+
+        .jojo-choice-option.is-wrong .option-mark {
+            background: var(--danger);
+        }
+
+        .board-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1em;
+            min-height: 4.65em;
+        }
+
+        .score-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .6em;
+            min-height: 3em;
+            padding: .55em 1.15em;
+            border-radius: 999px;
+            color: var(--theme-ink);
+            background: rgba(255, 255, 255, .72);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 1.15em;
+        }
+
+        .dot-row {
+            display: flex;
+            align-items: center;
+            gap: .5em;
+        }
+
+        .dot-row span {
+            width: .72em;
+            height: .72em;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .86);
+            box-shadow: inset 0 0 0 1px rgba(64, 64, 64, .08);
+        }
+
+        .dot-row span.is-done {
+            background: var(--theme-accent);
+        }
+
+        .jojo-submit {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .62em;
+            min-width: 12.4em;
+            min-height: 4.45em;
+            padding: .92em 1.85em;
+            border-radius: var(--jojo-radius-option);
+            color: var(--theme-button-text);
+            background: var(--theme-accent);
+            box-shadow: 0 .78em 1.7em var(--theme-shadow), inset 0 -4px 0 rgba(64, 64, 64, .10);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 1.42em;
+            font-weight: 900;
+            line-height: 1;
+            transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+        }
+
+        .jojo-submit:disabled {
+            color: #E0BF94;
+            background: var(--brown-1);
+            box-shadow: inset 0 0 0 2px var(--brown-3);
+            cursor: default;
+        }
+
+        .jojo-submit i {
+            font-size: 1.25em;
+        }
+
+        .settings-panel {
+            position: absolute;
+            z-index: 8;
+            top: 6.1em;
+            right: 1.4em;
+            width: min(27em, calc(100% - 2.8em));
+            padding: 1.1em;
+            border-radius: 1.7em;
+            background: rgba(255, 255, 255, .94);
+            box-shadow: 0 1.5em 4em rgba(31, 40, 77, .16), inset 0 0 0 1px rgba(64, 64, 64, .06);
+            backdrop-filter: blur(18px);
+        }
+
+        .settings-panel[hidden] {
+            display: none;
+        }
+
+        .settings-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1em;
+            margin-bottom: .9em;
+            color: var(--gray-6);
+            font-size: 1.25em;
+            font-weight: 800;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .7em;
+        }
+
+        .theme-choice {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: .65em;
+            min-height: 3.65em;
+            padding: .65em .8em;
+            border-radius: var(--jojo-radius-option);
+            color: var(--gray-6);
+            background: var(--gray-1);
+            text-align: left;
+            box-shadow: inset 0 0 0 2px transparent;
+        }
+
+        .theme-choice[aria-pressed="true"] {
+            color: var(--theme-ink);
+            background: var(--theme-soft);
+            box-shadow: inset 0 0 0 2px var(--theme-accent);
+        }
+
+        .theme-swatch {
+            width: 1.65em;
+            height: 1.65em;
+            border-radius: 999px;
+            box-shadow: inset 0 0 0 2px rgba(64, 64, 64, .08);
+        }
+
+        .theme-swatch.sunny {
+            background: #FCDA00;
+        }
+
+        .theme-swatch.blue {
+            background: #33BBFF;
+        }
+
+        .theme-swatch.purple {
+            background: #8D4BDE;
+        }
+
+        .theme-swatch.paper {
+            background: #FAFAFA;
+        }
+
+        .result-view {
+            position: absolute;
+            inset: 2em;
+            z-index: 5;
+            display: grid;
+            grid-template-columns: minmax(0, .78fr) minmax(0, 1fr);
+            gap: 2em;
+            align-items: center;
+            padding: 2em;
+            border-radius: var(--jojo-radius-large);
+            background: rgba(255, 255, 255, .88);
+            box-shadow: inset 0 0 0 1px rgba(64, 64, 64, .06);
+        }
+
+        .result-view[hidden] {
+            display: none;
+        }
+
+        .result-art {
+            display: grid;
+            place-items: end center;
+            min-height: 20em;
+            border-radius: 2.4em;
+            background: var(--theme-soft);
+            overflow: hidden;
+        }
+
+        .result-art img {
+            width: min(21em, 82%);
+            max-height: 21em;
+            object-fit: contain;
+        }
+
+        .result-copy {
+            display: grid;
+            gap: 1em;
+            justify-items: start;
+        }
+
+        .result-copy strong {
+            color: var(--theme-ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: 4.2em;
+            line-height: 1;
+        }
+
+        .result-copy p {
+            margin: 0;
+            color: var(--gray-5);
+            font-size: 1.45em;
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .toast {
+            position: absolute;
+            z-index: 10;
+            left: 50%;
+            top: 5.5em;
+            display: inline-flex;
+            align-items: center;
+            gap: .55em;
+            min-height: 3.3em;
+            padding: .7em 1.25em;
+            border-radius: 999px;
+            color: var(--theme-ink);
+            background: rgba(255, 255, 255, .94);
+            box-shadow: 0 1.15em 3em rgba(31, 40, 77, .15);
+            font-weight: 800;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -1.2em);
+        }
+
+        .toast.is-visible {
+            animation: ani-toast-up 2400ms both;
+        }
+
+        .ani-btnpress-scal:active {
+            transform: scale(1.08);
+        }
+
+        .ani-btnpress-down:active {
+            transform: translateY(.36em);
+        }
+
+        .ani-seal-down {
+            animation: ani-seal-down 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        @keyframes ani-seal-down {
+            0% {
+                opacity: 0;
+                transform: scale(2);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes ani-toast-up {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -2.2em);
+            }
+            12%, 86% {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -2.2em);
+            }
+        }
+
+        @media (max-aspect-ratio: 3 / 2), (min-height: 760px) {
+            .jojo-adaptive-root {
+                width: min(calc(100vw - 28px), calc((100dvh - 28px) * 1.333333), 1080px);
+                aspect-ratio: 1440 / 1080;
+                font-size: clamp(7px, .86vw, 12px);
+            }
+
+            .jojo-quiz-screen {
+                padding: 1.45em;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .brand-lockup span {
+                display: none;
+            }
+
+            .progress-wrap {
+                width: 18em;
+            }
+
+            .jojo-choice-region {
+                grid-template-columns: .9fr 1.1fr;
+                gap: 1em;
+            }
+
+            .material-figure {
+                grid-template-columns: 1fr;
+            }
+
+            .mascot-bubble {
+                display: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 1ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 1ms !important;
+            }
+        }
+    </style>
+</head>
+<body data-theme="sunny">
+    <main class="jojo-adaptive-stage">
+        <div class="jojo-adaptive-root">
+            <section class="jojo-quiz-screen" aria-label="模块化标准题">
+                <header class="quiz-topbar">
+                    <div class="top-left">
+                        <a class="round-button ani-btnpress-scal" href="index.html" aria-label="返回 Demo 索引">
+                            <i class="ph-fill ph-caret-left" aria-hidden="true"></i>
+                        </a>
+                        <div class="brand-lockup">
+                            <img src="assets/品牌logo/叫叫 Logo - 基础.svg" alt="叫叫">
+                            <span>模块化标准题</span>
+                        </div>
+                    </div>
+
+                    <div class="progress-wrap" aria-label="答题进度">
+                        <div class="progress-meta">
+                            <span id="progressLabel">第 1 题</span>
+                            <span id="themeLabel">轻松黄</span>
+                        </div>
+                        <div class="progress-track" aria-hidden="true">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+
+                    <div class="top-actions">
+                        <button class="round-button ani-btnpress-scal" type="button" id="settingsToggle" aria-expanded="false" aria-controls="settingsPanel" aria-label="设置">
+                            <i class="ph-fill ph-gear-six" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <div class="settings-panel" id="settingsPanel" hidden>
+                    <div class="settings-head">
+                        <span>颜色主题</span>
+                        <button class="round-button ani-btnpress-scal" type="button" id="settingsClose" aria-label="关闭设置">
+                            <i class="ph-fill ph-x" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="theme-grid" aria-label="颜色主题">
+                        <button class="theme-choice ani-btnpress-down" type="button" data-theme-choice="sunny" aria-pressed="true">
+                            <span class="theme-swatch sunny" aria-hidden="true"></span>
+                            <span>轻松黄</span>
+                        </button>
+                        <button class="theme-choice ani-btnpress-down" type="button" data-theme-choice="blue" aria-pressed="false">
+                            <span class="theme-swatch blue" aria-hidden="true"></span>
+                            <span>轻松蓝</span>
+                        </button>
+                        <button class="theme-choice ani-btnpress-down" type="button" data-theme-choice="purple" aria-pressed="false">
+                            <span class="theme-swatch purple" aria-hidden="true"></span>
+                            <span>挑战紫</span>
+                        </button>
+                        <button class="theme-choice ani-btnpress-down" type="button" data-theme-choice="paper" aria-pressed="false">
+                            <span class="theme-swatch paper" aria-hidden="true"></span>
+                            <span>专注白</span>
+                        </button>
+                    </div>
+                </div>
+
+                <section class="jojo-board">
+                    <div class="jojo-question" id="questionBlock">
+                        <button class="voice-button" type="button" aria-label="播放题干">
+                            <i class="ph-fill ph-speaker-high" aria-hidden="true"></i>
+                        </button>
+                        <div class="question-copy">
+                            <h1 class="question-title" id="questionTitle">438 + 267 = ?</h1>
+                        </div>
+                    </div>
+
+                    <div class="jojo-choice-region" id="choiceRegion">
+                        <article class="material-card">
+                            <h2 class="material-title" id="materialTitle">竖式小提示</h2>
+                            <div class="material-main">
+                                <div class="material-figure">
+                                    <div class="mascot-bubble">
+                                        <img id="materialMascot" src="assets/美术素材/叫叫小分队-情感化形象/叫叫-一本正经，说正事.svg" alt="">
+                                    </div>
+                                    <div class="formula-card">
+                                        <strong id="formulaText">438 + 267</strong>
+                                        <span id="formulaHint">个位、十位、百位都要看清楚。</span>
+                                    </div>
+                                </div>
+                                <p class="material-note" id="materialNote">先算个位，再算十位，有进位要写到下一位。</p>
+                            </div>
+                        </article>
+
+                        <div class="choice-stack" id="choiceStack" aria-label="答案选项"></div>
+                    </div>
+
+                    <footer class="board-footer" id="boardFooter">
+                        <div class="score-pill" aria-live="polite">
+                            <i class="ph-fill ph-star" aria-hidden="true"></i>
+                            <span id="scoreText">已答对 0 题</span>
+                        </div>
+                        <div class="dot-row" id="dotRow" aria-hidden="true"></div>
+                        <button class="jojo-submit ani-btnpress-down" type="button" id="submitButton" disabled>
+                            <span>提交</span>
+                            <i class="ph-fill ph-caret-right" aria-hidden="true"></i>
+                        </button>
+                    </footer>
+
+                    <section class="result-view" id="resultView" hidden aria-live="polite">
+                        <div class="result-art">
+                            <img src="assets/美术素材/叫叫小分队-情感化形象/叫叫-斗志满满，握拳，昂扬.svg" alt="">
+                        </div>
+                        <div class="result-copy">
+                            <strong id="resultScore">5 / 5</strong>
+                            <p id="resultMessage">这组四年级数学题完成啦。</p>
+                            <button class="jojo-submit ani-btnpress-down" type="button" id="restartButton">
+                                <span>再做一组</span>
+                                <i class="ph-fill ph-arrow-clockwise" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </section>
+                </section>
+
+                <div class="toast" id="toast" role="status" aria-live="polite"></div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const themeNames = {
+            sunny: "轻松黄",
+            blue: "轻松蓝",
+            purple: "挑战紫",
+            paper: "专注白"
+        };
+
+        const questions = [
+            {
+                type: "计算",
+                title: "438 + 267 = ?",
+                materialTitle: "竖式小提示",
+                formula: "438 + 267",
+                hint: "个位、十位、百位都要看清楚。",
+                note: "先算个位，再算十位，有进位要写到下一位。",
+                options: ["695", "705", "715"],
+                answer: 1,
+                toastRight: "进位没有漏，答对了。",
+                toastWrong: "正确答案是 705。"
+            },
+            {
+                type: "乘法",
+                title: "125 × 8 = ?",
+                materialTitle: "整百思路",
+                formula: "125 × 8",
+                hint: "想一想 8 个 125 能组成几个 1000。",
+                note: "125 × 4 = 500，再乘 2 就是 1000。",
+                options: ["900", "1000", "1080"],
+                answer: 1,
+                toastRight: "好快，125 和 8 是一组好朋友。",
+                toastWrong: "正确答案是 1000。"
+            },
+            {
+                type: "除法",
+                title: "960 ÷ 12 = ?",
+                materialTitle: "拆分小提示",
+                formula: "960 ÷ 12",
+                hint: "12 × 8 = 96，可以把 960 看成 96 个十。",
+                note: "96 ÷ 12 = 8，所以 960 ÷ 12 = 80。",
+                options: ["70", "80", "90"],
+                answer: 1,
+                toastRight: "拆成 96 个十，很稳。",
+                toastWrong: "正确答案是 80。"
+            },
+            {
+                type: "面积",
+                title: "长方形长 18 米，宽 9 米，面积是多少？",
+                materialTitle: "面积公式",
+                formula: "长 × 宽",
+                hint: "长方形面积 = 长 × 宽。",
+                note: "18 × 9 = 162，单位要写平方米。",
+                options: ["54 平方米", "162 平方米", "172 平方米"],
+                answer: 1,
+                toastRight: "公式和单位都对上了。",
+                toastWrong: "正确答案是 162 平方米。"
+            },
+            {
+                type: "分数",
+                title: "3/8 + 2/8 = ?",
+                materialTitle: "同分母加法",
+                formula: "3/8 + 2/8",
+                hint: "分母相同，分母不变，只把分子相加。",
+                note: "3 个八分之一加 2 个八分之一，一共 5 个八分之一。",
+                options: ["5/8", "5/16", "6/8"],
+                answer: 0,
+                toastRight: "同分母分数加法掌握了。",
+                toastWrong: "正确答案是 5/8。"
+            }
+        ];
+
+        const state = {
+            index: 0,
+            selected: null,
+            locked: false,
+            score: 0,
+            finished: false
+        };
+
+        const nodes = {
+            body: document.body,
+            progressLabel: document.getElementById("progressLabel"),
+            progressFill: document.getElementById("progressFill"),
+            themeLabel: document.getElementById("themeLabel"),
+            questionTitle: document.getElementById("questionTitle"),
+            materialTitle: document.getElementById("materialTitle"),
+            formulaText: document.getElementById("formulaText"),
+            formulaHint: document.getElementById("formulaHint"),
+            materialNote: document.getElementById("materialNote"),
+            choiceStack: document.getElementById("choiceStack"),
+            dotRow: document.getElementById("dotRow"),
+            scoreText: document.getElementById("scoreText"),
+            submitButton: document.getElementById("submitButton"),
+            resultView: document.getElementById("resultView"),
+            resultScore: document.getElementById("resultScore"),
+            resultMessage: document.getElementById("resultMessage"),
+            restartButton: document.getElementById("restartButton"),
+            settingsToggle: document.getElementById("settingsToggle"),
+            settingsPanel: document.getElementById("settingsPanel"),
+            settingsClose: document.getElementById("settingsClose"),
+            toast: document.getElementById("toast"),
+            questionBlock: document.getElementById("questionBlock"),
+            choiceRegion: document.getElementById("choiceRegion"),
+            boardFooter: document.getElementById("boardFooter")
+        };
+
+        function setTheme(theme) {
+            const nextTheme = themeNames[theme] ? theme : "sunny";
+            nodes.body.dataset.theme = nextTheme;
+            nodes.themeLabel.textContent = themeNames[nextTheme];
+            localStorage.setItem("jojo-modular-theme", nextTheme);
+            document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+                button.setAttribute("aria-pressed", String(button.dataset.themeChoice === nextTheme));
+            });
+        }
+
+        function getOptionClass(optionIndex, question) {
+            const classes = ["jojo-choice-option", "ani-btnpress-down"];
+            if (state.selected === optionIndex) classes.push("is-selected");
+            if (state.locked && optionIndex === question.answer) classes.push("is-correct");
+            if (state.locked && state.selected === optionIndex && optionIndex !== question.answer) classes.push("is-wrong");
+            return classes.join(" ");
+        }
+
+        function renderOptions(question) {
+            nodes.choiceStack.innerHTML = question.options.map((option, optionIndex) => {
+                const mark = optionIndex === question.answer ? "ph-check" : "ph-x";
+                return `
+                    <button class="${getOptionClass(optionIndex, question)}" type="button" data-option="${optionIndex}" ${state.locked ? "disabled" : ""}>
+                        <span class="option-text">
+                            <span class="option-letter">${String.fromCharCode(65 + optionIndex)}</span>
+                            <span class="option-value">${option}</span>
+                            <span class="option-mark ani-seal-down"><i class="ph-fill ${mark}" aria-hidden="true"></i></span>
+                        </span>
+                        <span class="option-sound" aria-hidden="true"><i class="ph-fill ph-speaker-high"></i></span>
+                    </button>
+                `;
+            }).join("");
+        }
+
+        function renderDots() {
+            nodes.dotRow.innerHTML = questions.map((_, dotIndex) => {
+                const done = dotIndex < state.index || state.finished || (state.locked && dotIndex === state.index);
+                return `<span class="${done ? "is-done" : ""}"></span>`;
+            }).join("");
+        }
+
+        function render() {
+            const question = questions[state.index];
+            const progress = state.finished ? 100 : ((state.index + 1) / questions.length) * 100;
+
+            nodes.questionBlock.hidden = state.finished;
+            nodes.choiceRegion.hidden = state.finished;
+            nodes.boardFooter.hidden = state.finished;
+            nodes.resultView.hidden = !state.finished;
+
+            nodes.progressLabel.textContent = state.finished ? "已完成" : `第 ${state.index + 1} 题`;
+            nodes.progressFill.style.width = `${progress}%`;
+            nodes.scoreText.textContent = `已答对 ${state.score} 题`;
+            renderDots();
+
+            if (state.finished) {
+                nodes.resultScore.textContent = `${state.score} / ${questions.length}`;
+                nodes.resultMessage.textContent = state.score === questions.length
+                    ? "这组四年级数学题全部答对啦。"
+                    : "这组四年级数学题完成啦。";
+                return;
+            }
+
+            nodes.questionTitle.textContent = question.title;
+            nodes.materialTitle.textContent = question.materialTitle;
+            nodes.formulaText.textContent = question.formula;
+            nodes.formulaHint.textContent = question.hint;
+            nodes.materialNote.textContent = question.note;
+            renderOptions(question);
+            nodes.submitButton.disabled = state.selected === null && !state.locked;
+            nodes.submitButton.querySelector("span").textContent = state.locked
+                ? (state.index === questions.length - 1 ? "看结果" : "下一题")
+                : "提交";
+        }
+
+        function showToast(message, icon) {
+            nodes.toast.innerHTML = `<i class="ph-fill ${icon}" aria-hidden="true"></i><span>${message}</span>`;
+            nodes.toast.classList.remove("is-visible");
+            void nodes.toast.offsetWidth;
+            nodes.toast.classList.add("is-visible");
+        }
+
+        function submitAnswer() {
+            if (state.selected === null && !state.locked) return;
+
+            if (state.locked) {
+                if (state.index === questions.length - 1) {
+                    state.finished = true;
+                } else {
+                    state.index += 1;
+                    state.selected = null;
+                    state.locked = false;
+                }
+                render();
+                return;
+            }
+
+            const question = questions[state.index];
+            const isRight = state.selected === question.answer;
+            state.locked = true;
+            if (isRight) state.score += 1;
+            render();
+            showToast(isRight ? question.toastRight : question.toastWrong, isRight ? "ph-check-circle" : "ph-info");
+        }
+
+        nodes.choiceStack.addEventListener("click", (event) => {
+            const option = event.target.closest("[data-option]");
+            if (!option || state.locked) return;
+            state.selected = Number(option.dataset.option);
+            render();
+        });
+
+        nodes.submitButton.addEventListener("click", submitAnswer);
+
+        nodes.restartButton.addEventListener("click", () => {
+            state.index = 0;
+            state.selected = null;
+            state.locked = false;
+            state.score = 0;
+            state.finished = false;
+            render();
+        });
+
+        nodes.settingsToggle.addEventListener("click", () => {
+            const isOpen = !nodes.settingsPanel.hidden;
+            nodes.settingsPanel.hidden = isOpen;
+            nodes.settingsToggle.setAttribute("aria-expanded", String(!isOpen));
+        });
+
+        nodes.settingsClose.addEventListener("click", () => {
+            nodes.settingsPanel.hidden = true;
+            nodes.settingsToggle.setAttribute("aria-expanded", "false");
+        });
+
+        document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+            button.addEventListener("click", () => {
+                setTheme(button.dataset.themeChoice);
+            });
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                nodes.settingsPanel.hidden = true;
+                nodes.settingsToggle.setAttribute("aria-expanded", "false");
+            }
+        });
+
+        document.addEventListener("click", (event) => {
+            const clickedSettings = nodes.settingsPanel.contains(event.target) || nodes.settingsToggle.contains(event.target);
+            if (!clickedSettings) {
+                nodes.settingsPanel.hidden = true;
+                nodes.settingsToggle.setAttribute("aria-expanded", "false");
+            }
+        });
+
+        setTheme(localStorage.getItem("jojo-modular-theme") || "sunny");
+        render();
+    </script>
+</body>
+</html>

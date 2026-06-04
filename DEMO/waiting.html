@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫 - 课前等待</title>
+    <link rel="icon" href="assets/demo-favicons/waiting.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        /* 引入字体 */
+        @font-face {
+            font-family: 'PingFang SC';
+            src: local('PingFang SC');
+        }
+        @font-face {
+            font-family: 'JOJO Kaiti';
+            src: url('assets/字体/JOJOKaiti-Regular.ttf');
+        }
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf');
+        }
+
+        /* 设计系统变量 */
+        :root {
+            /* 颜色 */
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            
+            --yellow-4: #FCDA00;
+            --yellow-6: #544300;
+            --yellow-1: #FCF9DE;
+
+            /* 学科色 */
+            --orange-4: #FF9045;
+            --pink-4: #FF7A99;
+            --blue-4: #5AC8FA;
+            --purple-4: #AE84E3;
+            --green-4: #78C562;
+
+            /* 圆角 */
+            --radius-button: 50px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+
+            /* 间距 */
+            --spacing-xs: 4px;
+            --spacing-sm: 14px;
+            --spacing-md: 20px;
+            --spacing-lg: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--gray-1);
+            min-height: 100vh;
+            padding: var(--spacing-md);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--gray-6);
+            font-size: 16px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .back-button::before {
+            content: '<';
+            margin-right: var(--spacing-xs);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-sm);
+            font-family: 'Mohr Rounded', sans-serif;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: var(--gray-5);
+            line-height: 150%;
+        }
+
+        .task-section {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.03);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            background-color: var(--gray-1);
+            border-radius: var(--radius-md);
+            gap: var(--spacing-md);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .task-item:hover {
+            background-color: var(--yellow-1);
+            transform: translateY(-2px);
+        }
+
+        .task-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: var(--yellow-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .task-desc {
+            font-size: 14px;
+            color: var(--gray-5);
+            line-height: 150%;
+        }
+
+        .task-status {
+            font-size: 14px;
+            color: var(--green-4);
+            font-weight: 500;
+        }
+
+        .course-section {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.03);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .course-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .course-item {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            background-color: var(--gray-1);
+            border-radius: var(--radius-md);
+            gap: var(--spacing-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .course-item.locked {
+            opacity: 0.5;
+        }
+
+        .course-item.active {
+            background-color: var(--yellow-1);
+            border: 2px solid var(--yellow-4);
+        }
+
+        .course-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--gray-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-5);
+            flex-shrink: 0;
+            z-index: 1;
+        }
+
+        .course-item.active .course-number {
+            background-color: var(--yellow-4);
+            color: var(--yellow-6);
+        }
+
+        .course-item.locked .course-number {
+            background-color: var(--gray-3);
+            color: var(--gray-4);
+        }
+
+        .course-content {
+            flex: 1;
+            z-index: 1;
+        }
+
+        .course-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .course-desc {
+            font-size: 14px;
+            color: var(--gray-5);
+            line-height: 150%;
+        }
+
+        .course-unlock-date {
+            font-size: 12px;
+            color: var(--gray-4);
+            margin-top: var(--spacing-xs);
+        }
+
+        .course-status {
+            font-size: 14px;
+            color: var(--green-4);
+            font-weight: 500;
+        }
+
+        .course-status.locked {
+            color: var(--gray-4);
+        }
+
+        .lock-icon {
+            position: absolute;
+            right: var(--spacing-md);
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: var(--gray-4);
+            z-index: 1;
+        }
+
+        .progress-info {
+            text-align: center;
+            margin-bottom: var(--spacing-md);
+            font-size: 14px;
+            color: var(--gray-5);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--gray-2);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-md);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--yellow-4);
+            width: 20%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="report.html" class="back-button">返回</a>
+        
+        <div class="header">
+            <h1 class="page-title">课前准备</h1>
+            <p class="page-subtitle">完成以下任务，准备开始今天的学习之旅</p>
+        </div>
+
+        <div class="task-section">
+            <h2 class="section-title">课前任务</h2>
+            
+            <div class="task-list">
+                <a href="#" class="task-item">
+                    <div class="task-icon"><i class="ph-fill ph-users-three"></i></div>
+                    <div class="task-content">
+                        <div class="task-title">添加老师微信</div>
+                        <div class="task-desc">获取学习交流群，与老师实时沟通</div>
+                    </div>
+                    <div class="task-status">未完成</div>
+                </a>
+
+                <a href="#" class="task-item">
+                    <div class="task-icon"><i class="ph-fill ph-video-camera"></i></div>
+                    <div class="task-content">
+                        <div class="task-title">观看课前准备视频</div>
+                        <div class="task-desc">提前了解本节课的学习重点</div>
+                    </div>
+                    <div class="task-status">未完成</div>
+                </a>
+            </div>
+        </div>
+
+        <div class="course-section">
+            <h2 class="section-title">课程进度</h2>
+            
+            <div class="progress-info">
+                已完成 1/5 节课，每日解锁一节新内容
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+
+            <div class="course-list">
+                <div class="course-item active">
+                    <div class="course-number">1</div>
+                    <div class="course-content">
+                        <div class="course-title">第一课：学习的开端</div>
+                        <div class="course-desc">培养学习兴趣，建立学习习惯</div>
+                        <div class="course-unlock-date">已解锁 · 今日可学</div>
+                    </div>
+                    <div class="course-status">进行中</div>
+                </div>
+
+                <div class="course-item locked">
+                    <div class="course-number">2</div>
+                    <div class="course-content">
+                        <div class="course-title">第二课：知识的积累</div>
+                        <div class="course-desc">掌握基础知识点，为后续学习打下基础</div>
+                        <div class="course-unlock-date">明日解锁</div>
+                    </div>
+                    <div class="lock-icon"><i class="ph-fill ph-lock-key"></i></div>
+                </div>
+
+                <div class="course-item locked">
+                    <div class="course-number">3</div>
+                    <div class="course-content">
+                        <div class="course-title">第三课：能力的提升</div>
+                        <div class="course-desc">应用所学知识，解决实际问题</div>
+                        <div class="course-unlock-date">后天解锁</div>
+                    </div>
+                    <div class="lock-icon"><i class="ph-fill ph-lock-key"></i></div>
+                </div>
+
+                <div class="course-item locked">
+                    <div class="course-number">4</div>
+                    <div class="course-content">
+                        <div class="course-title">第四课：综合运用</div>
+                        <div class="course-desc">综合运用所学知识，完成挑战任务</div>
+                        <div class="course-unlock-date">3天后解锁</div>
+                    </div>
+                    <div class="lock-icon"><i class="ph-fill ph-lock-key"></i></div>
+                </div>
+
+                <div class="course-item locked">
+                    <div class="course-number">5</div>
+                    <div class="course-content">
+                        <div class="course-title">第五课：学习的总结</div>
+                        <div class="course-desc">总结学习成果，展示学习收获</div>
+                        <div class="course-unlock-date">4天后解锁</div>
+                    </div>
+                    <div class="lock-icon"><i class="ph-fill ph-lock-key"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: var(--spacing-lg);">
+            <a href="#" class="cta-button" style="display: inline-flex;">
+                开始学习
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 更新进度条
+        const progressFill = document.querySelector('.progress-fill');
+        progressFill.style.width = '20%';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>

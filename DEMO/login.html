@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫 - 登录</title>
+    <link rel="icon" href="assets/demo-favicons/login.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        /* 引入字体 */
+        @font-face {
+            font-family: 'PingFang SC';
+            src: local('PingFang SC');
+        }
+        @font-face {
+            font-family: 'JOJO Kaiti';
+            src: url('assets/字体/JOJOKaiti-Regular.ttf');
+        }
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf');
+        }
+
+        /* 设计系统变量 */
+        :root {
+            /* 颜色 */
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            
+            --yellow-1: #FCF9DE;
+            --yellow-2: #FCF3BA;
+            --yellow-3: #FFEB6B;
+            --yellow-4: #FCDA00;
+            --yellow-6: #544300;
+
+            /* 圆角 */
+            --radius-button: 50px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+
+            /* 间距 */
+            --spacing-xs: 4px;
+            --spacing-sm: 14px;
+            --spacing-md: 20px;
+            --spacing-lg: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--gray-1);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--spacing-md);
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 375px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo {
+            width: 120px;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-lg);
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--gray-5);
+            margin-bottom: var(--spacing-xl);
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .login-button {
+            width: 100%;
+            height: 56px;
+            background-color: var(--yellow-4);
+            color: var(--yellow-6);
+            border: none;
+            border-radius: var(--radius-button);
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .login-button:hover {
+            background-color: var(--yellow-3);
+        }
+
+        .illustration {
+            width: 200px;
+            margin-top: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <img src="assets/品牌logo/叫叫 Logo - 基础.svg" alt="叫叫" class="logo">
+        <h1 class="title">欢迎回来</h1>
+        <p class="subtitle">用本机号码一键登录，开始学习之旅</p>
+        <a href="subjects.html" class="login-button">
+            本机号码一键登录
+        </a>
+        <img src="assets/美术素材/叫叫小分队-情感化形象/叫叫-一本正经，说正事.svg" alt="叫叫" class="illustration">
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>

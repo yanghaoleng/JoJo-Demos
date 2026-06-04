@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绿豆APP - 专注儿童英语学习</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf') format('truetype');
+            font-weight: 700;
+        }
+        body {
+            font-family: 'PingFang SC', -apple-system, sans-serif;
+            background-color: #FAFAFA;
+            color: #404040;
+            line-height: 1.5;
+        }
+        .jojo-title {
+            font-family: 'PingFang SC', -apple-system, sans-serif;
+        }
+        .mohr-num {
+            font-family: 'Mohr Rounded', sans-serif;
+        }
+        .card-shadow {
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.03);
+        }
+        .subject-card-english {
+            box-shadow: inset 0px -4px 10px rgba(0, 0, 0, 0.05);
+            background-color: #FFEFF3;
+        }
+        .subject-card-logic {
+            box-shadow: inset 0px -4px 10px rgba(0, 0, 0, 0.05);
+            background-color: #EAF6FF;
+        }
+        /* Mobile container centering */
+        .mobile-container {
+            max-width: 480px;
+            margin: 0 auto;
+            background-color: #FFFFFF;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 100px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+        .lvdou-btn {
+            background-color: #78C562;
+            color: #FFFFFF;
+            border: 2px solid #4AA12D;
+            border-radius: 10px;
+        }
+        .lvdou-btn:hover {
+            background-color: #5FAE48;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- Header -->
+        <header class="px-5 py-4 flex items-center justify-between">
+            <img src="assets/品牌logo/绿豆=完整带slogan.svg" alt="绿豆APP Logo" class="h-10">
+            <button class="lvdou-btn px-4 py-[6px] text-[14px] font-medium shadow-sm">
+                免费试听
+            </button>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="px-5 pt-6 pb-8 text-center bg-[#EFFAEB] rounded-b-[24px] mb-8 relative">
+            <h1 class="jojo-title text-[24px] font-medium text-[#4C9638] mb-2">让孩子爱上开口说</h1>
+            <p class="text-[16px] text-[#5FAE48] mb-6">专注儿童英语启蒙与进阶学习</p>
+            <div class="flex justify-center relative">
+                <img src="assets/美术素材/绿豆家族-情感化形象/绿豆-开心，平静.svg" alt="绿豆开心" class="h-[180px] object-contain z-10 relative drop-shadow-md">
+            </div>
+            <!-- Decorative circle -->
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-[220px] h-[220px] bg-[#D2F7C6] rounded-full blur-2xl opacity-40 z-0 pointer-events-none"></div>
+        </section>
+
+        <!-- Core Selling Points -->
+        <section class="px-5 mb-10">
+            <h2 class="jojo-title text-[20px] font-medium text-[#404040] mb-5 text-center">系统进阶课程</h2>
+            
+            <div class="flex flex-col gap-[14px]">
+                <!-- English -->
+                <div class="subject-card-english rounded-[10px] p-5 flex items-center border border-[#FFE1EB]">
+                    <div class="w-[60px] h-[60px] mr-4 flex-shrink-0 bg-[#FF7A99] rounded-full flex items-center justify-center">
+                        <img src="assets/品牌logo/绿豆=反白-英语.svg" alt="绿豆英语" class="w-8 h-8">
+                    </div>
+                    <div>
+                        <h3 class="jojo-title text-[18px] text-[#FF7A99] font-medium mb-1">自然拼读与口语</h3>
+                        <p class="text-[14px] text-[#666666]">外教领学，建立地道英语思维</p>
+                    </div>
+                </div>
+
+                <!-- Logic (Optional for Lvdou based on logo) -->
+                <div class="subject-card-logic rounded-[10px] p-5 flex items-center border border-[#D5EFFF]">
+                    <div class="w-[60px] h-[60px] mr-4 flex-shrink-0 bg-[#5AC8FA] rounded-full flex items-center justify-center">
+                        <img src="assets/品牌logo/绿豆=单色-思维.svg" alt="绿豆思维" class="w-8 h-8 filter brightness-0 invert">
+                    </div>
+                    <div>
+                        <h3 class="jojo-title text-[18px] text-[#5AC8FA] font-medium mb-1">逻辑与双语思维</h3>
+                        <p class="text-[14px] text-[#666666]">多维能力拓展，培养解决问题能力</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="px-5 mb-10">
+            <h2 class="jojo-title text-[20px] font-medium text-[#404040] mb-5 text-center">稳步成长轨迹</h2>
+            <div class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar">
+                <div class="bg-white card-shadow rounded-[10px] p-5 min-w-[140px] text-center border border-[#F5F4F4]">
+                    <div class="mohr-num text-[32px] text-[#78C562] mb-1">1</div>
+                    <h4 class="text-[16px] font-medium text-[#404040] mb-1">发音纠正</h4>
+                    <p class="text-[12px] text-[#919FB9]">AI智能评分系统</p>
+                </div>
+                <div class="bg-white card-shadow rounded-[10px] p-5 min-w-[140px] text-center border border-[#F5F4F4]">
+                    <div class="mohr-num text-[32px] text-[#78C562] mb-1">2</div>
+                    <h4 class="text-[16px] font-medium text-[#404040] mb-1">分级阅读</h4>
+                    <p class="text-[12px] text-[#919FB9]">原版绘本精读</p>
+                </div>
+                <div class="bg-white card-shadow rounded-[10px] p-5 min-w-[140px] text-center border border-[#F5F4F4]">
+                    <div class="mohr-num text-[32px] text-[#78C562] mb-1">3</div>
+                    <h4 class="text-[16px] font-medium text-[#404040] mb-1">外教互动</h4>
+                    <p class="text-[12px] text-[#919FB9]">高频1对1演练</p>
+                </div>
+            </div>
+            <style>
+                .hide-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .hide-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            </style>
+        </section>
+
+        <!-- Download Fixed Bottom -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-[#F5F4F4] p-4 flex items-center justify-between max-w-[480px] mx-auto z-50">
+            <div class="flex items-center">
+                <img src="assets/品牌logo/绿豆app启动icon.png" alt="绿豆APP" class="w-12 h-12 rounded-[12px] mr-3 shadow-sm border border-gray-100">
+                <div>
+                    <div class="text-[16px] font-medium text-[#404040]">绿豆APP</div>
+                    <div class="text-[12px] text-[#919FB9]">专业少儿英语启蒙</div>
+                </div>
+            </div>
+            <button class="lvdou-btn px-6 py-3 text-[16px] font-medium shadow-md transition-colors">
+                立即下载
+            </button>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫 - 学习评估</title>
+    <link rel="icon" href="assets/demo-favicons/assessment.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        /* 引入字体 */
+        @font-face {
+            font-family: 'PingFang SC';
+            src: local('PingFang SC');
+        }
+        @font-face {
+            font-family: 'JOJO Kaiti';
+            src: url('assets/字体/JOJOKaiti-Regular.ttf');
+        }
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf');
+        }
+
+        /* 设计系统变量 */
+        :root {
+            /* 颜色 */
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            
+            --yellow-4: #FCDA00;
+            --yellow-6: #544300;
+
+            /* 学科色 */
+            --orange-4: #FF9045;
+            --pink-4: #FF7A99;
+            --blue-4: #5AC8FA;
+            --purple-4: #AE84E3;
+            --green-4: #78C562;
+
+            /* 圆角 */
+            --radius-button: 50px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+
+            /* 间距 */
+            --spacing-xs: 4px;
+            --spacing-sm: 14px;
+            --spacing-md: 20px;
+            --spacing-lg: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--gray-1);
+            min-height: 100vh;
+            padding: var(--spacing-md);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--gray-6);
+            font-size: 16px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .back-button::before {
+            content: '<';
+            margin-right: var(--spacing-xs);
+        }
+
+        .header {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: var(--gray-5);
+            line-height: 150%;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--gray-2);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--spacing-lg);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--yellow-4);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .question-container {
+            background-color: white;
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.03);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .question-number {
+            font-family: 'Mohr Rounded', sans-serif;
+            font-size: 18px;
+            color: var(--yellow-4);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .question-text {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-lg);
+            line-height: 150%;
+        }
+
+        .options-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            border: 2px solid var(--gray-3);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-item:hover {
+            border-color: var(--yellow-4);
+            background-color: var(--yellow-1);
+        }
+
+        .option-item.selected {
+            border-color: var(--yellow-4);
+            background-color: var(--yellow-2);
+        }
+
+        .option-radio {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-4);
+            border-radius: 50%;
+            margin-right: var(--spacing-md);
+            position: relative;
+        }
+
+        .option-item.selected .option-radio::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 12px;
+            background-color: var(--yellow-4);
+            border-radius: 50%;
+        }
+
+        .option-text {
+            font-size: 16px;
+            color: var(--gray-6);
+            flex: 1;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+
+        .btn {
+            flex: 1;
+            height: 56px;
+            border: none;
+            border-radius: var(--radius-button);
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background-color: var(--yellow-4);
+            color: var(--yellow-6);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--yellow-3);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray-2);
+            color: var(--gray-6);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--gray-3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .subject-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: var(--radius-button);
+            font-size: 14px;
+            font-weight: 500;
+            color: white;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .subject-badge.reading {
+            background-color: var(--orange-4);
+        }
+
+        .subject-badge.english {
+            background-color: var(--pink-4);
+        }
+
+        .subject-badge.math {
+            background-color: var(--blue-4);
+        }
+
+        .subject-badge.art {
+            background-color: var(--purple-4);
+        }
+
+        .subject-badge.writing {
+            background-color: var(--green-4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="subjects.html" class="back-button">返回</a>
+        
+        <div class="header">
+            <span id="subject-badge" class="subject-badge"></span>
+            <h1 class="page-title">学习情况评估</h1>
+            <p class="page-subtitle">帮助我们了解孩子当前水平和您的期望，为您定制专属学习计划</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div id="question-container" class="question-container">
+            <div class="question-number">问题 <span id="current-question">1</span>/<span id="total-questions">5</span></div>
+            <div class="question-text" id="question-text"></div>
+            <div class="options-group" id="options-group"></div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-secondary" id="prev-btn" disabled>上一题</button>
+            <button class="btn btn-primary" id="next-btn" disabled>下一题</button>
+        </div>
+    </div>
+
+    <script>
+        // 从URL获取科目参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const subject = urlParams.get('subject');
+        
+        // 科目映射
+        const subjectMap = {
+            reading: { name: '阅读', color: 'reading' },
+            english: { name: '英语', color: 'english' },
+            math: { name: '思维', color: 'math' },
+            art: { name: '美育', color: 'art' },
+            writing: { name: '小作家', color: 'writing' }
+        };
+        
+        // 当前问题索引
+        let currentQuestionIndex = 0;
+        const selectedAnswers = [];
+        
+        // 问题库 - 根据科目不同可以定制不同问题
+        const questions = [
+            {
+                text: '孩子平时喜欢阅读绘本或故事书吗？',
+                options: [
+                    '非常喜欢，每天都会主动阅读',
+                    '比较喜欢，偶尔会主动阅读',
+                    '一般，需要家长提醒才会读',
+                    '不太喜欢，抗拒阅读'
+                ]
+            },
+            {
+                text: '孩子在阅读理解方面的表现如何？',
+                options: [
+                    '能很好理解故事内容和细节',
+                    '基本能理解主要内容',
+                    '需要帮助才能理解',
+                    '很难理解故事内容'
+                ]
+            },
+            {
+                text: '您希望孩子在这个学科达到什么目标？',
+                options: [
+                    '成为学科小专家，精通所有知识点',
+                    '掌握基础知识点，培养学习兴趣',
+                    '跟上学校进度，培养学习习惯',
+                    '简单了解，培养兴趣即可'
+                ]
+            },
+            {
+                text: '孩子每周大概花多少时间在学习上？',
+                options: [
+                    '超过5小时',
+                    '3-5小时',
+                    '1-3小时',
+                    '少于1小时'
+                ]
+            },
+            {
+                text: '您对孩子的学习积极性评价如何？',
+                options: [
+                    '非常积极主动',
+                    '比较积极，需要少量引导',
+                    '一般，需要较多督促',
+                    '不太积极，需要强迫'
+                ]
+            }
+        ];
+        
+        // 初始化
+        function init() {
+            // 设置学科徽章
+            const subjectBadge = document.getElementById('subject-badge');
+            subjectBadge.textContent = subjectMap[subject].name;
+            subjectBadge.className = `subject-badge ${subjectMap[subject].color}`;
+            
+            // 加载第一个问题
+            loadQuestion(currentQuestionIndex);
+        }
+        
+        // 加载问题
+        function loadQuestion(index) {
+            const question = questions[index];
+            const questionText = document.getElementById('question-text');
+            const optionsGroup = document.getElementById('options-group');
+            const currentQuestionEl = document.getElementById('current-question');
+            const progressFill = document.getElementById('progress-fill');
+            
+            // 更新问题文本
+            questionText.textContent = question.text;
+            currentQuestionEl.textContent = index + 1;
+            
+            // 更新进度条
+            const progress = ((index + 1) / questions.length) * 100;
+            progressFill.style.width = progress + '%';
+            
+            // 清空选项
+            optionsGroup.innerHTML = '';
+            
+            // 添加选项
+            question.options.forEach((option, optionIndex) => {
+                const optionItem = document.createElement('div');
+                optionItem.className = 'option-item';
+                optionItem.innerHTML = `
+                    <div class="option-radio"></div>
+                    <div class="option-text">${option}</div>
+                `;
+                
+                // 如果已经选择过这个问题的答案，恢复选择状态
+                if (selectedAnswers[index] === optionIndex) {
+                    optionItem.classList.add('selected');
+                }
+                
+                // 点击选项
+                optionItem.addEventListener('click', () => {
+                    selectOption(index, optionIndex);
+                });
+                
+                optionsGroup.appendChild(optionItem);
+            });
+            
+            // 更新按钮状态
+            updateButtonStates();
+        }
+        
+        // 选择选项
+        function selectOption(questionIndex, optionIndex) {
+            selectedAnswers[questionIndex] = optionIndex;
+            
+            // 更新UI
+            const optionsGroup = document.getElementById('options-group');
+            const options = optionsGroup.querySelectorAll('.option-item');
+            options.forEach((option, index) => {
+                if (index === optionIndex) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+            
+            // 更新按钮状态
+            updateButtonStates();
+        }
+        
+        // 更新按钮状态
+        function updateButtonStates() {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            
+            // 上一题按钮
+            prevBtn.disabled = currentQuestionIndex === 0;
+            
+            // 下一题按钮
+            const hasAnswered = selectedAnswers[currentQuestionIndex] !== undefined;
+            nextBtn.disabled = !hasAnswered;
+            
+            // 如果是最后一题，更改按钮文本
+            if (currentQuestionIndex === questions.length - 1 && hasAnswered) {
+                nextBtn.textContent = '查看报告';
+            } else {
+                nextBtn.textContent = '下一题';
+            }
+        }
+        
+        // 上一题
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion(currentQuestionIndex);
+            }
+        });
+        
+        // 下一题
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion(currentQuestionIndex);
+            } else {
+                // 完成所有问题，跳转到报告页面
+                const answersString = encodeURIComponent(JSON.stringify(selectedAnswers));
+                window.location.href = `report.html?subject=${subject}&answers=${answersString}`;
+            }
+        });
+        
+        // 初始化
+        init();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>

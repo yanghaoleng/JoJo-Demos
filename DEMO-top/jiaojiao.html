@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫APP - 陪伴孩子快乐成长</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf') format('truetype');
+            font-weight: 700;
+        }
+        body {
+            font-family: 'PingFang SC', -apple-system, sans-serif;
+            background-color: #FAFAFA;
+            color: #404040;
+            line-height: 1.5;
+        }
+        .jojo-title {
+            font-family: 'PingFang SC', -apple-system, sans-serif;
+        }
+        .mohr-num {
+            font-family: 'Mohr Rounded', sans-serif;
+        }
+        .card-shadow {
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.03);
+        }
+        .subject-card-orange {
+            box-shadow: inset 0px -4px 10px rgba(0, 0, 0, 0.05);
+            background-color: #FFF2EA;
+        }
+        .subject-card-green {
+            box-shadow: inset 0px -4px 10px rgba(0, 0, 0, 0.05);
+            background-color: #F1FAEE;
+        }
+        .subject-card-purple {
+            box-shadow: inset 0px -4px 10px rgba(0, 0, 0, 0.05);
+            background-color: #F7F2FD;
+        }
+        /* Mobile container centering */
+        .mobile-container {
+            max-width: 480px;
+            margin: 0 auto;
+            background-color: #FFFFFF;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 100px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <!-- Header -->
+        <header class="px-5 py-4 flex items-center justify-between">
+            <img src="assets/品牌logo/叫叫 Logo - 基础.svg" alt="叫叫APP Logo" class="h-8">
+            <button class="bg-[#FCDA00] text-[#544300] px-4 py-2 rounded-full text-[14px] font-medium shadow-sm">
+                快速登录
+            </button>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="px-5 pt-6 pb-8 text-center bg-[#FCF9DE] rounded-b-[32px] mb-8">
+            <h1 class="jojo-title text-[24px] font-medium text-[#404040] mb-2">陪伴孩子快乐成长</h1>
+            <p class="text-[16px] text-[#666666] mb-6">面向4-12岁儿童的综合教育平台</p>
+            <div class="flex justify-center">
+                <img src="assets/美术素材/叫叫小分队-情感化形象/叫叫-斗志满满，握拳，昂扬.svg" alt="叫叫斗志满满" class="h-[180px] object-contain drop-shadow-md">
+            </div>
+        </section>
+
+        <!-- Core Selling Points -->
+        <section class="px-5 mb-10">
+            <h2 class="jojo-title text-[20px] font-medium text-[#404040] mb-5 text-center">核心课程体系</h2>
+            
+            <div class="flex flex-col gap-[14px]">
+                <!-- Reading -->
+                <div class="subject-card-orange rounded-[16px] p-5 flex items-center border border-[#FFE1CD]">
+                    <img src="assets/品牌logo/学科-阅读, 是否描线-on.svg" alt="叫叫阅读" class="w-[60px] h-[60px] mr-4">
+                    <div>
+                        <h3 class="jojo-title text-[18px] text-[#FF9045] font-medium mb-1">叫叫阅读</h3>
+                        <p class="text-[14px] text-[#666666]">激发阅读兴趣，培养终身阅读习惯</p>
+                    </div>
+                </div>
+
+                <!-- Little Writer -->
+                <div class="subject-card-green rounded-[16px] p-5 flex items-center border border-[#DFF2D9]">
+                    <img src="assets/品牌logo/学科-小作家, 是否描线-on.svg" alt="叫叫小作家" class="w-[60px] h-[60px] mr-4">
+                    <div>
+                        <h3 class="jojo-title text-[18px] text-[#78C562] font-medium mb-1">叫叫小作家</h3>
+                        <p class="text-[14px] text-[#666666]">激发创作灵感，让孩子爱上表达</p>
+                    </div>
+                </div>
+
+                <!-- Art -->
+                <div class="subject-card-purple rounded-[16px] p-5 flex items-center border border-[#EBE1F8]">
+                    <img src="assets/品牌logo/学科-美育, 是否描线-on.svg" alt="叫叫美育" class="w-[60px] h-[60px] mr-4">
+                    <div>
+                        <h3 class="jojo-title text-[18px] text-[#AE84E3] font-medium mb-1">叫叫美育</h3>
+                        <p class="text-[14px] text-[#666666]">启发审美能力，释放无限创造力</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="px-5 mb-10">
+            <h2 class="jojo-title text-[20px] font-medium text-[#404040] mb-5 text-center">为什么选择我们</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white card-shadow rounded-[16px] p-4 text-center border border-[#F5F4F4]">
+                    <div class="w-12 h-12 bg-[#FCF9DE] rounded-full flex items-center justify-center mx-auto mb-3">
+                        <img src="assets/功能icon/关于叫叫.svg" class="w-6 h-6" alt="趣味互动">
+                    </div>
+                    <h4 class="text-[16px] font-medium text-[#404040] mb-1">趣味互动</h4>
+                    <p class="text-[12px] text-[#919FB9]">沉浸式故事体验</p>
+                </div>
+                <div class="bg-white card-shadow rounded-[16px] p-4 text-center border border-[#F5F4F4]">
+                    <div class="w-12 h-12 bg-[#FCF9DE] rounded-full flex items-center justify-center mx-auto mb-3">
+                        <img src="assets/功能icon/学习报告.svg" class="w-6 h-6" alt="学习报告">
+                    </div>
+                    <h4 class="text-[16px] font-medium text-[#404040] mb-1">可视效果</h4>
+                    <p class="text-[12px] text-[#919FB9]">专属学习成长报告</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Download Fixed Bottom -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-[#F5F4F4] p-4 flex items-center justify-between max-w-[480px] mx-auto z-50">
+            <div class="flex items-center">
+                <img src="assets/品牌logo/叫叫app启动icon.png" alt="叫叫APP" class="w-12 h-12 rounded-[12px] mr-3 shadow-sm">
+                <div>
+                    <div class="text-[16px] font-medium text-[#404040]">叫叫APP</div>
+                    <div class="text-[12px] text-[#919FB9]">儿童综合教育平台</div>
+                </div>
+            </div>
+            <button class="bg-[#FCDA00] text-[#544300] px-6 py-3 rounded-full text-[16px] font-medium shadow-md hover:bg-[#FFEB6B] transition-colors">
+                立即下载
+            </button>
+        </div>
+    </div>
+</body>
+</html>

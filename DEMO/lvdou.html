@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绿豆APP - 儿童英语学习专家</title>
+    <link rel="icon" href="assets/demo-favicons/lvdou.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        /* 引入字体 */
+        @font-face {
+            font-family: 'PingFang SC';
+            src: local('PingFang SC');
+        }
+        @font-face {
+            font-family: 'JOJO Kaiti';
+            src: url('assets/字体/JOJOKaiti-Regular.ttf');
+        }
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf');
+        }
+
+        /* 设计系统变量 - 绿豆主色 */
+        :root {
+            /* 颜色 */
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            
+            --green-1: #EFFAEB;
+            --green-2: #D2F7C6;
+            --green-3: #A0D98D;
+            --green-4: #78C562;
+            --green-5: #5FAE48;
+            --green-6: #4C9638;
+
+            /* 圆角 */
+            --radius-button: 10px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+
+            /* 间距 */
+            --spacing-xs: 4px;
+            --spacing-sm: 14px;
+            --spacing-md: 20px;
+            --spacing-lg: 32px;
+            --spacing-xl: 48px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--gray-1);
+            color: var(--gray-6);
+        }
+
+        /* 导航 */
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md) var(--spacing-lg);
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-logo {
+            width: 120px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-lg);
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray-6);
+            font-size: 16px;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--green-4);
+        }
+
+        /* 英雄区 */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background: linear-gradient(135deg, var(--green-1), white);
+            flex-wrap: wrap;
+            gap: var(--spacing-lg);
+        }
+
+        .hero-content {
+            flex: 1;
+            min-width: 300px;
+            max-width: 600px;
+        }
+
+        .hero-title {
+            font-size: 48px;
+            font-family: 'Mohr Rounded', sans-serif;
+            margin-bottom: var(--spacing-md);
+            line-height: 1.2;
+        }
+
+        .hero-subtitle {
+            font-size: 20px;
+            color: var(--gray-5);
+            margin-bottom: var(--spacing-xl);
+            line-height: 1.5;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: var(--radius-button);
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--green-4);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--green-5);
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: var(--gray-6);
+            border: 2px solid var(--gray-3);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--green-4);
+            color: var(--green-4);
+        }
+
+        .hero-image {
+            flex: 1;
+            min-width: 300px;
+            text-align: center;
+        }
+
+        .hero-illustration {
+            width: 300px;
+            max-width: 100%;
+        }
+
+        /* 核心卖点 */
+        .features {
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background-color: white;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            font-family: 'Mohr Rounded', sans-serif;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            text-align: center;
+            padding: var(--spacing-lg);
+            background-color: var(--gray-1);
+            border-radius: var(--radius-lg);
+            transition: transform 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background-color: var(--green-2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto var(--spacing-md);
+        }
+
+        .feature-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .feature-desc {
+            font-size: 16px;
+            color: var(--gray-5);
+            line-height: 1.5;
+        }
+
+        /* 课程展示 */
+        .courses {
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background-color: var(--gray-1);
+        }
+
+        .courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .course-card {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .course-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .course-color {
+            height: 8px;
+            background-color: var(--green-4);
+        }
+
+        .course-content {
+            padding: var(--spacing-lg);
+        }
+
+        .course-icon {
+            font-size: 40px;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .course-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .course-desc {
+            font-size: 14px;
+            color: var(--gray-5);
+            line-height: 1.5;
+            margin-bottom: var(--spacing-md);
+        }
+
+        /* 下载区域 */
+        .download {
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background: linear-gradient(135deg, var(--green-1), var(--green-2));
+            text-align: center;
+        }
+
+        .download-title {
+            font-size: 36px;
+            font-family: 'Mohr Rounded', sans-serif;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .download-subtitle {
+            font-size: 18px;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-xl);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .app-badge {
+            width: 180px;
+            height: auto;
+            transition: transform 0.2s;
+        }
+
+        .app-badge:hover {
+            transform: scale(1.05);
+        }
+
+        /* 页脚 */
+        .footer {
+            padding: var(--spacing-lg) var(--spacing-lg);
+            background-color: var(--gray-6);
+            color: white;
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: var(--spacing-lg);
+            justify-content: center;
+            list-style: none;
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--gray-3);
+            text-decoration: none;
+        }
+
+        .footer-links a:hover {
+            color: var(--green-4);
+        }
+
+        .copyright {
+            font-size: 14px;
+            color: var(--gray-4);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航 -->
+    <nav class="nav">
+        <img src="assets/品牌logo/绿豆=完整带slogan.svg" alt="绿豆" class="nav-logo">
+        <ul class="nav-links">
+            <li><a href="#home">首页</a></li>
+            <li><a href="#features">核心优势</a></li>
+            <li><a href="#courses">课程体系</a></li>
+            <li><a href="#download">立即下载</a></li>
+        </ul>
+    </nav>
+
+    <!-- 英雄区 -->
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <h1 class="hero-title">绿豆APP<br>儿童英语学习专家</h1>
+            <p class="hero-subtitle">沉浸式英语学习环境，为3-12岁儿童提供专业的英语启蒙和提升课程，让孩子像说母语一样说英语</p>
+            <div class="hero-buttons">
+                <a href="#download" class="btn btn-primary">立即下载</a>
+                <a href="#features" class="btn btn-secondary">了解更多</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <img src="assets/美术素材/绿豆家族-情感化形象/绿豆-开心，平静.svg" alt="绿豆形象" class="hero-illustration">
+        </div>
+    </section>
+
+    <!-- 核心卖点 -->
+    <section class="features" id="features">
+        <h2 class="section-title">核心优势</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-microphone-stage"></i></div>
+                <h3 class="feature-title">母语式教学</h3>
+                <p class="feature-desc">全英文沉浸式环境，让孩子在自然语境中学习英语，摆脱哑巴英语</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-chalkboard-teacher"></i></div>
+                <h3 class="feature-title">外教一对一</h3>
+                <p class="feature-desc">专业外教一对一辅导，纠正发音，提升口语表达能力</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-chart-bar"></i></div>
+                <h3 class="feature-title">个性化课程</h3>
+                <p class="feature-desc">根据孩子的英语水平定制专属学习计划，循序渐进提升英语能力</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-confetti"></i></div>
+                <h3 class="feature-title">趣味互动学习</h3>
+                <p class="feature-desc">游戏化学习方式，动画儿歌互动，让孩子爱上英语学习</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 课程展示 -->
+    <section class="courses" id="courses">
+        <h2 class="section-title">课程体系</h2>
+        <div class="courses-grid">
+            <div class="course-card">
+                <div class="course-color"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-baby"></i></div>
+                    <h3 class="course-title">英语启蒙</h3>
+                    <p class="course-desc">针对3-6岁儿童的英语启蒙课程，从字母、单词开始，建立英语语感</p>
+                </div>
+            </div>
+            <div class="course-card">
+                <div class="course-color"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-student"></i></div>
+                    <h3 class="course-title">口语提升</h3>
+                    <p class="course-desc">针对7-9岁儿童的口语提升课程，模拟真实场景对话，提升口语流利度</p>
+                </div>
+            </div>
+            <div class="course-card">
+                <div class="course-color"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-notebook"></i></div>
+                    <h3 class="course-title">读写进阶</h3>
+                    <p class="course-desc">针对10-12岁儿童的读写进阶课程，掌握英语阅读写作技巧，应对升学考试</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 下载区域 -->
+    <section class="download" id="download">
+        <h2 class="download-title">立即下载绿豆APP</h2>
+        <p class="download-subtitle">开启孩子的英语学习之旅，随时随地轻松学英语</p>
+        <div class="download-buttons">
+            <a href="#">
+                <img src="assets/品牌logo/叫叫app启动icon.png" alt="App Store" class="app-badge">
+            </a>
+            <a href="#">
+                <img src="assets/品牌logo/绿豆app启动icon.png" alt="Google Play" class="app-badge">
+            </a>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <ul class="footer-links">
+            <li><a href="#">关于我们</a></li>
+            <li><a href="#">联系我们</a></li>
+            <li><a href="#">隐私政策</a></li>
+            <li><a href="#">用户协议</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <div class="copyright">© 2026 绿豆教育. 保留所有权利.</div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>

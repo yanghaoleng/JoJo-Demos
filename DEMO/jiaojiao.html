@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫APP - 儿童综合素质教育平台</title>
+    <link rel="icon" href="assets/demo-favicons/jiaojiao.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        /* 引入字体 */
+        @font-face {
+            font-family: 'PingFang SC';
+            src: local('PingFang SC');
+        }
+        @font-face {
+            font-family: 'JOJO Kaiti';
+            src: url('assets/字体/JOJOKaiti-Regular.ttf');
+        }
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf');
+        }
+
+        /* 设计系统变量 - 叫叫主色 */
+        :root {
+            /* 颜色 */
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            
+            --yellow-1: #FCF9DE;
+            --yellow-2: #FCF3BA;
+            --yellow-3: #FFEB6B;
+            --yellow-4: #FCDA00;
+            --yellow-6: #544300;
+
+            /* 学科色 */
+            --orange-4: #FF9045;
+            --pink-4: #FF7A99;
+            --blue-4: #5AC8FA;
+            --purple-4: #AE84E3;
+            --green-4: #78C562;
+
+            /* 圆角 */
+            --radius-button: 50px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+
+            /* 间距 */
+            --spacing-xs: 4px;
+            --spacing-sm: 14px;
+            --spacing-md: 20px;
+            --spacing-lg: 32px;
+            --spacing-xl: 48px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--gray-1);
+            color: var(--gray-6);
+        }
+
+        /* 导航 */
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md) var(--spacing-lg);
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-logo {
+            width: 120px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--spacing-lg);
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray-6);
+            font-size: 16px;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--yellow-4);
+        }
+
+        /* 英雄区 */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background: linear-gradient(135deg, var(--yellow-1), white);
+            flex-wrap: wrap;
+            gap: var(--spacing-lg);
+        }
+
+        .hero-content {
+            flex: 1;
+            min-width: 300px;
+            max-width: 600px;
+        }
+
+        .hero-title {
+            font-size: 48px;
+            font-family: 'Mohr Rounded', sans-serif;
+            margin-bottom: var(--spacing-md);
+            line-height: 1.2;
+        }
+
+        .hero-subtitle {
+            font-size: 20px;
+            color: var(--gray-5);
+            margin-bottom: var(--spacing-xl);
+            line-height: 1.5;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: var(--radius-button);
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--yellow-4);
+            color: var(--yellow-6);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--yellow-3);
+        }
+
+        .btn-secondary {
+            background-color: white;
+            color: var(--gray-6);
+            border: 2px solid var(--gray-3);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--yellow-4);
+            color: var(--yellow-4);
+        }
+
+        .hero-image {
+            flex: 1;
+            min-width: 300px;
+            text-align: center;
+        }
+
+        .hero-illustration {
+            width: 300px;
+            max-width: 100%;
+        }
+
+        /* 核心卖点 */
+        .features {
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background-color: white;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            font-family: 'Mohr Rounded', sans-serif;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            text-align: center;
+            padding: var(--spacing-lg);
+            background-color: var(--gray-1);
+            border-radius: var(--radius-lg);
+            transition: transform 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background-color: var(--yellow-2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin: 0 auto var(--spacing-md);
+        }
+
+        .feature-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .feature-desc {
+            font-size: 16px;
+            color: var(--gray-5);
+            line-height: 1.5;
+        }
+
+        /* 课程展示 */
+        .courses {
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background-color: var(--gray-1);
+        }
+
+        .courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-lg);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .course-card {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+
+        .course-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .course-color {
+            height: 8px;
+        }
+
+        .course-color.reading {
+            background-color: var(--orange-4);
+        }
+
+        .course-color.english {
+            background-color: var(--pink-4);
+        }
+
+        .course-color.math {
+            background-color: var(--blue-4);
+        }
+
+        .course-color.art {
+            background-color: var(--purple-4);
+        }
+
+        .course-color.writing {
+            background-color: var(--green-4);
+        }
+
+        .course-content {
+            padding: var(--spacing-lg);
+        }
+
+        .course-icon {
+            font-size: 40px;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .course-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .course-desc {
+            font-size: 14px;
+            color: var(--gray-5);
+            line-height: 1.5;
+            margin-bottom: var(--spacing-md);
+        }
+
+        /* 下载区域 */
+        .download {
+            padding: var(--spacing-xl) var(--spacing-lg);
+            background: linear-gradient(135deg, var(--yellow-1), var(--yellow-2));
+            text-align: center;
+        }
+
+        .download-title {
+            font-size: 36px;
+            font-family: 'Mohr Rounded', sans-serif;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .download-subtitle {
+            font-size: 18px;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-xl);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .app-badge {
+            width: 180px;
+            height: auto;
+            transition: transform 0.2s;
+        }
+
+        .app-badge:hover {
+            transform: scale(1.05);
+        }
+
+        /* 页脚 */
+        .footer {
+            padding: var(--spacing-lg) var(--spacing-lg);
+            background-color: var(--gray-6);
+            color: white;
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: var(--spacing-lg);
+            justify-content: center;
+            list-style: none;
+            margin-bottom: var(--spacing-md);
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--gray-3);
+            text-decoration: none;
+        }
+
+        .footer-links a:hover {
+            color: var(--yellow-4);
+        }
+
+        .copyright {
+            font-size: 14px;
+            color: var(--gray-4);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航 -->
+    <nav class="nav">
+        <img src="assets/品牌logo/叫叫 Logo - 基础.svg" alt="叫叫" class="nav-logo">
+        <ul class="nav-links">
+            <li><a href="#home">首页</a></li>
+            <li><a href="#features">核心优势</a></li>
+            <li><a href="#courses">课程体系</a></li>
+            <li><a href="#download">立即下载</a></li>
+        </ul>
+    </nav>
+
+    <!-- 英雄区 -->
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <h1 class="hero-title">叫叫APP<br>儿童综合素质教育平台</h1>
+            <p class="hero-subtitle">覆盖5大学科，为4-12岁儿童提供个性化学习解决方案，培养孩子的综合能力和学习兴趣</p>
+            <div class="hero-buttons">
+                <a href="#download" class="btn btn-primary">立即下载</a>
+                <a href="#features" class="btn btn-secondary">了解更多</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <img src="assets/美术素材/叫叫小分队-情感化形象/叫叫-斗志满满，握拳，昂扬.svg" alt="叫叫形象" class="hero-illustration">
+        </div>
+    </section>
+
+    <!-- 核心卖点 -->
+    <section class="features" id="features">
+        <h2 class="section-title">核心优势</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-books"></i></div>
+                <h3 class="feature-title">5大学科全覆盖</h3>
+                <p class="feature-desc">阅读、英语、思维、美育、小作家，全方位培养孩子的综合能力</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-target"></i></div>
+                <h3 class="feature-title">个性化学习计划</h3>
+                <p class="feature-desc">根据孩子的学习情况定制专属学习路径，循序渐进提升能力</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-users-three"></i></div>
+                <h3 class="feature-title">专业师资团队</h3>
+                <p class="feature-desc">资深教育专家和一线教师联合研发课程，确保教学质量</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="ph-fill ph-confetti"></i></div>
+                <h3 class="feature-title">趣味学习体验</h3>
+                <p class="feature-desc">游戏化学习方式，让孩子在快乐中学习，激发学习兴趣</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 课程展示 -->
+    <section class="courses" id="courses">
+        <h2 class="section-title">课程体系</h2>
+        <div class="courses-grid">
+            <div class="course-card">
+                <div class="course-color reading"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-book-open-text"></i></div>
+                    <h3 class="course-title">阅读</h3>
+                    <p class="course-desc">培养阅读理解能力，激发阅读兴趣，提升语文素养</p>
+                </div>
+            </div>
+            <div class="course-card">
+                <div class="course-color english"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-microphone-stage"></i></div>
+                    <h3 class="course-title">英语</h3>
+                    <p class="course-desc">沉浸式英语学习环境，提升口语、听力、阅读综合能力</p>
+                </div>
+            </div>
+            <div class="course-card">
+                <div class="course-color math"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-calculator"></i></div>
+                    <h3 class="course-title">思维</h3>
+                    <p class="course-desc">锻炼逻辑思维能力，提升数学素养，培养创新意识</p>
+                </div>
+            </div>
+            <div class="course-card">
+                <div class="course-color art"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-palette"></i></div>
+                    <h3 class="course-title">美育</h3>
+                    <p class="course-desc">培养审美能力，激发创造力，提升艺术修养</p>
+                </div>
+            </div>
+            <div class="course-card">
+                <div class="course-color writing"></div>
+                <div class="course-content">
+                    <div class="course-icon"><i class="ph-fill ph-pencil-simple-line"></i></div>
+                    <h3 class="course-title">小作家</h3>
+                    <p class="course-desc">提升写作能力，学会表达自我，培养文学素养</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 下载区域 -->
+    <section class="download" id="download">
+        <h2 class="download-title">立即下载叫叫APP</h2>
+        <p class="download-subtitle">开启孩子的个性化学习之旅，随时随地轻松学习</p>
+        <div class="download-buttons">
+            <a href="#">
+                <img src="assets/品牌logo/叫叫app启动icon.png" alt="App Store" class="app-badge">
+            </a>
+            <a href="#">
+                <img src="assets/品牌logo/绿豆app启动icon.png" alt="Google Play" class="app-badge">
+            </a>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <ul class="footer-links">
+            <li><a href="#">关于我们</a></li>
+            <li><a href="#">联系我们</a></li>
+            <li><a href="#">隐私政策</a></li>
+            <li><a href="#">用户协议</a></li>
+            <li><a href="#">帮助中心</a></li>
+        </ul>
+        <div class="copyright">© 2026 叫叫教育. 保留所有权利.</div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>

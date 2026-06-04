@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="index-boot">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JOJO Demos</title>
+    <link rel="icon" href="../assets/demo-favicons/index.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <style>
+        @font-face {
+            font-family: "Mohr Rounded";
+            src: url("../assets/字体/MohrRounded-Bold.ttf") format("truetype");
+            font-weight: 700;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #BFBDBD;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            --ink: #2F2A1F;
+            --white: #FFFFFF;
+            --yellow-1: #FCF9DE;
+            --yellow-2: #FCF3BA;
+            --yellow-4: #FCDA00;
+            --yellow-6: #544300;
+            --orange-4: #FF9045;
+            --pink-4: #FF7A99;
+            --blue-4: #5AC8FA;
+            --pro-blue-4: #528BFF;
+            --green-4: #78C562;
+            --purple-4: #AE84E3;
+            --radius-window: 22px;
+            --radius-card: 18px;
+            --radius-soft: 14px;
+            --radius-tight: 10px;
+            --radius-pill: 999px;
+            --shadow-soft: 0 22px 60px rgba(31, 40, 77, .12);
+            --shadow-pop: 0 28px 80px rgba(31, 40, 77, .2);
+            --focus: rgba(82, 139, 255, .42);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            letter-spacing: 0;
+            color: var(--gray-6);
+            background:
+                linear-gradient(115deg, rgba(252, 218, 0, .22), transparent 28%),
+                linear-gradient(245deg, rgba(90, 200, 250, .2), transparent 30%),
+                linear-gradient(180deg, #FFFFFF 0%, var(--gray-1) 62%, #F8F8F8 100%);
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(64, 64, 64, .04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(64, 64, 64, .04) 1px, transparent 1px);
+            background-size: 36px 36px;
+            mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .76), transparent 74%);
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: .45;
+            background:
+                radial-gradient(circle at 16% 76%, rgba(255, 144, 69, .12), transparent 22%),
+                radial-gradient(circle at 86% 62%, rgba(174, 132, 227, .12), transparent 24%);
+        }
+
+        a,
+        button {
+            font: inherit;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        a:focus-visible,
+        button:focus-visible {
+            outline: 3px solid var(--focus);
+            outline-offset: 4px;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            width: min(1160px, calc(100% - 40px));
+            min-height: 100vh;
+            margin: 0 auto;
+            padding: 34px 0 56px;
+        }
+
+        .hero-main {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 18px;
+            align-items: end;
+            margin: 4px 0 34px;
+        }
+
+        h1 {
+            color: var(--ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: clamp(34px, 6vw, 74px);
+            line-height: .96;
+            letter-spacing: 0;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            width: max-content;
+            min-height: 30px;
+            padding: 4px 11px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: var(--radius-pill);
+            color: rgba(47, 42, 31, .72);
+            background: rgba(255, 255, 255, .58);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            font-size: 13px;
+        }
+
+        .hero-note {
+            max-width: 35ch;
+            color: rgba(64, 64, 64, .7);
+            font-size: 15px;
+            line-height: 1.65;
+            text-align: right;
+        }
+
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: clamp(14px, 2.4vw, 24px);
+            align-items: start;
+        }
+
+        .folder-card {
+            position: relative;
+            display: grid;
+            gap: 12px;
+            width: 100%;
+            min-width: 0;
+            border: 0;
+            color: inherit;
+            background: transparent;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .folder-visual {
+            position: relative;
+            display: grid;
+            place-items: end center;
+            min-height: clamp(168px, 18vw, 214px);
+            isolation: isolate;
+            perspective: 780px;
+        }
+
+        .folder-back,
+        .folder-front,
+        .folder-tab {
+            position: absolute;
+            left: 50%;
+            width: min(100%, 198px);
+            transform: translateX(-50%);
+            border: 1px solid rgba(255, 255, 255, .68);
+            backdrop-filter: blur(18px) saturate(1.18);
+            -webkit-backdrop-filter: blur(18px) saturate(1.18);
+        }
+
+        .folder-back {
+            bottom: 18px;
+            height: 116px;
+            border-radius: 22px 22px 24px 24px;
+            background:
+                linear-gradient(150deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .42)),
+                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 28%, transparent), rgba(255, 255, 255, .16));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, .92),
+                inset 0 -18px 30px rgba(255, 255, 255, .18),
+                0 22px 46px rgba(31, 40, 77, .1);
+            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), box-shadow 420ms ease;
+        }
+
+        .folder-tab {
+            bottom: 124px;
+            left: calc(50% - 39px);
+            width: 92px;
+            height: 42px;
+            border-bottom: 0;
+            border-radius: 19px 24px 6px 6px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .38)),
+                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 38%, transparent), transparent);
+            transform: translateX(-50%) rotate(-1deg);
+            transform-origin: 20% 100%;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+            transition: transform 420ms cubic-bezier(.2, .72, .18, 1);
+        }
+
+        .folder-preview {
+            position: absolute;
+            bottom: 69px;
+            left: 50%;
+            z-index: 1;
+            width: 118px;
+            height: 154px;
+            overflow: hidden;
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: 17px;
+            background: var(--gray-1);
+            box-shadow:
+                0 14px 32px rgba(31, 40, 77, .12),
+                inset 0 0 0 1px rgba(255, 255, 255, .72);
+            transform: translateX(-50%) translateY(18px) rotate(var(--paper-rotate, -4deg));
+            transform-origin: 50% 100%;
+            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), filter 420ms ease;
+        }
+
+        .folder-preview img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
+        }
+
+        .folder-preview::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 48%, rgba(255, 255, 255, .68) 100%);
+        }
+
+        .folder-front {
+            bottom: 18px;
+            z-index: 2;
+            height: 106px;
+            border-radius: 22px 22px 24px 24px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, .8), rgba(255, 255, 255, .34)),
+                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 24%, transparent), rgba(255, 255, 255, .1));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, .92),
+                inset 0 -20px 34px rgba(255, 255, 255, .24),
+                0 18px 38px rgba(31, 40, 77, .11);
+            transform-origin: 50% 100%;
+            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), box-shadow 420ms ease;
+        }
+
+        .folder-front::before {
+            content: "";
+            position: absolute;
+            inset: 1px;
+            border-radius: inherit;
+            background: linear-gradient(130deg, rgba(255, 255, 255, .4), transparent 40%);
+            pointer-events: none;
+        }
+
+        .folder-front::after {
+            content: "";
+            position: absolute;
+            left: 19px;
+            bottom: 18px;
+            width: 35px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 56%, rgba(64, 64, 64, .1));
+            border-top-color: transparent;
+            opacity: .38;
+            transform: rotate(-11deg);
+        }
+
+        .sticker {
+            position: absolute;
+            right: max(9px, calc(50% - 89px));
+            bottom: 36px;
+            z-index: 4;
+            display: grid;
+            place-items: center;
+            width: 58px;
+            height: 58px;
+            border: 5px solid #FFFFFF;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .92);
+            box-shadow: 0 12px 22px rgba(31, 40, 77, .16);
+            transform: rotate(var(--sticker-rotate, 8deg));
+            transition: transform 420ms cubic-bezier(.2, .72, .18, 1);
+        }
+
+        .sticker img {
+            display: block;
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
+
+        .folder-card:hover .folder-back,
+        .folder-card:focus-visible .folder-back {
+            transform: translateX(-50%) translateY(-4px) rotateX(4deg);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, .94),
+                inset 0 -18px 30px rgba(255, 255, 255, .2),
+                0 26px 58px rgba(31, 40, 77, .15);
+        }
+
+        .folder-card:hover .folder-tab,
+        .folder-card:focus-visible .folder-tab {
+            transform: translateX(-50%) translateY(-8px) rotate(-7deg);
+        }
+
+        .folder-card:hover .folder-front,
+        .folder-card:focus-visible .folder-front {
+            transform: translateX(-50%) translateY(8px) rotateX(-13deg);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, .9),
+                inset 0 -20px 34px rgba(255, 255, 255, .2),
+                0 24px 56px rgba(31, 40, 77, .15);
+        }
+
+        .folder-card:hover .folder-preview,
+        .folder-card:focus-visible .folder-preview {
+            filter: saturate(1.05);
+            transform: translateX(-50%) translateY(-8px) rotate(calc(var(--paper-rotate, -4deg) * .65));
+        }
+
+        .folder-card:hover .sticker,
+        .folder-card:focus-visible .sticker {
+            transform: rotate(calc(var(--sticker-rotate, 8deg) - 4deg)) translateY(-3px) scale(1.03);
+        }
+
+        .folder-title {
+            display: grid;
+            gap: 5px;
+            min-height: 54px;
+        }
+
+        .folder-title strong {
+            color: var(--ink);
+            font-size: 17px;
+            line-height: 1.28;
+            font-weight: 700;
+        }
+
+        .folder-title span {
+            color: rgba(64, 64, 64, .58);
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .note-layer {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: grid;
+            place-items: center;
+            padding: 28px;
+            background:
+                radial-gradient(circle at var(--open-x, 50%) var(--open-y, 50%), rgba(255, 255, 255, .3), transparent 24%),
+                rgba(250, 250, 250, .64);
+            backdrop-filter: blur(18px) saturate(1.08);
+            -webkit-backdrop-filter: blur(18px) saturate(1.08);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 220ms ease;
+        }
+
+        .note-layer.is-open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .note-stage {
+            position: relative;
+            width: min(860px, 100%);
+            max-height: min(760px, calc(100vh - 56px));
+            perspective: 1100px;
+            transform-origin: var(--open-x, 50%) var(--open-y, 50%);
+        }
+
+        .note-paper {
+            --rx: 0deg;
+            --ry: 0deg;
+            --shadow-x: 0px;
+            --tl-x: 0px;
+            --tl-y: 0px;
+            --tl-z: 0px;
+            --tl-o: .18;
+            --tr-x: 0px;
+            --tr-y: 0px;
+            --tr-z: 0px;
+            --tr-o: .18;
+            --bl-x: 0px;
+            --bl-y: 0px;
+            --bl-z: 0px;
+            --bl-o: .18;
+            --br-x: 0px;
+            --br-y: 0px;
+            --br-z: 0px;
+            --br-o: .18;
+            position: relative;
+            min-height: 540px;
+            max-height: min(760px, calc(100vh - 56px));
+            overflow: auto;
+            padding: clamp(24px, 4.8vw, 46px);
+            border: 1px solid rgba(117, 99, 36, .12);
+            border-radius: 16px 14px 18px 13px;
+            color: var(--ink);
+            background:
+                linear-gradient(92deg, rgba(255, 255, 255, .28), transparent 16%, rgba(255, 255, 255, .2) 84%, transparent),
+                repeating-linear-gradient(0deg, transparent 0 31px, rgba(117, 99, 36, .07) 31px 32px),
+                var(--note-color, #FFF5B8);
+            box-shadow:
+                var(--shadow-x) 30px 70px rgba(31, 40, 77, .18),
+                0 26px 70px rgba(31, 40, 77, .14),
+                inset 0 1px 0 rgba(255, 255, 255, .56);
+            transform:
+                rotateX(var(--rx))
+                rotateY(var(--ry))
+                translateZ(0);
+            transform-origin: var(--open-x, 50%) var(--open-y, 50%);
+            transform-style: preserve-3d;
+            transition: transform 180ms ease, box-shadow 180ms ease;
+        }
+
+        .note-layer.is-open .note-paper {
+            animation: note-open 520ms cubic-bezier(.16, .82, .24, 1) both;
+        }
+
+        .note-layer.is-settled .note-paper {
+            animation: none;
+        }
+
+        .note-layer.is-closing .note-paper {
+            animation: note-close 230ms ease both;
+        }
+
+        .note-paper::before {
+            content: "";
+            position: absolute;
+            inset: 13px 14px auto auto;
+            width: 56px;
+            height: 24px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .38);
+            box-shadow: inset 0 0 0 1px rgba(117, 99, 36, .08);
+            transform: rotate(8deg) translateZ(30px);
+            pointer-events: none;
+        }
+
+        .note-paper::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+            opacity: 0;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, .2) 0 1px, transparent 1px 5px),
+                linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, .28) 48%, transparent 100%);
+            mix-blend-mode: screen;
+        }
+
+        .note-layer.is-open .note-paper::after {
+            animation: retro-scan 520ms steps(9, end) both;
+        }
+
+        .note-corner {
+            position: absolute;
+            z-index: 3;
+            width: 94px;
+            height: 94px;
+            pointer-events: none;
+            background: linear-gradient(135deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, 0));
+            opacity: .25;
+            transform-style: preserve-3d;
+            transition: opacity 160ms ease, transform 160ms ease;
+        }
+
+        .note-corner.tl {
+            top: 0;
+            left: 0;
+            border-radius: 16px 0 0 0;
+            opacity: var(--tl-o);
+            transform: translate3d(var(--tl-x), var(--tl-y), var(--tl-z)) rotate(-1deg);
+        }
+
+        .note-corner.tr {
+            top: 0;
+            right: 0;
+            border-radius: 0 14px 0 0;
+            opacity: var(--tr-o);
+            transform: translate3d(var(--tr-x), var(--tr-y), var(--tr-z)) rotate(1deg) scaleX(-1);
+        }
+
+        .note-corner.bl {
+            bottom: 0;
+            left: 0;
+            border-radius: 0 0 0 13px;
+            opacity: var(--bl-o);
+            transform: translate3d(var(--bl-x), var(--bl-y), var(--bl-z)) rotate(1deg) scaleY(-1);
+        }
+
+        .note-corner.br {
+            right: 0;
+            bottom: 0;
+            border-radius: 0 0 18px 0;
+            opacity: var(--br-o);
+            transform: translate3d(var(--br-x), var(--br-y), var(--br-z)) rotate(-1deg) scale(-1);
+        }
+
+        .note-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 7;
+            display: inline-grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: var(--radius-pill);
+            color: rgba(47, 42, 31, .64);
+            background: rgba(255, 255, 255, .48);
+            cursor: pointer;
+            transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+        }
+
+        .note-close:hover {
+            color: var(--ink);
+            background: rgba(255, 255, 255, .78);
+            transform: translateY(-1px);
+        }
+
+        .note-content {
+            position: relative;
+            z-index: 4;
+            display: grid;
+            grid-template-columns: 118px minmax(0, 1fr);
+            gap: 24px;
+            align-content: start;
+            min-height: 100%;
+            transform: translateZ(24px);
+        }
+
+        .note-sticker {
+            display: grid;
+            place-items: center;
+            width: 96px;
+            height: 96px;
+            border: 7px solid #FFFFFF;
+            border-radius: 26px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, .84), rgba(255, 255, 255, .52)),
+                color-mix(in srgb, var(--note-accent, var(--yellow-4)) 18%, transparent);
+            box-shadow: 0 18px 36px rgba(31, 40, 77, .15);
+            transform: rotate(-5deg);
+        }
+
+        .note-sticker img {
+            display: block;
+            width: 66px;
+            height: 66px;
+            object-fit: contain;
+        }
+
+        .info-copy {
+            display: grid;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .info-copy h2 {
+            color: var(--ink);
+            font-family: "Mohr Rounded", "PingFang SC", sans-serif;
+            font-size: clamp(30px, 4.2vw, 48px);
+            line-height: 1;
+            letter-spacing: 0;
+        }
+
+        .info-copy p {
+            max-width: 48ch;
+            color: rgba(64, 64, 64, .72);
+            font-size: 15px;
+            line-height: 1.75;
+        }
+
+        .copy-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .copy-pill {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 9px;
+            align-items: center;
+            min-width: 0;
+            width: min(100%, 520px);
+            padding: 8px 8px 8px 12px;
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: var(--radius-tight);
+            color: var(--ink);
+            background: rgba(255, 255, 255, .32);
+        }
+
+        .copy-pill code {
+            overflow: hidden;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+            font-size: 11px;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .copy-pill button {
+            display: inline-grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border: 0;
+            border-radius: 8px;
+            color: var(--gray-6);
+            background: rgba(255, 255, 255, .84);
+            cursor: pointer;
+            transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+        }
+
+        .copy-pill button:hover,
+        .copy-pill button.is-copied {
+            color: var(--yellow-6);
+            background: var(--yellow-4);
+            transform: translateY(-1px);
+        }
+
+        .preview-strip {
+            grid-column: 1 / -1;
+            position: relative;
+            min-height: 170px;
+            overflow: hidden;
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: var(--radius-card);
+            background:
+                linear-gradient(135deg, color-mix(in srgb, var(--note-accent, var(--yellow-4)) 16%, transparent), rgba(255, 255, 255, .42));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .78);
+        }
+
+        .preview-strip img {
+            display: block;
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            object-position: top center;
+            filter: saturate(1.02);
+        }
+
+        .note-files {
+            grid-column: 1 / -1;
+            display: grid;
+            gap: 14px;
+            margin-top: 2px;
+        }
+
+        .note-files h3 {
+            color: rgba(47, 42, 31, .74);
+            font-size: 13px;
+            line-height: 1.3;
+            font-weight: 700;
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .file-item {
+            position: relative;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            min-height: 76px;
+            padding: 10px 12px;
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: 12px;
+            color: inherit;
+            background: rgba(255, 255, 255, .34);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .82);
+            text-decoration: none;
+            transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, .82);
+            box-shadow: 0 18px 34px rgba(31, 40, 77, .12);
+            transform: translateY(-3px);
+        }
+
+        .file-icon {
+            position: relative;
+            display: grid;
+            place-items: center;
+            grid-row: 1 / span 2;
+            width: 44px;
+            height: 54px;
+            border: 1px solid rgba(64, 64, 64, .08);
+            border-radius: 8px 13px 8px 8px;
+            color: var(--yellow-6);
+            background:
+                linear-gradient(135deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .62)),
+                color-mix(in srgb, var(--note-accent, var(--yellow-4)) 18%, transparent);
+            box-shadow: 0 12px 22px rgba(31, 40, 77, .1);
+        }
+
+        .file-icon::before {
+            content: "";
+            position: absolute;
+            right: -1px;
+            top: -1px;
+            width: 15px;
+            height: 15px;
+            border-left: 1px solid rgba(64, 64, 64, .08);
+            border-bottom: 1px solid rgba(64, 64, 64, .08);
+            border-radius: 0 14px 0 6px;
+            background: rgba(255, 255, 255, .86);
+        }
+
+        .file-icon i {
+            position: relative;
+            z-index: 1;
+            font-size: 23px;
+        }
+
+        .file-name {
+            color: var(--ink);
+            font-size: 14px;
+            line-height: 1.25;
+            font-weight: 700;
+        }
+
+        .file-meta {
+            color: rgba(64, 64, 64, .54);
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .empty-files {
+            padding: 16px;
+            border: 1px dashed rgba(64, 64, 64, .14);
+            border-radius: var(--radius-soft);
+            color: rgba(64, 64, 64, .58);
+            font-size: 13px;
+            line-height: 1.55;
+            background: rgba(255, 255, 255, .38);
+        }
+
+        .brand-mark {
+            position: fixed;
+            left: 28px;
+            bottom: 28px;
+            z-index: 40;
+            opacity: .54;
+            transition: opacity .24s ease, transform .24s ease;
+        }
+
+        .brand-mark:hover {
+            opacity: .88;
+            transform: translateY(-2px);
+        }
+
+        .brand-mark img {
+            display: block;
+            width: 98px;
+            height: auto;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            z-index: 200;
+            max-width: min(560px, calc(100% - 36px));
+            overflow: hidden;
+            padding: 10px 16px;
+            border-radius: var(--radius-pill);
+            color: #FFFFFF;
+            background: rgba(47, 42, 31, .92);
+            box-shadow: 0 16px 40px rgba(31, 40, 77, .2);
+            font-size: 13px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(-50%) translateY(18px);
+            transition: opacity 200ms ease, transform 200ms ease;
+        }
+
+        .toast.is-visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @keyframes note-open {
+            0% {
+                opacity: 0;
+                filter: contrast(1.25) saturate(.8);
+                transform: translateY(18px) scale(.18) rotate(-8deg) skew(-4deg, 2deg);
+                clip-path: inset(46% 46% 46% 46% round 18px);
+            }
+            36% {
+                opacity: 1;
+                filter: contrast(1.12) saturate(1.15);
+                transform: translateY(-8px) scale(1.035) rotate(1.5deg) skew(1deg, -.6deg);
+                clip-path: inset(0 2% 0 2% round 16px);
+            }
+            100% {
+                opacity: 1;
+                filter: none;
+                transform: translateY(0) scale(1) rotate(0deg) skew(0);
+                clip-path: inset(0 0 0 0 round 16px);
+            }
+        }
+
+        @keyframes note-close {
+            from {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(10px) scale(.96);
+            }
+        }
+
+        @keyframes retro-scan {
+            0%, 8% {
+                opacity: .75;
+                transform: translateX(-26%);
+            }
+            55% {
+                opacity: .42;
+                transform: translateX(28%);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(34%);
+            }
+        }
+
+        @media (max-width: 1080px) {
+            .folder-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 820px) {
+            .hero-main {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                align-items: start;
+            }
+
+            .hero-note {
+                text-align: left;
+            }
+
+            .note-content {
+                grid-template-columns: 92px minmax(0, 1fr);
+                gap: 18px;
+            }
+        }
+
+        @media (max-width: 620px) {
+            .page {
+                width: min(100% - 28px, 1160px);
+                padding-top: 18px;
+                padding-bottom: 34px;
+            }
+
+            .hero-main {
+                margin-bottom: 18px;
+            }
+
+            .hero-kicker {
+                margin-bottom: 8px;
+            }
+
+            .folder-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .folder-visual {
+                min-height: 146px;
+            }
+
+            .folder-back,
+            .folder-front,
+            .folder-tab {
+                width: min(100%, 156px);
+            }
+
+            .folder-back {
+                height: 92px;
+                bottom: 13px;
+                border-radius: 18px;
+            }
+
+            .folder-tab {
+                bottom: 101px;
+                left: calc(50% - 27px);
+                width: 72px;
+                height: 32px;
+                border-radius: 15px 18px 5px 5px;
+            }
+
+            .folder-preview {
+                bottom: 51px;
+                width: 92px;
+                height: 122px;
+                border-radius: 14px;
+            }
+
+            .folder-front {
+                bottom: 13px;
+                height: 82px;
+                border-radius: 18px;
+            }
+
+            .sticker {
+                right: max(7px, calc(50% - 70px));
+                bottom: 26px;
+                width: 48px;
+                height: 48px;
+                border-width: 4px;
+                border-radius: 15px;
+            }
+
+            .sticker img {
+                width: 33px;
+                height: 33px;
+            }
+
+            .folder-title {
+                min-height: 56px;
+            }
+
+            .folder-title strong {
+                font-size: 15px;
+            }
+
+            .folder-title span {
+                font-size: 11px;
+            }
+
+            .note-layer {
+                padding: 10px;
+                align-items: end;
+            }
+
+            .note-stage {
+                max-height: calc(100dvh - 20px);
+            }
+
+            .note-paper {
+                min-height: auto;
+                max-height: calc(100dvh - 20px);
+                padding: 22px 18px;
+                border-radius: 14px;
+            }
+
+            .note-content {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .note-sticker {
+                width: 76px;
+                height: 76px;
+                border-width: 6px;
+                border-radius: 22px;
+            }
+
+            .note-sticker img {
+                width: 52px;
+                height: 52px;
+            }
+
+            .preview-strip {
+                min-height: 138px;
+            }
+
+            .preview-strip img {
+                height: 172px;
+            }
+
+            .file-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .brand-mark {
+                left: 18px;
+                bottom: 18px;
+            }
+
+            .brand-mark img {
+                width: 82px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 1ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 1ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="hero-main" aria-labelledby="demo-title">
+            <div>
+                <span class="hero-kicker">JOJO Project Notes</span>
+                <h1 id="demo-title">JOJO Demos</h1>
+            </div>
+            <p class="hero-note">项目入口被收进半透明文件夹里，打开后会展开一张轻轻浮起的便签纸。</p>
+        </section>
+
+        <section class="folder-grid" aria-label="Demo 列表">
+            <button class="folder-card" type="button" data-project="kbook" style="--folder-accent: var(--orange-4); --paper-rotate: -5deg; --sticker-rotate: 8deg;">
+                <span class="folder-visual" aria-hidden="true">
+                    <span class="folder-tab"></span>
+                    <span class="folder-back"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/kbook.jpg" alt=""></span>
+                    <span class="folder-front"></span>
+                    <span class="sticker"><img src="../assets/demo-favicons/subjects.svg" alt=""></span>
+                </span>
+                <span class="folder-title">
+                    <strong>英语新素养K段-绘本发散</strong>
+                    <span>1 个文件</span>
+                </span>
+            </button>
+
+            <button class="folder-card" type="button" data-project="lansen" style="--folder-accent: var(--green-4); --paper-rotate: 4deg; --sticker-rotate: -7deg;">
+                <span class="folder-visual" aria-hidden="true">
+                    <span class="folder-tab"></span>
+                    <span class="folder-back"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/lansen.jpg" alt=""></span>
+                    <span class="folder-front"></span>
+                    <span class="sticker"><img src="../assets/demo-favicons/app.svg" alt=""></span>
+                </span>
+                <span class="folder-title">
+                    <strong>蓝森-更适合叫叫的人力系统</strong>
+                    <span>1 个文件</span>
+                </span>
+            </button>
+
+            <button class="folder-card" type="button" data-project="jojoup" style="--folder-accent: var(--purple-4); --paper-rotate: -3deg; --sticker-rotate: 9deg;">
+                <span class="folder-visual" aria-hidden="true">
+                    <span class="folder-tab"></span>
+                    <span class="folder-back"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/jojoup-ios.jpg" alt=""></span>
+                    <span class="folder-front"></span>
+                    <span class="sticker"><img src="../assets/demo-favicons/jiaojiao.svg" alt=""></span>
+                </span>
+                <span class="folder-title">
+                    <strong>周周学</strong>
+                    <span>2 个文件</span>
+                </span>
+            </button>
+
+            <button class="folder-card" type="button" data-project="uiDesign" style="--folder-accent: var(--pro-blue-4); --paper-rotate: 5deg; --sticker-rotate: -8deg;">
+                <span class="folder-visual" aria-hidden="true">
+                    <span class="folder-tab"></span>
+                    <span class="folder-back"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/brand.jpg" alt=""></span>
+                    <span class="folder-front"></span>
+                    <span class="sticker"><img src="../assets/demo-favicons/index.svg" alt=""></span>
+                </span>
+                <span class="folder-title">
+                    <strong>JOJO UI DesignMD测试Demo</strong>
+                    <span>2 个文件</span>
+                </span>
+            </button>
+
+            <button class="folder-card" type="button" data-project="modular" style="--folder-accent: var(--yellow-4); --paper-rotate: -4deg; --sticker-rotate: 7deg;">
+                <span class="folder-visual" aria-hidden="true">
+                    <span class="folder-tab"></span>
+                    <span class="folder-back"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/modular-standard-question.svg" alt=""></span>
+                    <span class="folder-front"></span>
+                    <span class="sticker"><img src="../assets/demo-favicons/modular-standard-question.svg" alt=""></span>
+                </span>
+                <span class="folder-title">
+                    <strong>JOJO 模块化设计MD测试</strong>
+                    <span>2 个文件</span>
+                </span>
+            </button>
+        </section>
+    </main>
+
+    <div class="note-layer" id="note-layer" aria-hidden="true">
+        <section class="note-stage" role="dialog" aria-modal="true" aria-labelledby="note-title" tabindex="-1">
+            <article class="note-paper" id="note-paper">
+                <span class="note-corner tl" aria-hidden="true"></span>
+                <span class="note-corner tr" aria-hidden="true"></span>
+                <span class="note-corner bl" aria-hidden="true"></span>
+                <span class="note-corner br" aria-hidden="true"></span>
+                <button class="note-close" type="button" aria-label="关闭便签"><i class="ph-fill ph-x"></i></button>
+                <div class="note-content">
+                    <div class="note-sticker"><img id="note-icon" src="../assets/demo-favicons/index.svg" alt=""></div>
+                    <div class="info-copy">
+                        <h2 id="note-title">JOJO Demos</h2>
+                        <p id="note-desc"></p>
+                        <div class="copy-list" id="copy-list"></div>
+                    </div>
+                    <div class="preview-strip">
+                        <img id="note-shot" src="../assets/demo-shots/brand.jpg" alt="">
+                    </div>
+                    <section class="note-files">
+                        <h3 id="file-count">文件</h3>
+                        <div class="file-grid" id="file-grid"></div>
+                    </section>
+                </div>
+            </article>
+        </section>
+    </div>
+
+    <div class="toast" id="copy-toast" role="status" aria-live="polite"></div>
+
+    <div class="brand-mark" aria-label="叫叫">
+        <img src="../assets/品牌logo/叫叫 Logo - 单色.svg" alt="叫叫">
+    </div>
+
+    <script>
+        (function () {
+            const PROMPTS = {
+                ui: "我已通过 `npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md` 安装了 JOJO UI 设计规范 skill。请按本 skill 中的 JOJO UI 规范（DESIGN.md v1.3）完成我的任务：颜色只用 5 个主品牌色 + 4 个中性色，圆角只用 22px/999px/16px/10px 四档，标题用 Mohr Rounded Bold，正文用 PingFang SC，动效用 GSAP easeOutBack 0.6-0.8s。每个设计/代码产出后请用一句注释说明依据，并对照本 skill 的违规检查清单（色值/圆角/字号/动效/6 态/可访问性）逐条自检后再交付。",
+                modular: "我已通过 `npx skills add pixel-point/jujo-skills --skill jujo-modular-style` 安装了 JOJO 模块化视觉风格 skill。请按本 skill 的规范（JOJO_MODULAR_VISUAL_STYLE.md）完成我的模块化视觉任务：题干/作答区保持纯白底、不在题目内容中加圆角描边容器、选项按钮圆角 12px 克制处理、提交按钮比选项按钮更大更粗、答题页不启用 ani-tip-repeat / ani-bounds 这两个循环动效。每个皮肤/组件产出后请用一句注释说明色值依据，并对照本 skill 的违规检查清单（白底/无渐变/克制圆角/硬边投影/箭头无尾巴/无循环动效）逐条自检后再交付。"
+            };
+
+            const PROJECTS = {
+                kbook: {
+                    title: "英语新素养K段-绘本发散",
+                    desc: "围绕 K 段英语绘本阅读的发散式学习体验，重点展示移动端中的故事、任务和学习路径。",
+                    accent: "#FF9045",
+                    icon: "../assets/demo-favicons/subjects.svg",
+                    shot: "../assets/demo-shots/kbook.jpg",
+                    files: [
+                        { name: "打开项目", meta: "kbook.mikeywa.icu", href: "https://kbook.mikeywa.icu", icon: "ph-arrow-up-right" }
+                    ],
+                    copies: []
+                },
+                lansen: {
+                    title: "蓝森-更适合叫叫的人力系统",
+                    desc: "给内部组织协作使用的人力系统预览，强调清晰的信息结构和更贴近叫叫业务语境的工作台体验。",
+                    accent: "#78C562",
+                    icon: "../assets/demo-favicons/app.svg",
+                    shot: "../assets/demo-shots/lansen.jpg",
+                    files: [
+                        { name: "打开项目", meta: "lansen.mikeywa.icu", href: "https://lansen.mikeywa.icu", icon: "ph-arrow-up-right" }
+                    ],
+                    copies: []
+                },
+                jojoup: {
+                    title: "周周学",
+                    desc: "周周学的移动端 Demo 与官网入口，分别用于体验产品流程和查看对外展示版本。",
+                    accent: "#AE84E3",
+                    icon: "../assets/demo-favicons/jiaojiao.svg",
+                    shot: "../assets/demo-shots/jojoup-ios.jpg",
+                    files: [
+                        { name: "Demo", meta: "zzx.mikeywa.icu/DEMO", href: "https://zzx.mikeywa.icu/DEMO", icon: "ph-device-mobile" },
+                        { name: "官网", meta: "zzx.mikeywa.icu", href: "https://zzx.mikeywa.icu/", icon: "ph-globe" }
+                    ],
+                    copies: []
+                },
+                uiDesign: {
+                    title: "JOJO UI DesignMD测试Demo",
+                    desc: "为 AI 准备的 JOJO UI 完整设计规范，覆盖颜色、圆角、字体、动效和交付前自检规则。",
+                    accent: "#528BFF",
+                    icon: "../assets/demo-favicons/index.svg",
+                    shot: "../assets/demo-shots/brand.jpg",
+                    files: [
+                        { name: "DESIGN.md", meta: "设计规范", href: "../DESIGN.md", icon: "ph-file-text" },
+                        { name: "Skill.md", meta: "安装说明", href: "../skills/jujo-ui-design-md/SKILL.md", icon: "ph-file-code" }
+                    ],
+                    copies: [
+                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md", text: "npx skills add pixel-point/jujo-skills --skill jujo-ui-design-md" },
+                        { label: "复制给 AI 的提示词", text: PROMPTS.ui }
+                    ]
+                },
+                modular: {
+                    title: "JOJO 模块化设计MD测试",
+                    desc: "为模块化题型和视觉皮肤准备的规范入口，聚焦答题页白底、选项控制、按钮层级和动效边界。",
+                    accent: "#FCDA00",
+                    icon: "../assets/demo-favicons/modular-standard-question.svg",
+                    shot: "../assets/demo-shots/modular-standard-question.svg",
+                    files: [
+                        { name: "Style.md", meta: "模块化规范", href: "../design/JOJO_MODULAR_VISUAL_STYLE.md", icon: "ph-file-text" },
+                        { name: "Skill.md", meta: "安装说明", href: "../skills/jujo-modular-style/SKILL.md", icon: "ph-file-code" }
+                    ],
+                    copies: [
+                        { label: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style", text: "npx skills add pixel-point/jujo-skills --skill jujo-modular-style" },
+                        { label: "复制给 AI 的提示词", text: PROMPTS.modular }
+                    ]
+                }
+            };
+
+            const NOTE_COLORS = ["#FFF4B7", "#FFE8EF", "#EAF8C9", "#DDF4FF", "#EFE8FF", "#FFE9CF"];
+            const layer = document.getElementById("note-layer");
+            const stageEl = layer.querySelector(".note-stage");
+            const paperEl = document.getElementById("note-paper");
+            const closeButton = layer.querySelector(".note-close");
+            const titleEl = document.getElementById("note-title");
+            const descEl = document.getElementById("note-desc");
+            const iconEl = document.getElementById("note-icon");
+            const shotEl = document.getElementById("note-shot");
+            const fileCountEl = document.getElementById("file-count");
+            const fileGrid = document.getElementById("file-grid");
+            const copyList = document.getElementById("copy-list");
+            const toast = document.getElementById("copy-toast");
+            let toastTimer = 0;
+            let settleTimer = 0;
+            let lastFocus = null;
+
+            document.documentElement.classList.remove("index-boot");
+
+            function showToast(message) {
+                toast.textContent = message;
+                toast.classList.add("is-visible");
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1600);
+            }
+
+            async function copyText(text) {
+                try {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(text);
+                        return true;
+                    }
+                } catch (error) {}
+
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                textarea.style.cssText = "position:fixed;opacity:0;pointer-events:none;";
+                document.body.appendChild(textarea);
+                textarea.select();
+                let ok = false;
+                try {
+                    ok = document.execCommand("copy");
+                } catch (error) {
+                    ok = false;
+                }
+                document.body.removeChild(textarea);
+                return ok;
+            }
+
+            function renderCopies(copies) {
+                copyList.innerHTML = "";
+                copies.forEach((item) => {
+                    const row = document.createElement("div");
+                    row.className = "copy-pill";
+
+                    const code = document.createElement("code");
+                    code.textContent = item.label;
+
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.setAttribute("aria-label", "复制");
+                    button.innerHTML = '<i class="ph-fill ph-copy"></i>';
+                    button.addEventListener("click", async () => {
+                        const ok = await copyText(item.text);
+                        if (ok) {
+                            button.classList.add("is-copied");
+                            setTimeout(() => button.classList.remove("is-copied"), 1000);
+                            showToast(item.label);
+                        } else {
+                            showToast("复制失败，请手动选择");
+                        }
+                    });
+
+                    row.append(code, button);
+                    copyList.append(row);
+                });
+            }
+
+            function renderFiles(files) {
+                fileGrid.innerHTML = "";
+                fileCountEl.textContent = files.length > 1 ? `${files.length} 个文件` : "1 个文件";
+
+                if (!files.length) {
+                    const empty = document.createElement("div");
+                    empty.className = "empty-files";
+                    empty.textContent = "这个项目只有复制项。";
+                    fileGrid.append(empty);
+                    return;
+                }
+
+                files.forEach((file) => {
+                    const link = document.createElement("a");
+                    link.className = "file-item";
+                    link.href = file.href;
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+                    link.innerHTML = `
+                        <span class="file-icon" aria-hidden="true"><i class="ph-fill ${file.icon || "ph-file"}"></i></span>
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-meta">${file.meta}</span>
+                    `;
+                    fileGrid.append(link);
+                });
+            }
+
+            function setPaperTilt(event) {
+                const rect = paperEl.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+                const y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+                const liftTl = (1 - x) * (1 - y);
+                const liftTr = x * (1 - y);
+                const liftBl = (1 - x) * y;
+                const liftBr = x * y;
+
+                paperEl.style.setProperty("--rx", `${(0.5 - y) * 8}deg`);
+                paperEl.style.setProperty("--ry", `${(x - 0.5) * 10}deg`);
+                paperEl.style.setProperty("--shadow-x", `${(0.5 - x) * 16}px`);
+                paperEl.style.setProperty("--tl-x", `${liftTl * -8}px`);
+                paperEl.style.setProperty("--tl-y", `${liftTl * -10}px`);
+                paperEl.style.setProperty("--tl-z", `${liftTl * 42}px`);
+                paperEl.style.setProperty("--tl-o", `${0.18 + liftTl * 0.62}`);
+                paperEl.style.setProperty("--tr-x", `${liftTr * 8}px`);
+                paperEl.style.setProperty("--tr-y", `${liftTr * -10}px`);
+                paperEl.style.setProperty("--tr-z", `${liftTr * 42}px`);
+                paperEl.style.setProperty("--tr-o", `${0.18 + liftTr * 0.62}`);
+                paperEl.style.setProperty("--bl-x", `${liftBl * -8}px`);
+                paperEl.style.setProperty("--bl-y", `${liftBl * 10}px`);
+                paperEl.style.setProperty("--bl-z", `${liftBl * 42}px`);
+                paperEl.style.setProperty("--bl-o", `${0.18 + liftBl * 0.62}`);
+                paperEl.style.setProperty("--br-x", `${liftBr * 8}px`);
+                paperEl.style.setProperty("--br-y", `${liftBr * 10}px`);
+                paperEl.style.setProperty("--br-z", `${liftBr * 42}px`);
+                paperEl.style.setProperty("--br-o", `${0.18 + liftBr * 0.62}`);
+            }
+
+            function resetPaperTilt() {
+                paperEl.style.setProperty("--rx", "0deg");
+                paperEl.style.setProperty("--ry", "0deg");
+                paperEl.style.setProperty("--shadow-x", "0px");
+                ["tl", "tr", "bl", "br"].forEach((corner) => {
+                    paperEl.style.setProperty(`--${corner}-x`, "0px");
+                    paperEl.style.setProperty(`--${corner}-y`, "0px");
+                    paperEl.style.setProperty(`--${corner}-z`, "0px");
+                    paperEl.style.setProperty(`--${corner}-o`, ".18");
+                });
+            }
+
+            function openNote(key, trigger) {
+                const project = PROJECTS[key];
+                if (!project) return;
+
+                lastFocus = trigger || document.activeElement;
+                const rect = trigger ? trigger.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+                const openX = `${rect.left + rect.width / 2}px`;
+                const openY = `${rect.top + rect.height / 2}px`;
+
+                layer.style.setProperty("--open-x", openX);
+                layer.style.setProperty("--open-y", openY);
+                stageEl.style.setProperty("--open-x", openX);
+                stageEl.style.setProperty("--open-y", openY);
+                paperEl.style.setProperty("--open-x", openX);
+                paperEl.style.setProperty("--open-y", openY);
+                paperEl.style.setProperty("--note-accent", project.accent);
+                paperEl.style.setProperty("--note-color", NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)]);
+                titleEl.textContent = project.title;
+                descEl.textContent = project.desc;
+                iconEl.src = project.icon;
+                iconEl.alt = `${project.title} favicon`;
+                shotEl.src = project.shot;
+                shotEl.alt = `${project.title} 截图`;
+                renderCopies(project.copies);
+                renderFiles(project.files);
+
+                clearTimeout(settleTimer);
+                layer.classList.remove("is-closing", "is-settled");
+                layer.classList.add("is-open");
+                layer.setAttribute("aria-hidden", "false");
+                document.body.style.overflow = "hidden";
+                resetPaperTilt();
+                settleTimer = setTimeout(() => layer.classList.add("is-settled"), 560);
+                requestAnimationFrame(() => stageEl.focus({ preventScroll: true }));
+            }
+
+            function closeNote() {
+                if (!layer.classList.contains("is-open")) return;
+                clearTimeout(settleTimer);
+                layer.classList.add("is-closing");
+                layer.classList.remove("is-open", "is-settled");
+                layer.setAttribute("aria-hidden", "true");
+                document.body.style.overflow = "";
+                setTimeout(() => {
+                    layer.classList.remove("is-closing");
+                    if (lastFocus && typeof lastFocus.focus === "function") {
+                        lastFocus.focus({ preventScroll: true });
+                    }
+                }, 240);
+            }
+
+            document.querySelectorAll(".folder-card").forEach((button) => {
+                button.addEventListener("click", () => openNote(button.dataset.project, button));
+            });
+
+            paperEl.addEventListener("pointermove", setPaperTilt);
+            paperEl.addEventListener("pointerleave", resetPaperTilt);
+            closeButton.addEventListener("click", closeNote);
+            layer.addEventListener("click", (event) => {
+                if (event.target === layer) closeNote();
+            });
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") closeNote();
+            });
+        })();
+    </script>
+</body>
+</html>

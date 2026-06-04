@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叫叫 - 学习报告</title>
+    <link rel="icon" href="assets/demo-favicons/report.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+    <link rel="stylesheet" href="demo-enhance.css">
+    <style>
+        /* 引入字体 */
+        @font-face {
+            font-family: 'PingFang SC';
+            src: local('PingFang SC');
+        }
+        @font-face {
+            font-family: 'JOJO Kaiti';
+            src: url('assets/字体/JOJOKaiti-Regular.ttf');
+        }
+        @font-face {
+            font-family: 'Mohr Rounded';
+            src: url('assets/字体/MohrRounded-Bold.ttf');
+        }
+
+        /* 设计系统变量 */
+        :root {
+            /* 颜色 */
+            --gray-1: #FAFAFA;
+            --gray-2: #F5F4F4;
+            --gray-3: #E0DFDF;
+            --gray-4: #B2B2B2;
+            --gray-5: #666666;
+            --gray-6: #404040;
+            
+            --yellow-4: #FCDA00;
+            --yellow-6: #544300;
+            --yellow-1: #FCF9DE;
+
+            /* 学科色 */
+            --orange-4: #FF9045;
+            --pink-4: #FF7A99;
+            --blue-4: #5AC8FA;
+            --purple-4: #AE84E3;
+            --green-4: #78C562;
+
+            /* 专业色 */
+            --pro-blue-4: #528BFF;
+            --pro-gray-4: #919FB9;
+
+            /* 圆角 */
+            --radius-button: 50px;
+            --radius-sm: 8px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+
+            /* 间距 */
+            --spacing-xs: 4px;
+            --spacing-sm: 14px;
+            --spacing-md: 20px;
+            --spacing-lg: 32px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', sans-serif;
+            background-color: var(--gray-1);
+            min-height: 100vh;
+            padding: var(--spacing-md);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            text-decoration: none;
+            color: var(--gray-6);
+            font-size: 16px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .back-button::before {
+            content: '<';
+            margin-right: var(--spacing-xs);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-sm);
+            font-family: 'Mohr Rounded', sans-serif;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: var(--gray-5);
+            line-height: 150%;
+        }
+
+        .subject-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .subject-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: var(--radius-button);
+            font-size: 14px;
+            font-weight: 500;
+            color: white;
+        }
+
+        .subject-badge.reading {
+            background-color: var(--orange-4);
+        }
+
+        .subject-badge.english {
+            background-color: var(--pink-4);
+        }
+
+        .subject-badge.math {
+            background-color: var(--blue-4);
+        }
+
+        .subject-badge.art {
+            background-color: var(--purple-4);
+        }
+
+        .subject-badge.writing {
+            background-color: var(--green-4);
+        }
+
+        .report-card {
+            background-color: white;
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.03);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-bottom: var(--spacing-lg);
+            position: relative;
+        }
+
+        .chart-bar {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 100%;
+            gap: var(--spacing-md);
+            padding: var(--spacing-lg) 0;
+        }
+
+        .bar-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--spacing-sm);
+        }
+
+        .bar-wrapper {
+            width: 100%;
+            display: flex;
+            gap: var(--spacing-xs);
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .bar {
+            flex: 1;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            min-height: 20px;
+            transition: height 0.5s ease;
+            position: relative;
+        }
+
+        .bar.current {
+            background-color: var(--pro-blue-4);
+        }
+
+        .bar.expected {
+            background-color: var(--pro-gray-4);
+            opacity: 0.6;
+        }
+
+        .bar-label {
+            font-size: 12px;
+            color: var(--gray-5);
+            text-align: center;
+        }
+
+        .bar-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 14px;
+            color: var(--gray-5);
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: var(--radius-sm);
+        }
+
+        .legend-color.current {
+            background-color: var(--pro-blue-4);
+        }
+
+        .legend-color.expected {
+            background-color: var(--pro-gray-4);
+        }
+
+        .insight-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .insight-item {
+            display: flex;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            background-color: var(--yellow-1);
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--yellow-4);
+        }
+
+        .insight-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .insight-content {
+            flex: 1;
+        }
+
+        .insight-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .insight-text {
+            font-size: 14px;
+            color: var(--gray-5);
+            line-height: 150%;
+        }
+
+        .encouragement-section {
+            background: linear-gradient(135deg, var(--yellow-1), var(--yellow-2));
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .encouragement-title {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--yellow-6);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .encouragement-text {
+            font-size: 16px;
+            color: var(--yellow-6);
+            opacity: 0.9;
+            line-height: 150%;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 32px;
+            background-color: var(--yellow-4);
+            color: var(--yellow-6);
+            border-radius: var(--radius-button);
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        .cta-button:hover {
+            background-color: var(--yellow-3);
+        }
+
+        .course-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .course-item {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            background-color: white;
+            border-radius: var(--radius-md);
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.03);
+            gap: var(--spacing-md);
+        }
+
+        .course-item.locked {
+            opacity: 0.5;
+        }
+
+        .course-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--gray-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-5);
+            flex-shrink: 0;
+        }
+
+        .course-item.locked .course-number {
+            background-color: var(--gray-3);
+            color: var(--gray-4);
+        }
+
+        .course-content {
+            flex: 1;
+        }
+
+        .course-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--gray-6);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .course-desc {
+            font-size: 14px;
+            color: var(--gray-5);
+            line-height: 150%;
+        }
+
+        .course-status {
+            font-size: 14px;
+            color: var(--green-4);
+            font-weight: 500;
+        }
+
+        .course-status.locked {
+            color: var(--gray-4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="assessment.html" class="back-button">返回</a>
+        
+        <div class="header">
+            <h1 class="page-title">学习评估报告</h1>
+            <p class="page-subtitle">基于您的回答，我们为您生成了专属的学习评估报告</p>
+        </div>
+
+        <div class="subject-header">
+            <span id="subject-badge" class="subject-badge"></span>
+            <span class="page-subtitle">学习评估</span>
+        </div>
+
+        <div class="report-card">
+            <h2 class="section-title">学习能力对比</h2>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color current"></div>
+                    <span>当前水平</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color expected"></div>
+                    <span>预期目标</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-bar">
+                    <div class="bar-group">
+                        <div class="bar-value">85</div>
+                        <div class="bar-wrapper">
+                            <div class="bar current" style="height: 85%"></div>
+                            <div class="bar expected" style="height: 95%"></div>
+                        </div>
+                        <div class="bar-label">基础能力</div>
+                    </div>
+                    
+                    <div class="bar-group">
+                        <div class="bar-value">78</div>
+                        <div class="bar-wrapper">
+                            <div class="bar current" style="height: 78%"></div>
+                            <div class="bar expected" style="height: 90%"></div>
+                        </div>
+                        <div class="bar-label">应用能力</div>
+                    </div>
+                    
+                    <div class="bar-group">
+                        <div class="bar-value">92</div>
+                        <div class="bar-wrapper">
+                            <div class="bar current" style="height: 92%"></div>
+                            <div class="bar expected" style="height: 85%"></div>
+                        </div>
+                        <div class="bar-label">学习兴趣</div>
+                    </div>
+                    
+                    <div class="bar-group">
+                        <div class="bar-value">80</div>
+                        <div class="bar-wrapper">
+                            <div class="bar current" style="height: 80%"></div>
+                            <div class="bar expected" style="height: 95%"></div>
+                        </div>
+                        <div class="bar-label">综合能力</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <h2 class="section-title">评估洞察</h2>
+            
+            <div class="insight-list">
+                <div class="insight-item">
+                    <div class="insight-icon"><i class="ph-fill ph-sparkle"></i></div>
+                    <div class="insight-content">
+                        <div class="insight-title">优势领域</div>
+                        <div class="insight-text">孩子在学习兴趣方面表现出色，已经达到甚至超过了预期目标，继续保持！</div>
+                    </div>
+                </div>
+                
+                <div class="insight-item">
+                    <div class="insight-icon"><i class="ph-fill ph-chart-line-up"></i></div>
+                    <div class="insight-content">
+                        <div class="insight-title">提升空间</div>
+                        <div class="insight-text">基础能力和应用能力还有提升空间，我们的课程将针对性地帮助孩子提高这两方面的能力。</div>
+                    </div>
+                </div>
+                
+                <div class="insight-item">
+                    <div class="insight-icon"><i class="ph-fill ph-target"></i></div>
+                    <div class="insight-content">
+                        <div class="insight-title">学习建议</div>
+                        <div class="insight-text">建议每周安排3-5次学习，每次20-30分钟，坚持完成课程内容，效果会更加显著。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="encouragement-section">
+            <div class="encouragement-title"><i class="ph-fill ph-confetti" aria-hidden="true"></i> 干得漂亮！</div>
+            <div class="encouragement-text">
+                您已经完成了评估，我们为您定制了专属的学习计划。坚持完成后续课程，孩子的能力将得到全面提升！
+            </div>
+            <a href="waiting.html" class="cta-button">进入课前准备</a>
+        </div>
+    </div>
+
+    <script>
+        // 从URL获取参数
+        const urlParams = new URLSearchParams(window.location.search);
+        const subject = urlParams.get('subject');
+        const answers = JSON.parse(decodeURIComponent(urlParams.get('answers') || '[]'));
+        
+        // 科目映射
+        const subjectMap = {
+            reading: { name: '阅读', color: 'reading' },
+            english: { name: '英语', color: 'english' },
+            math: { name: '思维', color: 'math' },
+            art: { name: '美育', color: 'art' },
+            writing: { name: '小作家', color: 'writing' }
+        };
+        
+        // 初始化
+        function init() {
+            // 设置学科徽章
+            const subjectBadge = document.getElementById('subject-badge');
+            subjectBadge.textContent = subjectMap[subject].name;
+            subjectBadge.className = `subject-badge ${subjectMap[subject].color}`;
+            
+            // 根据答案调整图表数据
+            if (answers.length > 0) {
+                // 根据用户的回答调整图表数据
+                const currentBars = document.querySelectorAll('.bar.current');
+                const expectedBars = document.querySelectorAll('.bar.expected');
+                
+                // 简单的逻辑根据答案调整数据
+                const firstAnswer = answers[0];
+                if (firstAnswer === 0) {
+                    // 非常积极
+                    currentBars[0].style.height = '90%';
+                    currentBars[1].style.height = '85%';
+                } else if (firstAnswer === 3) {
+                    // 不太积极
+                    currentBars[0].style.height = '70%';
+                    currentBars[1].style.height = '65%';
+                }
+            }
+        }
+        
+        init();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+    <script src="demo-motion.js"></script>
+</body>
+</html>
