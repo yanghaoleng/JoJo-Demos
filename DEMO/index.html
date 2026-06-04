@@ -399,21 +399,17 @@
 
         .folder-preview {
             position: absolute;
-            bottom: 74px;
+            bottom: 72px;
             left: 50%;
             z-index: 1;
-            display: grid;
-            place-items: center;
-            width: 78px;
-            height: 78px;
-            padding: 12px;
-            border: 4px solid var(--surface-highlight);
-            border-radius: 24px;
-            background:
-                linear-gradient(145deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .58)),
-                color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 16%, transparent);
+            width: 82px;
+            height: 106px;
+            overflow: hidden;
+            border: 1px solid var(--line-soft);
+            border-radius: 14px;
+            background: var(--gray-1);
             box-shadow:
-                0 14px 26px rgba(var(--shadow-rgb), .13),
+                0 12px 24px rgba(var(--shadow-rgb), .11),
                 inset 0 0 0 1px var(--surface-highlight-soft);
             transform: translateX(-50%) translateY(18px) rotate(var(--paper-rotate, -4deg));
             transform-origin: 50% 100%;
@@ -422,18 +418,17 @@
 
         .folder-preview img {
             display: block;
-            width: 52px;
-            height: 52px;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: top center;
         }
 
         .folder-preview::after {
             content: "";
             position: absolute;
-            inset: 2px;
-            border-radius: inherit;
-            background: linear-gradient(135deg, rgba(255, 255, 255, .34), transparent 48%);
-            pointer-events: none;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 48%, var(--surface-highlight-soft) 100%);
         }
 
         .folder-front {
@@ -459,6 +454,30 @@
             border-radius: inherit;
             background: linear-gradient(130deg, var(--surface-highlight-soft), transparent 40%);
             pointer-events: none;
+        }
+
+        .sticker {
+            position: absolute;
+            left: max(9px, calc(50% - 89px));
+            bottom: 36px;
+            z-index: 4;
+            display: grid;
+            place-items: center;
+            width: 46px;
+            height: 46px;
+            border: 4px solid var(--surface-highlight);
+            border-radius: 15px;
+            background: var(--surface-highlight);
+            box-shadow: 0 10px 18px rgba(var(--shadow-rgb), .14);
+            transform: rotate(var(--sticker-rotate, -7deg));
+            transition: transform 420ms cubic-bezier(.2, .72, .18, 1);
+        }
+
+        .sticker img {
+            display: block;
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
         }
 
         .folder-card:hover .folder-back,
@@ -488,6 +507,11 @@
         .folder-card:focus-visible .folder-preview {
             filter: saturate(1.05);
             transform: translateX(-50%) translateY(-8px) rotate(calc(var(--paper-rotate, -4deg) * .65));
+        }
+
+        .folder-card:hover .sticker,
+        .folder-card:focus-visible .sticker {
+            transform: rotate(calc(var(--sticker-rotate, -7deg) + 4deg)) translateY(-2px) scale(1.02);
         }
 
         .folder-title {
@@ -987,9 +1011,20 @@
         }
 
         @media (max-width: 620px) {
+            .theme-toggle {
+                top: 10px;
+                left: 10px;
+                width: 28px;
+                height: 28px;
+            }
+
+            .theme-toggle i {
+                font-size: 14px;
+            }
+
             .page {
                 width: min(100% - 28px, 1160px);
-                padding-top: 18px;
+                padding-top: 56px;
                 padding-bottom: 34px;
             }
 
@@ -1031,23 +1066,35 @@
             }
 
             .folder-preview {
-                bottom: 57px;
-                width: 56px;
-                height: 56px;
-                padding: 8px;
-                border-width: 3px;
-                border-radius: 18px;
+                bottom: 54px;
+                width: 60px;
+                height: 78px;
+                border-radius: 12px;
             }
 
             .folder-preview img {
-                width: 38px;
-                height: 38px;
+                width: 100%;
+                height: 100%;
             }
 
             .folder-front {
                 bottom: 13px;
                 height: 82px;
                 border-radius: 18px;
+            }
+
+            .sticker {
+                left: max(7px, calc(50% - 70px));
+                bottom: 26px;
+                width: 38px;
+                height: 38px;
+                border-width: 3px;
+                border-radius: 13px;
+            }
+
+            .sticker img {
+                width: 27px;
+                height: 27px;
             }
 
             .folder-title {
@@ -1152,8 +1199,9 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="https://kbook.mikeywa.icu/assets/UI/favcon.png" alt=""></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/kbook.jpg" alt=""></span>
                     <span class="folder-front"></span>
+                    <span class="sticker"><img src="https://kbook.mikeywa.icu/assets/UI/favcon.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>英语新素养K段-绘本发散</strong>
@@ -1165,8 +1213,9 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="https://lansen.mikeywa.icu/app-logo.png" alt=""></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/lansen.jpg" alt=""></span>
                     <span class="folder-front"></span>
+                    <span class="sticker"><img src="https://lansen.mikeywa.icu/app-logo.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>蓝森-更适合叫叫的人力系统</strong>
@@ -1178,8 +1227,9 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="https://zzx.mikeywa.icu/brand-assets/favicon.png" alt=""></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/jojoup-ios.jpg" alt=""></span>
                     <span class="folder-front"></span>
+                    <span class="sticker"><img src="https://zzx.mikeywa.icu/brand-assets/favicon.png" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>周周学</strong>
@@ -1191,8 +1241,9 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="../assets/demo-favicons/index.svg" alt=""></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/brand.jpg" alt=""></span>
                     <span class="folder-front"></span>
+                    <span class="sticker"><img src="../assets/demo-favicons/index.svg" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>JOJO UI DesignMD测试Demo</strong>
@@ -1204,8 +1255,9 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-preview"><img src="../assets/demo-favicons/modular-standard-question.svg" alt=""></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/modular-standard-question.svg" alt=""></span>
                     <span class="folder-front"></span>
+                    <span class="sticker"><img src="../assets/demo-favicons/modular-standard-question.svg" alt=""></span>
                 </span>
                 <span class="folder-title">
                     <strong>JOJO 模块化设计MD测试</strong>
