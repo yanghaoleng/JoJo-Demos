@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/rednote-poster",
+      "destination": "/DEMO/share-poster.html"
+    },
+    {
       "source": "/",
       "destination": "/DEMO/index.html"
     }
