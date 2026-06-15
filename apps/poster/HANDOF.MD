@@ -75,8 +75,10 @@
 - 已同步本轮源码、文档、需求文档和图标方向图到 `/Users/jojo/VibeCoding/📍JUDS/apps/poster`。
 - 已按部署流程执行 `git pull --ff-only`，结果为 Already up to date。
 - 已提交并推送 poster 相关变更到 `main`：`cc9c5fc Deploy poster activity to lowercase route`。
-- 已部署到 Vercel 生产环境：`dpl_D7sJJYu6o2VZRvXajbS4YaQ8z9pD`，并手动 alias 到 `jojodemos.mikeywa.icu`。
-- 已验证线上 `https://jojodemos.mikeywa.icu/poster` 返回 200；`/poster/assets/index-Bb15EQ3h.js`、`/poster/favicon-32.webp`、`/POSTER`、`/POSTER/assets/index-Bb15EQ3h.js` 均返回 200。
+- 已提交并推送部署文档记录到 `main`：`a7840bd Document poster production deployment`。
+- 已提交并推送尾斜杠路由修复到 `main`：`0430407 Support poster trailing slash route`。
+- 已部署到 Vercel 生产环境：`dpl_H1p8Lurc3MxgCWK4y3oxQkhPSjdw`，并手动 alias 到 `jojodemos.mikeywa.icu`。
+- 已验证线上 `https://jojodemos.mikeywa.icu/poster` 与 `/poster/` 均返回 200；`/poster/assets/index-Bb15EQ3h.js`、`/poster/favicon-32.webp`、`/POSTER`、`/POSTER/` 均返回 200。
 - 已复验宿主 `/`、`/Hackathon`、`/ququ` 均返回 200。
 
 ## 进行中

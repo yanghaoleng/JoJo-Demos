@@ -80,7 +80,7 @@
 
 2026-06-13 已按完整活动原型补齐前端流程，并新增伴读权益、荣誉奖牌、14 阶成长树图标系统；默认入口恢复为制作海报页。
 
-2026-06-15 已部署到 `https://jojodemos.mikeywa.icu/poster`；线上小写入口通过 Vercel rewrite 指向 `/POSTER` 静态目录，旧 `/POSTER` 继续兼容。
+2026-06-15 已部署到 `https://jojodemos.mikeywa.icu/poster`；线上小写入口和尾斜杠 `/poster/` 通过 Vercel rewrite 指向 `/POSTER` 静态目录，旧 `/POSTER` 与 `/POSTER/` 继续兼容。
 
 ## 目录约定
 
