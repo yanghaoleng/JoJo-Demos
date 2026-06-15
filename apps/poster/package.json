@@ -1,0 +1,21 @@
+{
+  "name": "xhs-checkin-poster-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "build:poster": "vite build --base=/POSTER/",
+    "sync:host": "npm run build:poster && rsync -a --delete dist/ ../../POSTER/",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "gsap": "^3.13.0",
+    "vite": "^7.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {}
+}

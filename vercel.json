@@ -1,6 +1,30 @@
 {
   "rewrites": [
     {
+      "source": "/poster",
+      "destination": "/POSTER/index.html"
+    },
+    {
+      "source": "/poster/:path*",
+      "destination": "/POSTER/:path*"
+    },
+    {
+      "source": "/POSTER",
+      "destination": "/POSTER/index.html"
+    },
+    {
+      "source": "/ququ",
+      "destination": "/ququ/index.html"
+    },
+    {
+      "source": "/Hackathon",
+      "destination": "/DEMO/hackathon.html"
+    },
+    {
+      "source": "/hackathon",
+      "destination": "/DEMO/hackathon.html"
+    },
+    {
       "source": "/rednote-poster",
       "destination": "/DEMO/share-poster.html"
     },
