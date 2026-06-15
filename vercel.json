@@ -5,11 +5,19 @@
       "destination": "/POSTER/index.html"
     },
     {
+      "source": "/poster/",
+      "destination": "/POSTER/index.html"
+    },
+    {
       "source": "/poster/:path*",
       "destination": "/POSTER/:path*"
     },
     {
       "source": "/POSTER",
+      "destination": "/POSTER/index.html"
+    },
+    {
+      "source": "/POSTER/",
       "destination": "/POSTER/index.html"
     },
     {
