@@ -4,15 +4,15 @@
 
 做一个手机 H5 尺寸的阅读打卡活动前端：默认入口仍是制作海报/相机链路，可切换 8 个模板、拍照生成可保存 PNG；同时补齐活动首页、发布、审核、领奖、历史和规则等完整活动原型流程。
 
-线上地址：https://jojodemos.mikeywa.icu/POSTER
+线上地址：https://jojodemos.mikeywa.icu/poster
 
-最新本地更新：2026-06-13，已按活动原型补齐前端状态流，并新增成长树、伴读权益、荣誉奖牌的精致卡通图标。未执行线上部署。
+最新部署：2026-06-15，Vercel 生产部署 `dpl_D7sJJYu6o2VZRvXajbS4YaQ8z9pD`，已绑定 `jojodemos.mikeywa.icu`，小写 `/poster` 入口可访问；旧 `/POSTER` 保留兼容。
 
 ## 目录职责
 
 - 任务入口：本目录 `/Users/jojo/VibeCoding/🎈小红书打卡分享`，后续新需求从这里读 `HANDOF.MD`。
 - 正式源码：`/Users/jojo/VibeCoding/📍JUDS/apps/poster`，以后实际改 POSTER 页面优先改这里。
-- 静态发布：`/Users/jojo/VibeCoding/📍JUDS/POSTER`，由正式源码构建同步，供 `jojodemos.mikeywa.icu/POSTER` 访问。
+- 静态发布：`/Users/jojo/VibeCoding/📍JUDS/POSTER`，由正式源码构建同步；线上小写 `/poster` 通过 Vercel rewrite 指向该目录。
 - 宿主站：`/Users/jojo/VibeCoding/📍JUDS`，保留 JOJO Demos、黑客松等页面。
 
 ## 本地内网启动
@@ -62,6 +62,6 @@
 - Figma：原 3 个模板来自 Figma；新增 5 个阅读主题模板已作为一组导入到同一 Figma 文件，并保留导入源 `design/figma-import/reading-template-pack.svg`。
 - 模板生成脚本：`scripts/generate_reading_templates.py` 生成新增模板透明 WebP、Figma 导入 SVG 和预览图。
 - WebP 模板资源：新增模板为 `public/templates/reading-template-04.webp` 到 `reading-template-08.webp`，单张约 23-41KB。
-- Vercel：部署到 `jojodemos.mikeywa.icu/POSTER`，构建时使用 `--base=/POSTER/`。
+- Vercel：主入口为 `jojodemos.mikeywa.icu/poster`，构建时使用 `--base=/POSTER/`；`/poster` 与 `/poster/*` 由 `vercel.json` rewrite 到 `/POSTER`。
 - 本地内网部署：`双击启动内网部署.command` 构建后用 `npx vite preview --host 0.0.0.0` 启动。
 - 网页标题：`index.html` 中设置为“小红书打卡相机”。

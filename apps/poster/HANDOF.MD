@@ -73,6 +73,11 @@
 - 已通过 `npm run build`；正式源码目录 `/Users/jojo/VibeCoding/📍JUDS/apps/poster` 同步后也已通过 `npm run build`。
 - 已用 430px 手机宽度 headless 截图验证默认制作海报页、活动首页首屏图标布局；用浏览器 DOM 交互验证 7 天/14 天状态、奖励弹窗、规则弹窗和制作海报入口。
 - 已同步本轮源码、文档、需求文档和图标方向图到 `/Users/jojo/VibeCoding/📍JUDS/apps/poster`。
+- 已按部署流程执行 `git pull --ff-only`，结果为 Already up to date。
+- 已提交并推送 poster 相关变更到 `main`：`cc9c5fc Deploy poster activity to lowercase route`。
+- 已部署到 Vercel 生产环境：`dpl_D7sJJYu6o2VZRvXajbS4YaQ8z9pD`，并手动 alias 到 `jojodemos.mikeywa.icu`。
+- 已验证线上 `https://jojodemos.mikeywa.icu/poster` 返回 200；`/poster/assets/index-Bb15EQ3h.js`、`/poster/favicon-32.webp`、`/POSTER`、`/POSTER/assets/index-Bb15EQ3h.js` 均返回 200。
+- 已复验宿主 `/`、`/Hackathon`、`/ququ` 均返回 200。
 
 ## 进行中
 
@@ -82,8 +87,5 @@
 
 - 本地 `localhost` 下摄像头权限是否正常弹出。
 - 真机保存图片入口在不同浏览器里可能表现不同，当前使用 `<a download>` 作为 Demo 保存方式。
-- 当前项目目录不是 git 仓库，本次部署无法执行项目级 `git pull/push`；部署通过临时 Vercel 发布包完成，未改动 `📍JUDS` 工作区。
-- 本次部署前同样确认当前项目目录不是 git 仓库；`📍JUDS` 工作区存在大量既有改动，未执行拉取或推送，避免覆盖他人/历史改动；部署通过临时发布包完成。
-- 本轮只做前端本地实现与验收，未按部署流程拉取、推送或部署。
 - 启动文件只负责本机内网预览，不执行 git 拉取、推送或线上部署。
-- `📍JUDS` 工作区仍有大量既有脏改，本轮只同步 `apps/poster` 相关文件，未执行拉取、推送或线上部署。
+- `📍JUDS` 工作区仍有大量既有脏改和未跟踪文件；本次提交/推送/部署只限定 poster 相关文件，未清理或回滚其它改动。

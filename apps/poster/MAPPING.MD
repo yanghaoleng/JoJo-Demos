@@ -45,7 +45,8 @@
 | 返回按钮 | 结果页 | `.back-button`, `backHome()` | 清空结果并回首页 |
 | 网站图标 | 浏览器标签 | `public/favicon-32.webp`, `public/favicon.webp`, `public/apple-touch-icon.webp`, `index.html` | 3D 蓝色渐变相机 WebP Favicon |
 | 网页标题 | 浏览器标签 | `index.html` `<title>` | 当前为“小红书打卡相机” |
-| 线上入口 | Vercel | `/POSTER` | 当前发布在 `jojodemos.mikeywa.icu/POSTER` |
+| 线上入口 | Vercel | `/poster`, `/POSTER` | 主入口为 `jojodemos.mikeywa.icu/poster`；旧 `/POSTER` 兼容 |
+| 小写路由转发 | Vercel | `vercel.json` `/poster`, `/poster/:path*` | 将小写入口和资源转发到 `/POSTER` 静态目录 |
 | 宿主旧入口 | Vercel | `/Hackathon`, `/hackathon`, `/DEMO/hackathon.html` | 保持黑客松页面原状，不属于本小相机页面 |
 | 任务入口 | 本地控制台 | `/Users/jojo/VibeCoding/🎈小红书打卡分享/HANDOF.MD` | 后续需求仍从这里续接 |
 | 正式源码 | 宿主站源码 | `/Users/jojo/VibeCoding/📍JUDS/apps/poster` | 以后实际修改 POSTER 页面优先改这里 |
