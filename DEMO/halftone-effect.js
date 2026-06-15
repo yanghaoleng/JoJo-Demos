@@ -93,7 +93,12 @@
 
     /** Preload a list of images into the cache. */
     preload(urls) {
-      urls.forEach((u) => this._load(u, /* silent */ true));
+      urls.forEach((u) => {
+        if (!u || this._cache.has(u)) return;
+        const img = new Image();
+        img.onload = () => this._cache.set(u, img);
+        img.src = u;
+      });
     }
 
     destroy() {
