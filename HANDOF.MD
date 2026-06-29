@@ -8,4 +8,4 @@
 | 本地验证 | 已完成代码层校验 | `http://127.0.0.1:4177/DEMO/index.html` 返回 200，HTML 已包含 `.note-close::before/::after` 叉号样式；内置浏览器新建标签页超时，未完成视觉截图 |
 | 重新部署 | 已完成 | 已推送 `main`，Vercel 生产部署 Ready，并将 `jojodemos.mikeywa.icu` 指向最新部署 |
 | 修复黑客松活动页线上 404 | 已完成 | 已补入 `DEMO/hackathon.html` 和必要静态资源，并重新部署；线上 `/Hackathon`、`/hackathon`、`/DEMO/hackathon.html` 均返回 200 |
-| 修改蛐蛐模拟器入口链接 | 待部署 | `/DEMO/index.html` 中 `PROJECTS.ququ.files[0]` 已改为 `https://ququ.mikeywa.icu/ding`，待提交部署 |
+| 修改蛐蛐模拟器入口链接 | 已完成 | `/DEMO/index.html` 中 `PROJECTS.ququ.files[0]` 已改为 `https://ququ.mikeywa.icu/ding`，线上索引页已验证生效 |
