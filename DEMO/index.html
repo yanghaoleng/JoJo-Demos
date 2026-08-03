@@ -376,7 +376,7 @@
             place-items: end center;
             min-height: clamp(168px, 18vw, 214px);
             isolation: isolate;
-            perspective: 780px;
+            perspective: 920px;
         }
 
         .folder-back,
@@ -393,6 +393,7 @@
 
         .folder-back {
             bottom: 18px;
+            z-index: 0;
             height: 116px;
             border-radius: 22px 22px 24px 24px;
             background:
@@ -408,6 +409,7 @@
         .folder-tab {
             bottom: 124px;
             left: calc(50% - 39px);
+            z-index: 0;
             width: 92px;
             height: 42px;
             border-bottom: 0;
@@ -422,14 +424,25 @@
         }
 
         .folder-paper,
-        .folder-preview {
+        .folder-preview,
+        .folder-shot {
             position: absolute;
             left: 50%;
             overflow: hidden;
             border: 1px solid var(--line-soft);
-            border-radius: 10px;
+            border-radius: 11px;
+            background:
+                linear-gradient(145deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .56)),
+                color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 12%, transparent);
+            padding: 3px;
             transform-origin: 50% 100%;
-            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), filter 420ms ease;
+            box-shadow:
+                0 12px 24px rgba(var(--shadow-rgb), .12),
+                inset 0 0 0 1px var(--surface-highlight-soft);
+            transition:
+                transform 500ms cubic-bezier(.2, .72, .18, 1),
+                filter 420ms ease,
+                box-shadow 420ms ease;
         }
 
         .folder-paper {
@@ -437,40 +450,44 @@
             z-index: 1;
             width: var(--paper-width, 88px);
             height: var(--paper-height, 112px);
-            background:
-                linear-gradient(145deg, var(--surface-highlight-soft), rgba(255, 255, 255, .18)),
-                color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 20%, transparent);
-            box-shadow:
-                0 10px 22px rgba(var(--shadow-rgb), .08),
-                inset 0 0 0 1px var(--surface-highlight-soft);
-            opacity: .74;
-            transform: translateX(-42%) translateY(18px) rotate(calc(var(--paper-rotate, -4deg) * -.55));
+            opacity: .92;
+            transform: translateX(-74%) translateY(24px) rotate(calc(var(--paper-rotate, -4deg) * -1.1));
+        }
+
+        .folder-shot {
+            bottom: var(--shot-bottom, 78px);
+            z-index: 2;
+            width: var(--shot-width, 82px);
+            height: var(--shot-height, 98px);
+            opacity: .96;
+            transform: translateX(-20%) translateY(25px) rotate(calc(var(--paper-rotate, -4deg) * .9));
         }
 
         .folder-preview {
             bottom: var(--preview-bottom, 70px);
-            z-index: 1;
+            z-index: 3;
             width: var(--preview-width, 82px);
             height: var(--preview-height, 106px);
-            background: var(--gray-1);
-            box-shadow:
-                0 12px 24px rgba(var(--shadow-rgb), .11),
-                inset 0 0 0 1px var(--surface-highlight-soft);
-            transform: translateX(-50%) translateY(18px) rotate(var(--paper-rotate, -4deg));
+            transform: translateX(-50%) translateY(23px) rotate(var(--paper-rotate, -4deg));
         }
 
-        .folder-preview img {
+        .folder-paper img,
+        .folder-preview img,
+        .folder-shot img {
             display: block;
             width: 100%;
             height: 100%;
             object-fit: cover;
             object-position: top center;
+            border-radius: 8px;
         }
 
-        .folder-preview::after {
+        .folder-paper::after,
+        .folder-preview::after,
+        .folder-shot::after {
             content: "";
             position: absolute;
-            inset: 2px;
+            inset: 3px;
             border-radius: inherit;
             background: linear-gradient(135deg, rgba(255, 255, 255, .34), transparent 48%);
             pointer-events: none;
@@ -478,23 +495,23 @@
 
         .folder-favicon {
             position: absolute;
-            left: max(18px, calc(50% - 86px));
-            bottom: 36px;
+            left: calc(50% + 50px);
+            bottom: 110px;
             z-index: 4;
             display: grid;
             place-items: center;
-            width: 46px;
-            height: 46px;
+            width: 43px;
+            height: 43px;
             padding: 6px;
-            border: 3px solid var(--surface-highlight);
-            border-radius: 14px;
+            border: 1px solid var(--line-soft);
+            border-radius: 13px;
             background:
                 linear-gradient(145deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .58)),
                 color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 16%, transparent);
             box-shadow:
-                0 10px 18px rgba(var(--shadow-rgb), .14),
+                0 12px 22px rgba(var(--shadow-rgb), .14),
                 inset 0 0 0 1px var(--surface-highlight-soft);
-            transform: rotate(var(--paper-rotate, -7deg));
+            transform: translateX(-6px) translateY(22px) rotate(calc(var(--paper-rotate, -7deg) * .75));
             transform-origin: 50% 100%;
             transition: transform 420ms cubic-bezier(.2, .72, .18, 1), filter 420ms ease;
         }
@@ -508,7 +525,7 @@
 
         .folder-front {
             bottom: 18px;
-            z-index: 2;
+            z-index: 5;
             height: 106px;
             border-radius: 22px 22px 24px 24px;
             background:
@@ -556,18 +573,23 @@
 
         .folder-card:hover .folder-paper,
         .folder-card:focus-visible .folder-paper {
-            transform: translateX(-42%) translateY(-5px) rotate(calc(var(--paper-rotate, -4deg) * -.38));
+            transform: translateX(-82%) translateY(-12px) rotate(calc(var(--paper-rotate, -4deg) * -1.18));
+        }
+
+        .folder-card:hover .folder-shot,
+        .folder-card:focus-visible .folder-shot {
+            transform: translateX(-8%) translateY(-18px) rotate(calc(var(--paper-rotate, -4deg) * 1.1));
         }
 
         .folder-card:hover .folder-preview,
         .folder-card:focus-visible .folder-preview {
             filter: saturate(1.05);
-            transform: translateX(-50%) translateY(-9px) rotate(calc(var(--paper-rotate, -4deg) * .65));
+            transform: translateX(-48%) translateY(-24px) rotate(calc(var(--paper-rotate, -4deg) * .42));
         }
 
         .folder-card:hover .folder-favicon,
         .folder-card:focus-visible .folder-favicon {
-            transform: translateY(-2px) scale(1.02) rotate(calc(var(--paper-rotate, -7deg) * .65));
+            transform: translateX(10px) translateY(-24px) scale(1.04) rotate(calc(var(--paper-rotate, -7deg) * .95));
         }
 
         .folder-title {
@@ -1182,6 +1204,13 @@
                 border-radius: 9px;
             }
 
+            .folder-shot {
+                bottom: var(--shot-mobile-bottom, 61px);
+                width: var(--shot-mobile-width, 62px);
+                height: var(--shot-mobile-height, 76px);
+                border-radius: 9px;
+            }
+
             .folder-preview {
                 bottom: var(--preview-mobile-bottom, 54px);
                 width: var(--preview-mobile-width, 60px);
@@ -1190,18 +1219,17 @@
             }
 
             .folder-favicon {
-                left: max(13px, calc(50% - 69px));
-                bottom: 27px;
-                width: 38px;
-                height: 38px;
+                left: calc(50% + 38px);
+                bottom: 83px;
+                width: 34px;
+                height: 34px;
                 padding: 5px;
-                border-width: 3px;
                 border-radius: 12px;
             }
 
             .folder-favicon img {
-                width: 26px;
-                height: 26px;
+                width: 22px;
+                height: 22px;
             }
 
             .folder-front {
@@ -1292,6 +1320,10 @@
             }
         }
     </style>
+    <script>
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
     <button class="theme-toggle" id="theme-toggle" type="button" aria-label="主题：自动，点击切换" title="主题：自动，点击切换">
@@ -1314,10 +1346,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../ququ/jojo-assets/ui-concept.png" alt=""></span>
+                    <span class="folder-paper"><img src="../ququ/jojo-assets/memes/sticker-sheet.png" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../ququ/avatars/jojo/jiaojiao.png" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../ququ/jojo-assets/ui-concept.png" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="../ququ/site-icon.svg" alt=""></span>
+                    <span class="folder-favicon"><img src="../ququ/site-icon.svg" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>蛐蛐模拟器</strong>
@@ -1329,10 +1362,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/hackathon-hero-duo.webp" alt=""></span>
+                    <span class="folder-paper"><img src="../assets/demo-shots/hackathon-hero-jiaojiao.webp" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../assets/demo-shots/hackathon-hero-child.webp" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/hackathon-hero-duo.webp" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="../assets/demo-favicons/hackathon-black-chick-v8-rounded-32.png?v=8" alt=""></span>
+                    <span class="folder-favicon"><img src="../assets/demo-favicons/hackathon-black-chick-v8-rounded-32.png?v=8" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>叫叫线下AI黑客松</strong>
@@ -1344,10 +1378,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/kbook.jpg" alt=""></span>
+                    <span class="folder-paper"><img src="../assets/demo-shots/kbook.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../assets/demo-shots/kbook.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/kbook.jpg" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="https://kbook.mikeywa.icu/assets/UI/favcon.png" alt=""></span>
+                    <span class="folder-favicon"><img src="https://kbook.mikeywa.icu/assets/UI/favcon.png" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>K段绘本</strong>
@@ -1359,10 +1394,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/lansen.jpg" alt=""></span>
+                    <span class="folder-paper"><img src="../assets/demo-shots/lansen.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../assets/demo-shots/lansen.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/lansen.jpg" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="https://lansen.mikeywa.icu/app-logo.png" alt=""></span>
+                    <span class="folder-favicon"><img src="https://lansen.mikeywa.icu/app-logo.png" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>蓝森人力系统</strong>
@@ -1374,10 +1410,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/jojoup-ios.jpg" alt=""></span>
+                    <span class="folder-paper"><img src="../assets/demo-shots/jojoup-ios.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../assets/demo-shots/jojoup-ios.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/jojoup-ios.jpg" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="https://zzx.mikeywa.icu/brand-assets/favicon.png" alt=""></span>
+                    <span class="folder-favicon"><img src="https://zzx.mikeywa.icu/brand-assets/favicon.png" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>周周学</strong>
@@ -1389,10 +1426,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../poster/templates/source-01.webp" alt=""></span>
+                    <span class="folder-paper"><img src="../POSTER/templates/reading-template-04.webp" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../POSTER/templates/figma-template-01.webp" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../POSTER/templates/source-01.webp" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="../poster/favicon-32.webp" alt=""></span>
+                    <span class="folder-favicon"><img src="../POSTER/favicon-32.webp" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>小红书打卡相机</strong>
@@ -1404,10 +1442,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/brand.jpg" alt=""></span>
+                    <span class="folder-paper"><img src="../assets/demo-shots/assessment.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../assets/demo-shots/webapp.jpg" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/brand.jpg" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="../assets/demo-favicons/index.svg" alt=""></span>
+                    <span class="folder-favicon"><img src="../assets/demo-favicons/index.svg" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>叫叫App DesignMD</strong>
@@ -1419,10 +1458,11 @@
                 <span class="folder-visual" aria-hidden="true">
                     <span class="folder-tab"></span>
                     <span class="folder-back"></span>
-                    <span class="folder-paper"></span>
-                    <span class="folder-preview"><img src="../assets/demo-shots/modular-standard-question.svg" alt=""></span>
+                    <span class="folder-paper"><img src="../assets/demo-shots/modular-standard-question.svg" alt="" loading="lazy"></span>
+                    <span class="folder-shot"><img src="../assets/demo-favicons/modular-standard-question.svg" alt="" loading="lazy"></span>
+                    <span class="folder-preview"><img src="../assets/demo-shots/modular-standard-question.svg" alt="" loading="lazy"></span>
                     <span class="folder-front"></span>
-                    <span class="folder-favicon"><img src="../assets/demo-favicons/modular-standard-question.svg" alt=""></span>
+                    <span class="folder-favicon"><img src="../assets/demo-favicons/modular-standard-question.svg" alt="" loading="lazy"></span>
                 </span>
                 <span class="folder-title">
                     <strong>叫叫课中 DesignMD</strong>
@@ -1590,9 +1630,9 @@
                     title: "小红书打卡相机",
                     desc: "手机 H5 尺寸的小红书打卡相机，可切换海报模板、拍照生成并保存 PNG 海报。",
                     accent: "#FF7A99",
-                    icon: "../poster/favicon-32.webp",
+                    icon: "../POSTER/favicon-32.webp",
                     files: [
-                        { name: "打开项目", meta: "jojodemos.mikeywa.icu/poster", href: "https://jojodemos.mikeywa.icu/poster", icon: "ph-camera" }
+                        { name: "打开项目", meta: "jojodemos.mikeywa.icu/POSTER", href: "https://jojodemos.mikeywa.icu/POSTER", icon: "ph-camera" }
                     ],
                     copies: []
                 },
