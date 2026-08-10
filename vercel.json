@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/upnotes",
+      "destination": "/upnotes/",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/poster",

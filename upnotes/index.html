@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>勤刷匠笔记练习模式 Demo</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=20260710" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=20260710" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="demo-stage">
+      <section class="phone" aria-label="勤刷匠笔记本 Demo">
+        <header class="status-bar" aria-label="手机状态栏">
+          <span>9:41</span>
+          <span class="status-icons">5G 100%</span>
+        </header>
+
+        <div class="app-head">
+          <button class="ghost-back" type="button" aria-label="返回">‹</button>
+          <div>
+            <p class="micro-copy">勤刷匠</p>
+            <h1>笔记本</h1>
+          </div>
+        </div>
+
+        <nav class="lesson-tabs" id="lessonTabs" aria-label="笔记类型"></nav>
+
+        <section class="content-scroll" id="appContent" tabindex="0"></section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
