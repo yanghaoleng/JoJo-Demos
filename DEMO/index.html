@@ -372,55 +372,45 @@
 
         .folder-visual {
             position: relative;
-            display: grid;
-            place-items: end center;
-            min-height: clamp(168px, 18vw, 214px);
+            width: min(100%, 198px);
+            aspect-ratio: 20 / 17;
+            margin-inline: auto;
             isolation: isolate;
-            perspective: 920px;
+            perspective: 1000px;
+            transition: transform 180ms cubic-bezier(.2, .72, .18, 1);
         }
 
-        .folder-back,
-        .folder-front,
-        .folder-tab {
+        .folder-shape-defs {
             position: absolute;
-            left: 50%;
-            width: min(100%, 198px);
-            transform: translateX(-50%);
-            border: 1px solid var(--glass-line);
-            backdrop-filter: blur(18px) saturate(1.18);
-            -webkit-backdrop-filter: blur(18px) saturate(1.18);
+            width: 0;
+            height: 0;
+            overflow: hidden;
         }
 
         .folder-back {
-            bottom: 18px;
+            position: absolute;
+            inset: 0;
             z-index: 0;
-            height: 116px;
-            border-radius: 22px 22px 24px 24px;
-            background:
-                linear-gradient(150deg, var(--folder-glass-strong), var(--folder-glass-mid)),
-                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 28%, transparent), var(--folder-glass-soft));
-            box-shadow:
-                inset 0 1px 0 var(--surface-highlight),
-                inset 0 -18px 30px var(--surface-highlight-soft),
-                0 22px 46px rgba(var(--shadow-rgb), .1);
-            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), box-shadow 420ms ease;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            color: color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 14%, var(--gray-2));
+            filter:
+                drop-shadow(0 1px 2px rgba(var(--shadow-rgb), .06))
+                drop-shadow(0 6px 12px rgba(var(--shadow-rgb), .06))
+                drop-shadow(0 18px 32px rgba(var(--shadow-rgb), .07));
+            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), filter 420ms ease;
         }
 
-        .folder-tab {
-            bottom: 124px;
-            left: calc(50% - 39px);
-            z-index: 0;
-            width: 92px;
-            height: 42px;
-            border-bottom: 0;
-            border-radius: 19px 24px 6px 6px;
-            background:
-                linear-gradient(145deg, var(--folder-glass-strong), var(--folder-glass-mid)),
-                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 38%, transparent), transparent);
-            transform: translateX(-50%) rotate(-1deg);
-            transform-origin: 20% 100%;
-            box-shadow: inset 0 1px 0 var(--surface-highlight);
-            transition: transform 420ms cubic-bezier(.2, .72, .18, 1);
+        .folder-back-fill {
+            fill: currentColor;
+        }
+
+        .folder-back-line {
+            fill: none;
+            stroke: var(--surface-highlight);
+            stroke-width: 2;
+            opacity: .78;
         }
 
         .folder-paper,
@@ -440,7 +430,7 @@
                 0 12px 24px rgba(var(--shadow-rgb), .12),
                 inset 0 0 0 1px var(--surface-highlight-soft);
             transition:
-                transform 500ms cubic-bezier(.2, .72, .18, 1),
+                transform 520ms cubic-bezier(.2, .72, .18, 1),
                 filter 420ms ease,
                 box-shadow 420ms ease;
         }
@@ -451,7 +441,7 @@
             width: var(--paper-width, 88px);
             height: var(--paper-height, 112px);
             opacity: .92;
-            transform: translateX(-74%) translateY(24px) rotate(calc(var(--paper-rotate, -4deg) * -1.1));
+            transform: translateX(-78%) translateY(28px) rotate(calc(var(--paper-rotate, -4deg) * -1.05));
         }
 
         .folder-shot {
@@ -460,7 +450,7 @@
             width: var(--shot-width, 82px);
             height: var(--shot-height, 98px);
             opacity: .96;
-            transform: translateX(-20%) translateY(25px) rotate(calc(var(--paper-rotate, -4deg) * .9));
+            transform: translateX(-48%) translateY(29px) rotate(calc(var(--paper-rotate, -4deg) * .6));
         }
 
         .folder-preview {
@@ -468,7 +458,7 @@
             z-index: 3;
             width: var(--preview-width, 82px);
             height: var(--preview-height, 106px);
-            transform: translateX(-50%) translateY(23px) rotate(var(--paper-rotate, -4deg));
+            transform: translateX(-20%) translateY(27px) rotate(calc(var(--paper-rotate, -4deg) * -.55));
         }
 
         .folder-paper img,
@@ -495,25 +485,25 @@
 
         .folder-favicon {
             position: absolute;
-            left: calc(50% + 50px);
-            bottom: 110px;
+            left: 50%;
+            bottom: var(--favicon-bottom, 118px);
             z-index: 4;
             display: grid;
             place-items: center;
-            width: 43px;
-            height: 43px;
+            width: 42px;
+            height: 42px;
             padding: 6px;
             border: 1px solid var(--line-soft);
-            border-radius: 13px;
+            border-radius: 11px;
             background:
                 linear-gradient(145deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .58)),
                 color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 16%, transparent);
             box-shadow:
                 0 12px 22px rgba(var(--shadow-rgb), .14),
                 inset 0 0 0 1px var(--surface-highlight-soft);
-            transform: translateX(-6px) translateY(22px) rotate(calc(var(--paper-rotate, -7deg) * .75));
+            transform: translateX(52%) translateY(20px) rotate(calc(var(--paper-rotate, -7deg) * -.7));
             transform-origin: 50% 100%;
-            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), filter 420ms ease;
+            transition: transform 520ms cubic-bezier(.2, .72, .18, 1), filter 420ms ease;
         }
 
         .folder-favicon img {
@@ -524,19 +514,25 @@
         }
 
         .folder-front {
-            bottom: 18px;
+            position: absolute;
+            inset: 24% 0 0;
             z-index: 5;
-            height: 106px;
-            border-radius: 22px 22px 24px 24px;
+            border: 1px solid var(--glass-line);
+            border-radius: 7.5% / 11.6%;
             background:
-                linear-gradient(145deg, var(--folder-glass-front), var(--folder-glass-front-soft)),
-                linear-gradient(135deg, color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 24%, transparent), var(--folder-glass-front-tint));
+                linear-gradient(to bottom, var(--folder-glass-front), var(--folder-glass-front-soft)),
+                color-mix(in srgb, var(--folder-accent, var(--yellow-4)) 10%, var(--folder-glass-front-tint));
+            backdrop-filter: blur(16px) saturate(1.8);
+            -webkit-backdrop-filter: blur(16px) saturate(1.8);
             box-shadow:
                 inset 0 1px 0 var(--surface-highlight),
-                inset 0 -20px 34px var(--surface-highlight-soft),
-                0 18px 38px rgba(var(--shadow-rgb), .11);
+                inset 0 -1px 0 var(--surface-highlight-soft),
+                0 -2px 6px -1px rgba(var(--shadow-rgb), .08);
             transform-origin: 50% 100%;
-            transition: transform 420ms cubic-bezier(.2, .72, .18, 1), box-shadow 420ms ease;
+            transition:
+                transform 520ms cubic-bezier(.2, .72, .18, 1),
+                box-shadow 420ms ease,
+                background 420ms ease;
         }
 
         .folder-front::before {
@@ -550,46 +546,45 @@
 
         .folder-card:hover .folder-back,
         .folder-card:focus-visible .folder-back {
-            transform: translateX(-50%) translateY(-4px) rotateX(4deg);
-            box-shadow:
-                inset 0 1px 0 var(--surface-highlight),
-                inset 0 -18px 30px var(--surface-highlight-soft),
-                0 26px 58px rgba(var(--shadow-rgb), .15);
-        }
-
-        .folder-card:hover .folder-tab,
-        .folder-card:focus-visible .folder-tab {
-            transform: translateX(-50%) translateY(-8px) rotate(-7deg);
+            transform: translateY(-3px);
+            filter:
+                drop-shadow(0 1px 2px rgba(var(--shadow-rgb), .06))
+                drop-shadow(0 8px 16px rgba(var(--shadow-rgb), .08))
+                drop-shadow(0 22px 38px rgba(var(--shadow-rgb), .11));
         }
 
         .folder-card:hover .folder-front,
         .folder-card:focus-visible .folder-front {
-            transform: translateX(-50%) translateY(8px) rotateX(-13deg);
+            transform: translateY(5px) rotateX(-28deg);
             box-shadow:
                 inset 0 1px 0 var(--surface-highlight),
-                inset 0 -20px 34px var(--surface-highlight-soft),
-                0 24px 56px rgba(var(--shadow-rgb), .15);
+                inset 0 -1px 0 var(--surface-highlight-soft),
+                0 16px 34px rgba(var(--shadow-rgb), .14);
         }
 
         .folder-card:hover .folder-paper,
         .folder-card:focus-visible .folder-paper {
-            transform: translateX(-82%) translateY(-12px) rotate(calc(var(--paper-rotate, -4deg) * -1.18));
+            transform: translateX(-106%) translateY(-15px) rotate(calc(var(--paper-rotate, -4deg) * -1.5));
         }
 
         .folder-card:hover .folder-shot,
         .folder-card:focus-visible .folder-shot {
-            transform: translateX(-8%) translateY(-18px) rotate(calc(var(--paper-rotate, -4deg) * 1.1));
+            transform: translateX(-74%) translateY(-27px) rotate(calc(var(--paper-rotate, -4deg) * -.45));
         }
 
         .folder-card:hover .folder-preview,
         .folder-card:focus-visible .folder-preview {
             filter: saturate(1.05);
-            transform: translateX(-48%) translateY(-24px) rotate(calc(var(--paper-rotate, -4deg) * .42));
+            transform: translateX(-35%) translateY(-31px) rotate(calc(var(--paper-rotate, -4deg) * .72));
         }
 
         .folder-card:hover .folder-favicon,
         .folder-card:focus-visible .folder-favicon {
-            transform: translateX(10px) translateY(-24px) scale(1.04) rotate(calc(var(--paper-rotate, -7deg) * .95));
+            transform: translateX(70%) translateY(-18px) scale(1.04) rotate(calc(var(--paper-rotate, -7deg) * -1.1));
+        }
+
+        .folder-card:active .folder-visual {
+            transform: scale(.98);
         }
 
         .folder-title {
@@ -1174,27 +1169,7 @@
             }
 
             .folder-visual {
-                min-height: 146px;
-            }
-
-            .folder-back,
-            .folder-front,
-            .folder-tab {
                 width: min(100%, 156px);
-            }
-
-            .folder-back {
-                height: 92px;
-                bottom: 13px;
-                border-radius: 18px;
-            }
-
-            .folder-tab {
-                bottom: 101px;
-                left: calc(50% - 27px);
-                width: 72px;
-                height: 32px;
-                border-radius: 15px 18px 5px 5px;
             }
 
             .folder-paper {
@@ -1219,23 +1194,16 @@
             }
 
             .folder-favicon {
-                left: calc(50% + 38px);
-                bottom: 83px;
-                width: 34px;
-                height: 34px;
+                --favicon-bottom: 96px;
+                width: 32px;
+                height: 32px;
                 padding: 5px;
-                border-radius: 12px;
+                border-radius: 9px;
             }
 
             .folder-favicon img {
-                width: 22px;
-                height: 22px;
-            }
-
-            .folder-front {
-                bottom: 13px;
-                height: 82px;
-                border-radius: 18px;
+                width: 20px;
+                height: 20px;
             }
 
             .folder-title {
@@ -1326,6 +1294,12 @@
     <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
+    <svg class="folder-shape-defs" aria-hidden="true">
+        <defs>
+            <path id="folder-back-shape" d="M0 26A26 26 0 0 1 26 0h128a26 26 0 0 1 26 26 34 34 0 0 0 34 34h156a30 30 0 0 1 30 30v220a30 30 0 0 1-30 30H30a30 30 0 0 1-30-30Z"></path>
+        </defs>
+    </svg>
+
     <button class="theme-toggle" id="theme-toggle" type="button" aria-label="主题：自动，点击切换" title="主题：自动，点击切换">
         <i class="ph-fill ph-circle-half-tilt" aria-hidden="true"></i>
     </button>
@@ -1344,8 +1318,10 @@
         <section class="folder-grid" aria-label="Demo 列表">
             <button class="folder-card" type="button" data-project="ququ" style="--folder-accent: var(--pro-blue-4); --paper-rotate: -4deg; --preview-width: 118px; --preview-height: 76px; --preview-bottom: 84px; --paper-width: 124px; --paper-height: 82px; --paper-bottom: 90px; --preview-mobile-width: 88px; --preview-mobile-height: 58px; --preview-mobile-bottom: 66px; --paper-mobile-width: 92px; --paper-mobile-height: 64px; --paper-mobile-bottom: 70px;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../ququ/jojo-assets/memes/sticker-sheet.png" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../ququ/avatars/jojo/jiaojiao.png" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../ququ/jojo-assets/ui-concept.png" alt="" loading="lazy"></span>
@@ -1360,8 +1336,10 @@
 
             <button class="folder-card" type="button" data-project="hackathon" style="--folder-accent: var(--pro-blue-4); --paper-rotate: -6deg; --preview-width: 112px; --preview-height: 86px; --preview-bottom: 82px; --paper-width: 118px; --paper-height: 90px; --paper-bottom: 88px; --preview-mobile-width: 86px; --preview-mobile-height: 66px; --preview-mobile-bottom: 64px; --paper-mobile-width: 90px; --paper-mobile-height: 70px; --paper-mobile-bottom: 68px;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../assets/demo-shots/hackathon-hero-jiaojiao.webp" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../assets/demo-shots/hackathon-hero-child.webp" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/hackathon-hero-duo.webp" alt="" loading="lazy"></span>
@@ -1376,8 +1354,10 @@
 
             <button class="folder-card" type="button" data-project="kbook" style="--folder-accent: var(--orange-4); --paper-rotate: -5deg; --preview-width: 118px; --preview-height: 72px; --preview-bottom: 86px; --paper-width: 122px; --paper-height: 78px; --paper-bottom: 91px; --preview-mobile-width: 88px; --preview-mobile-height: 54px; --preview-mobile-bottom: 68px; --paper-mobile-width: 92px; --paper-mobile-height: 60px; --paper-mobile-bottom: 72px;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../assets/demo-shots/kbook.jpg" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../assets/demo-shots/kbook.jpg" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/kbook.jpg" alt="" loading="lazy"></span>
@@ -1392,8 +1372,10 @@
 
             <button class="folder-card" type="button" data-project="lansen" style="--folder-accent: var(--green-4); --paper-rotate: 4deg;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../assets/demo-shots/lansen.jpg" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../assets/demo-shots/lansen.jpg" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/lansen.jpg" alt="" loading="lazy"></span>
@@ -1408,8 +1390,10 @@
 
             <button class="folder-card" type="button" data-project="jojoup" style="--folder-accent: var(--purple-4); --paper-rotate: -3deg;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../assets/demo-shots/jojoup-ios.jpg" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../assets/demo-shots/jojoup-ios.jpg" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/jojoup-ios.jpg" alt="" loading="lazy"></span>
@@ -1424,8 +1408,10 @@
 
             <button class="folder-card" type="button" data-project="poster" style="--folder-accent: var(--pink-4); --paper-rotate: 4deg; --preview-width: 92px; --preview-height: 118px; --preview-bottom: 62px; --paper-width: 98px; --paper-height: 124px; --paper-bottom: 68px; --preview-mobile-width: 72px; --preview-mobile-height: 92px; --preview-mobile-bottom: 50px; --paper-mobile-width: 76px; --paper-mobile-height: 98px; --paper-mobile-bottom: 54px;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../POSTER/templates/reading-template-04.webp" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../POSTER/templates/figma-template-01.webp" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../POSTER/templates/source-01.webp" alt="" loading="lazy"></span>
@@ -1440,8 +1426,10 @@
 
             <button class="folder-card" type="button" data-project="uiDesign" style="--folder-accent: var(--pro-blue-4); --paper-rotate: 5deg;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../assets/demo-shots/assessment.jpg" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../assets/demo-shots/webapp.jpg" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/brand.jpg" alt="" loading="lazy"></span>
@@ -1456,8 +1444,10 @@
 
             <button class="folder-card" type="button" data-project="modular" style="--folder-accent: var(--yellow-4); --paper-rotate: -4deg;">
                 <span class="folder-visual" aria-hidden="true">
-                    <span class="folder-tab"></span>
-                    <span class="folder-back"></span>
+                    <svg class="folder-back" viewBox="0 0 400 340" preserveAspectRatio="none">
+                        <use class="folder-back-fill" href="#folder-back-shape"></use>
+                        <use class="folder-back-line" href="#folder-back-shape"></use>
+                    </svg>
                     <span class="folder-paper"><img src="../assets/demo-shots/modular-standard-question.svg" alt="" loading="lazy"></span>
                     <span class="folder-shot"><img src="../assets/demo-favicons/modular-standard-question.svg" alt="" loading="lazy"></span>
                     <span class="folder-preview"><img src="../assets/demo-shots/modular-standard-question.svg" alt="" loading="lazy"></span>

@@ -7,3 +7,6 @@
 | 蛐蛐模拟器入口 | `/DEMO/index.html` | `PROJECTS.ququ.files[0].href`, `data-project="ququ"` | 索引页“蛐蛐模拟器”弹窗里的打开项目链接，当前指向 `https://ququ.mikeywa.icu/ding` |
 | 黑客松活动页 | `/DEMO/hackathon.html` | `/Hackathon`, `/hackathon`, `vercel.json` rewrites | 叫叫线下 AI 黑客松活动页，线上短链由 Vercel rewrite 指向 HTML |
 | 黑客松首页卡片 | `/DEMO/index.html` | `data-project="hackathon"` | 索引页中打开黑客松活动页的列表项 |
+| 索引页文件夹 | `/DEMO/index.html` | `.folder-visual`, `.folder-back`, `.folder-front` | 一体成形的项目文件夹；后盖为 SVG 轮廓，前盖负责磨砂与展开动效 |
+| 文件夹缩略图 | `/DEMO/index.html` | `.folder-paper`, `.folder-shot`, `.folder-preview` | 文件夹内部的 3 张项目截图，hover / focus 时扇形展开 |
+| 文件夹内部图标 | `/DEMO/index.html` | `.folder-favicon` | 收在文件夹内部最右侧的项目 favicon，不再放置在文件夹外部 |

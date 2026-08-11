@@ -9,3 +9,4 @@
 | 重新部署 | 已完成 | 已推送 `main`，Vercel 生产部署 Ready，并将 `jojodemos.mikeywa.icu` 指向最新部署 |
 | 修复黑客松活动页线上 404 | 已完成 | 已补入 `DEMO/hackathon.html` 和必要静态资源，并重新部署；线上 `/Hackathon`、`/hackathon`、`/DEMO/hackathon.html` 均返回 200 |
 | 修改蛐蛐模拟器入口链接 | 已完成 | `/DEMO/index.html` 中 `PROJECTS.ququ.files[0]` 已改为 `https://ququ.mikeywa.icu/ding`，线上索引页已验证生效 |
+| 重做索引页文件夹 | 已完成本地实现与验证 | 文件夹改为连续 SVG 轮廓；favicon 与 3 张缩略图均收进文件夹，桌面、移动端、浅色模式和弹窗交互已验证，待推送生产环境 |
