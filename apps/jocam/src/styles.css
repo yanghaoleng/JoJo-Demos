@@ -890,7 +890,7 @@ button {
 
 @media (prefers-reduced-motion: no-preference) {
   .app-shell.is-desktop-device .desktop-note {
-    animation: desktop-note-enter-slow 1600ms 500ms both;
+    animation: desktop-note-enter-slow 800ms 500ms both;
     animation-timing-function: linear(
       0,
       0.014 5%,
