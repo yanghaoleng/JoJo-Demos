@@ -19,7 +19,11 @@ const FRAME_SIZES = {
   portrait: { width: 720, height: 1280 },
   landscape: { width: 1280, height: 720 },
 };
-const RIVE_SOURCE_SIZE = FRAME_SIZES.portrait;
+const RIVE_SOURCE_SIZE = { width: 1200, height: 640 };
+const RIVE_VISIBLE_SOURCE = { y: 96, width: 950, height: 544 };
+const RIVE_DEFAULT_CROP_X = 64;
+const RIVE_EDGE_PADDING = 24;
+const RIVE_ANALYSIS_SIZE = { width: 600, height: 320 };
 const RIVE_SCALE = 0.512;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
@@ -185,6 +189,8 @@ function App() {
   const riveAnimationIndexRef = useRef(0);
   const rivePlayRandomRef = useRef(null);
   const riveShuffleIntervalRef = useRef(null);
+  const riveCropXRef = useRef(RIVE_DEFAULT_CROP_X);
+  const riveCropTimeoutsRef = useRef([]);
 
   const [engineState, setEngineState] = useState("loading");
   const [engineMessage, setEngineMessage] = useState("正在准备叫叫");
@@ -331,9 +337,27 @@ function App() {
     if (personLayer === "behind") drawPerson();
 
     if (riveReady && riveCanvas?.width && riveCanvas?.height) {
-      const riveHeight = targetHeight * RIVE_SCALE;
-      const riveWidth = riveHeight * (RIVE_SOURCE_SIZE.width / RIVE_SOURCE_SIZE.height);
-      outputContext.drawImage(riveCanvas, 0, targetHeight - riveHeight, riveWidth, riveHeight);
+      const displayWidth = outputCanvas.clientWidth || targetWidth;
+      const displayHeight = outputCanvas.clientHeight || targetHeight;
+      const displayScale = Math.max(displayWidth / targetWidth, displayHeight / targetHeight);
+      const visibleTargetWidth = Math.min(targetWidth, displayWidth / displayScale);
+      const scale = Math.min(
+        (targetHeight * RIVE_SCALE) / RIVE_VISIBLE_SOURCE.height,
+        visibleTargetWidth / RIVE_VISIBLE_SOURCE.width,
+      );
+      const riveWidth = RIVE_VISIBLE_SOURCE.width * scale;
+      const riveHeight = RIVE_VISIBLE_SOURCE.height * scale;
+      outputContext.drawImage(
+        riveCanvas,
+        riveCropXRef.current,
+        RIVE_VISIBLE_SOURCE.y,
+        RIVE_VISIBLE_SOURCE.width,
+        RIVE_VISIBLE_SOURCE.height,
+        0,
+        targetHeight - riveHeight,
+        riveWidth,
+        riveHeight,
+      );
     }
 
     if (personLayer === "front") drawPerson();
@@ -373,7 +397,7 @@ function App() {
             canvas: riveCanvasRef.current,
             autoplay: false,
             autoBind: true,
-            layout: new Layout({ fit: Fit.Cover, alignment: Alignment.BottomLeft }),
+            layout: new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter }),
             onLoad: () => {
               if (cancelled) return;
               const animations = instance.animationNames || [];
@@ -388,6 +412,50 @@ function App() {
               riveAnimationsRef.current = animationOrder;
               riveAnimationIndexRef.current = 0;
 
+              const analysisCanvas = document.createElement("canvas");
+              analysisCanvas.width = RIVE_ANALYSIS_SIZE.width;
+              analysisCanvas.height = RIVE_ANALYSIS_SIZE.height;
+              const analysisContext = analysisCanvas.getContext("2d", { willReadFrequently: true });
+
+              const scheduleCropAnalysis = () => {
+                riveCropTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
+                riveCropTimeoutsRef.current = [];
+                riveCropXRef.current = RIVE_DEFAULT_CROP_X;
+                let unionMinX = RIVE_SOURCE_SIZE.width;
+                let unionMaxX = -1;
+
+                const analyze = () => {
+                  const riveCanvas = riveCanvasRef.current;
+                  if (cancelled || !analysisContext || !riveCanvas?.width) return;
+                  analysisContext.clearRect(0, 0, analysisCanvas.width, analysisCanvas.height);
+                  analysisContext.drawImage(riveCanvas, 0, 0, analysisCanvas.width, analysisCanvas.height);
+                  const pixels = analysisContext.getImageData(0, 0, analysisCanvas.width, analysisCanvas.height).data;
+                  let minX = analysisCanvas.width;
+                  let maxX = -1;
+
+                  for (let y = 0; y < analysisCanvas.height; y += 2) {
+                    for (let x = 0; x < analysisCanvas.width; x += 2) {
+                      if (pixels[(y * analysisCanvas.width + x) * 4 + 3] <= 8) continue;
+                      minX = Math.min(minX, x);
+                      maxX = Math.max(maxX, x);
+                    }
+                  }
+
+                  if (maxX < 0) return;
+                  const sourceScale = RIVE_SOURCE_SIZE.width / analysisCanvas.width;
+                  unionMinX = Math.min(unionMinX, minX * sourceScale);
+                  unionMaxX = Math.max(unionMaxX, maxX * sourceScale);
+                  const maxCropX = RIVE_SOURCE_SIZE.width - RIVE_VISIBLE_SOURCE.width;
+                  const leftAlignedX = unionMinX - RIVE_EDGE_PADDING;
+                  const rightSafeX = unionMaxX + RIVE_EDGE_PADDING - RIVE_VISIBLE_SOURCE.width;
+                  riveCropXRef.current = clamp(Math.max(leftAlignedX, rightSafeX), 0, maxCropX);
+                };
+
+                riveCropTimeoutsRef.current = [60, 360, 760].map((delay) => (
+                  window.setTimeout(analyze, delay)
+                ));
+              };
+
               const playAtIndex = (index) => {
                 const availableAnimations = riveAnimationsRef.current;
                 if (!availableAnimations.length) return;
@@ -397,6 +465,7 @@ function App() {
                 instance.play(nextAnimation);
                 riveAnimationIndexRef.current = normalizedIndex;
                 setRiveAnimationName(nextAnimation);
+                scheduleCropAnalysis();
               };
 
               const playRandom = () => {
@@ -470,6 +539,8 @@ function App() {
         window.clearInterval(riveShuffleIntervalRef.current);
         riveShuffleIntervalRef.current = null;
       }
+      riveCropTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
+      riveCropTimeoutsRef.current = [];
       riveRef.current?.cleanup();
       riveRef.current = null;
       rivePlayRandomRef.current = null;
