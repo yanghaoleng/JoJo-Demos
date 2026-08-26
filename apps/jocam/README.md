@@ -27,3 +27,5 @@ npm run build
 构建产物输出到仓库根目录的 `jocam/`。正式构建默认从 `https://rive.mikeywa.site/jocam/` 直连加载大体积资源，让最终页面仍保持在 `https://mikeywa.site/jocam/`，也不会把叫叫和人像模型绕回旧服务器。可以用 `JOCAM_ASSET_BASE` 覆盖该资源基地址。
 
 Rive 源文件来自 `https://rive.mikeywa.site/mBK`，入库文件的 SHA-256 为 `203a6f992698be770a4b49fb42f2632f095cef22490fa426bf933ed37c929233`。
+
+`deploy/nginx-rive-jocam.conf` 让大体积资源从腾讯云源站直连加载；`deploy/nginx-mikeywa-jocam.conf` 只负责在主站保留 `/jocam/` 入口。两份片段分别由 `rive.mikeywa.site` 和 `mikeywa.site` 的 HTTPS server 块引用。
