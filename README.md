@@ -30,6 +30,7 @@
 | 成长内容 Web App | `DEMO/app.html` |
 | 模块化题型 Demo | `DEMO/modular-standard-question.html` |
 | 家长成长沟通 | `report/index.html` |
+| 家长成长沟通（Figma 实图版） | `report-codex/index.html` |
 
 ## 使用方式
 
@@ -49,3 +50,5 @@
 ## 家长成长沟通 Demo
 
 `/report/` 是纯静态单页演示：用每日、周日晚上、每月、约半年四个时间节点，以及产品消息和班班消息两种触达方式，说明如何让家长感受到孩子的学习结果。无 API、无用户数据采集。
+
+`/report-codex/` 为独立重建版本，只保留时间线和“触达消息 → 报告页面”的分步演示；截图为 Figma 原始页面导出，无 API、无用户数据采集。

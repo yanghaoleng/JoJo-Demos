@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fdf7eb" />
+  <title>叫叫 · 家长成长沟通 Demo</title>
+  <style>
+    :root{--paper:#fdf7eb;--brown:#684218;--orange:#ef963e;--muted:#a87d50;--line:#e9cfab;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}*{box-sizing:border-box}html,body{min-height:100%;margin:0}body{font-family:var(--sans);background:var(--paper);color:var(--brown);-webkit-font-smoothing:antialiased}.page{min-height:100dvh;padding:28px clamp(20px,5vw,76px) 38px;background:radial-gradient(circle at 95% 4%,#ffe0a4 0,transparent 29%),radial-gradient(circle at 4% 94%,#fff0cf 0,transparent 27%),var(--paper)}.top{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;letter-spacing:.08em;color:#975f25}.top i{display:block;width:9px;height:9px;border-radius:3px;background:var(--orange);transform:rotate(45deg)}.layout{display:grid;grid-template-columns:180px minmax(0,1fr);gap:clamp(28px,6vw,100px);max-width:1280px;margin:clamp(45px,9vh,110px) auto 0}.timeline{position:relative;padding:2px 0}.timeline:before{content:"";position:absolute;top:31px;bottom:31px;left:15px;border-left:1px dashed #d5ae7c}.time-btn{position:relative;z-index:1;display:flex;align-items:center;gap:13px;width:100%;padding:13px 8px;border:0;border-radius:13px;background:transparent;color:#987a5b;text-align:left;cursor:pointer;transition:background .22s,color .22s}.time-btn:hover,.time-btn[aria-selected="true"]{background:#fff0d3;color:var(--brown)}.time-num{display:grid;place-items:center;width:31px;height:31px;flex:none;border:1px solid #dcbd92;border-radius:50%;background:var(--paper);font-size:11px;font-weight:800}.time-btn[aria-selected="true"] .time-num{border-color:var(--orange);background:var(--orange);color:white;box-shadow:0 0 0 5px #ffedcf}.time-btn b,.time-btn small{display:block}.time-btn b{font-size:15px}.time-btn small{margin-top:2px;font-size:11px;color:#ac8c6b}.flow{min-width:0}.stage-note{margin:0;color:#b5702e;font-size:12px;font-weight:700;letter-spacing:.1em}.flow h1{margin:7px 0 0;font-size:clamp(26px,3.6vw,46px);line-height:1.18;letter-spacing:-.05em}.steps{display:flex;align-items:center;gap:10px;margin-top:28px}.step{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:0;border-radius:99px;background:#f3e4cf;color:#a78661;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}.step b{display:grid;place-items:center;width:19px;height:19px;border-radius:50%;background:#ddbd93;color:white;font-size:10px}.step.active{background:#ffe5bb;color:#85501a}.step.active b{background:var(--orange)}.step-line{width:40px;border-top:1px dashed #d8b282}.screen-stage{position:relative;display:grid;place-items:center;min-height:min(64vh,720px);margin-top:17px}.screen{display:none;gap:clamp(22px,4vw,62px);align-items:center;justify-content:center;width:100%;animation:in .36s cubic-bezier(.2,.8,.2,1) both}.screen.active{display:flex}.real-shot{display:block;width:auto;max-width:min(100%,335px);max-height:min(62vh,640px);border-radius:22px;box-shadow:0 24px 50px #6e471d26}.screen-copy{max-width:280px}.screen-copy span{display:block;color:#bd7d38;font-size:12px;font-weight:700;letter-spacing:.1em}.screen-copy h2{margin:8px 0;color:var(--brown);font-size:clamp(21px,2.4vw,30px);line-height:1.3;letter-spacing:-.04em}.screen-copy p{margin:0;color:#967452;font-size:14px;line-height:1.75}.next{margin-top:20px;padding:11px 16px;border:0;border-radius:11px;background:var(--brown);color:#fff8e9;font:700 14px var(--sans);cursor:pointer}.next:hover{background:#835923}@keyframes in{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}@media(max-width:700px){.page{padding:22px 18px}.layout{grid-template-columns:1fr;gap:28px;margin-top:35px}.timeline{display:flex;gap:5px;overflow:auto;padding:0 0 3px}.timeline:before{display:none}.time-btn{min-width:96px;flex-direction:column;gap:4px;padding:9px;text-align:center}.time-btn small{font-size:9px}.flow h1{font-size:29px}.screen-stage{min-height:0;padding-top:7px}.screen.active{flex-direction:column}.real-shot{max-width:min(100%,290px);max-height:55vh}.screen-copy{max-width:330px;text-align:center}.next{margin-top:14px}.steps{margin-top:21px}.step-line{width:18px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="top"><i></i>叫叫 · 家长成长沟通 Demo</div>
+    <div class="layout">
+      <nav class="timeline" aria-label="时间节点">
+        <button class="time-btn" data-stage="daily" aria-selected="true"><span class="time-num">1</span><span><b>每日</b><small>每次学习后</small></span></button>
+        <button class="time-btn" data-stage="sunday" aria-selected="false"><span class="time-num">2</span><span><b>周日夜</b><small>每周日 20:00</small></span></button>
+        <button class="time-btn" data-stage="monthly" aria-selected="false"><span class="time-num">3</span><span><b>每月</b><small>每月最后一天</small></span></button>
+        <button class="time-btn" data-stage="halfyear" aria-selected="false"><span class="time-num">4</span><span><b>阶段</b><small>约每 6 个月</small></span></button>
+      </nav>
+      <section class="flow" aria-live="polite">
+        <p class="stage-note" id="stage-note">每日 · 学习即时反馈</p>
+        <h1 id="stage-title">今天完成的学习，今天被看见。</h1>
+        <div class="steps" aria-label="流程步骤">
+          <button class="step active" data-step="0"><b>1</b><span>收到触达</span></button><i class="step-line"></i>
+          <button class="step" data-step="1"><b>2</b><span>查看报告</span></button>
+        </div>
+        <div class="screen-stage">
+          <div class="screen active" data-screen="0"><img class="real-shot" src="assets/figma-message.png" alt="Figma 中的班班真实消息触达页面" /><div class="screen-copy"><span>第一步</span><h2>班班把孩子今天的学习情况发给家长</h2><p>这张页面为 Figma 原始页面截图。点击下一步，继续查看孩子的学习报告。</p><button class="next" data-next>下一步 →</button></div></div>
+          <div class="screen" data-screen="1"><img class="real-shot" id="report-image" src="assets/figma-monthly-report.png" alt="Figma 中的真实学习报告页面" /><div class="screen-copy"><span>第二步</span><h2 id="report-heading">打开报告，看见具体的学习结果</h2><p>家长进入小程序，在真实报告页面中了解孩子的学习进度与下一步建议。</p><button class="next" data-restart>重新播放</button></div></div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const copy={daily:{note:'每日 · 学习即时反馈',title:'今天完成的学习，今天被看见。',report:'打开学习日报，看见今天的完成与待加强点',image:'assets/figma-monthly-report.png'},sunday:{note:'每周日晚上 · 周学习小结',title:'在周末，把这一周的努力好好说清楚。',report:'打开周学习回顾，陪孩子总结这一周',image:'assets/figma-monthly-report.png'},monthly:{note:'每月 · 学习月报',title:'一个月的积累，值得被认真看见。',report:'打开月报告，了解主题月的能力变化',image:'assets/figma-monthly-report.png'},halfyear:{note:'约半年 · 阶段成长报告',title:'让长期成长，也有一份郑重的记录。',report:'打开阶段报告，回看这一程完整的成长',image:'assets/figma-stage-report.jpeg'}};
+    let stage='daily',step=0; const q=s=>document.querySelector(s); const qa=s=>document.querySelectorAll(s);
+    function render(){const item=copy[stage];q('#stage-note').textContent=item.note;q('#stage-title').textContent=item.title;q('#report-heading').textContent=item.report;q('#report-image').src=item.image;qa('.time-btn').forEach(b=>b.setAttribute('aria-selected',b.dataset.stage===stage));qa('.step').forEach(b=>b.classList.toggle('active',Number(b.dataset.step)===step));qa('.screen').forEach(s=>s.classList.toggle('active',Number(s.dataset.screen)===step));}
+    qa('.time-btn').forEach(b=>b.addEventListener('click',()=>{stage=b.dataset.stage;step=0;render()}));qa('.step').forEach(b=>b.addEventListener('click',()=>{step=Number(b.dataset.step);render()}));q('[data-next]').addEventListener('click',()=>{step=1;render()});q('[data-restart]').addEventListener('click',()=>{step=0;render()});
+  </script>
+</body>
+</html>

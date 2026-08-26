@@ -13,3 +13,5 @@
 | 家长报告时间点 | `/report/` | `.stage-tab` / `stageKey` | 每日、周日夜、每月、阶段四个时间节点 |
 | 家长报告触达方式 | `/report/` | `.channel-tabs` / `channelKey` | 产品小程序消息或班主任、指导师班班消息 |
 | 阶段报告正文 | `/report/` | `.report-cover` / `.report-scroll` | 点击封面进入可上下浏览的报告正文 |
+| Figma 实图版时间点 | `/report-codex/` | `.time-btn` / `data-stage` | 每日、周日夜、每月、阶段四个时间节点 |
+| Figma 实图版步骤 | `/report-codex/` | `.step` / `data-step` | 先显示触达消息，再显示对应报告页面 |

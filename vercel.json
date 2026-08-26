@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/report-codex",
+      "destination": "/report-codex/",
+      "permanent": false
+    },
+    {
       "source": "/report",
       "destination": "/report/",
       "permanent": false
