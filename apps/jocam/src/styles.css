@@ -1,13 +1,13 @@
 @font-face {
   font-family: "Mohr Rounded";
-  src: url("/jocam/media/MohrRounded-Bold.ttf") format("truetype");
+  src: url("https://rive.mikeywa.site/jocam/media/MohrRounded-Bold.ttf") format("truetype");
   font-display: swap;
   font-weight: 700;
 }
 
 @font-face {
   font-family: "Mohr Rounded";
-  src: url("/jocam/media/MohrRounded-Medium.ttf") format("truetype");
+  src: url("https://rive.mikeywa.site/jocam/media/MohrRounded-Medium.ttf") format("truetype");
   font-display: swap;
   font-weight: 500;
 }
