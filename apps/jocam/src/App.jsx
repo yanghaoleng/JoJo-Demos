@@ -34,6 +34,8 @@ const CAPTION_MODES = {
   streak: { prefix: "坚持连续学习叫叫阅读第", suffix: "天" },
 };
 const SEGMENT_INTERVAL_MS = 92;
+const PERSON_MASK_THRESHOLD = 0.52;
+const PERSON_FEATHER_RANGE_PX = 5;
 const LONG_PRESS_MS = 430;
 const MAX_RECORDING_MS = 15_000;
 const LOAD_ASSETS = [
@@ -240,12 +242,11 @@ function App() {
     const imageData = maskContext.createImageData(mask.width, mask.height);
 
     for (let index = 0; index < values.length; index += 1) {
-      const alpha = clamp((values[index] - 0.18) / 0.64, 0, 1);
       const offset = index * 4;
       imageData.data[offset] = 255;
       imageData.data[offset + 1] = 255;
       imageData.data[offset + 2] = 255;
-      imageData.data[offset + 3] = Math.round(alpha * alpha * (3 - 2 * alpha) * 255);
+      imageData.data[offset + 3] = values[index] >= PERSON_MASK_THRESHOLD ? 255 : 0;
     }
 
     maskContext.putImageData(imageData, 0, 0);
@@ -322,10 +323,14 @@ function App() {
       foregroundContext.clearRect(0, 0, targetWidth, targetHeight);
       foregroundContext.globalCompositeOperation = "source-over";
       foregroundContext.drawImage(video, rect.x, rect.y, rect.width, rect.height);
+      foregroundContext.save();
       foregroundContext.globalCompositeOperation = "destination-in";
-      foregroundContext.imageSmoothingEnabled = true;
+      foregroundContext.imageSmoothingEnabled = false;
+      if ("filter" in foregroundContext) {
+        foregroundContext.filter = `blur(${PERSON_FEATHER_RANGE_PX / 2}px)`;
+      }
       foregroundContext.drawImage(maskCanvas, rect.x, rect.y, rect.width, rect.height);
-      foregroundContext.globalCompositeOperation = "source-over";
+      foregroundContext.restore();
       drawMirrored(outputContext, foregroundCanvas, {
         x: 0,
         y: 0,
