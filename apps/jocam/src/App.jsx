@@ -8,7 +8,7 @@ import {
   LockSimple,
   X,
 } from "@phosphor-icons/react";
-import { Rive, Layout, Fit, Alignment, RuntimeLoader } from "@rive-app/canvas";
+import { Rive, Layout, Fit, Alignment, RuntimeLoader, EventType } from "@rive-app/canvas";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
 import QRCode from "qrcode";
@@ -30,9 +30,9 @@ const RIVE_LEFT_OVERFLOW_RATIO = 0.035;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const CLICK_RIVE_ANIMATION = "TalkingEmotion_Praise";
-const RIVE_RANDOM_INTERVAL_MS = 1_000;
 const COVER_RIVE_PLAYBACK_RATE = 0.25;
-const CAMERA_RIVE_PLAYBACK_RATE = 1;
+const CAMERA_RIVE_PLAYBACK_RATE = 0.8;
+const RIVE_CAPTURE_ADVANCE_FRAMES = 4;
 const MAX_RANDOM_DAY = 520;
 const VOLUME_SHUTTER_KEYS = new Set([
   "AudioVolumeUp",
@@ -211,7 +211,9 @@ function App() {
 
   const videoRef = useRef(null);
   const outputCanvasRef = useRef(null);
+  const photoCanvasRef = useRef(null);
   const riveCanvasRef = useRef(null);
+  const riveCaptureCanvasRef = useRef(null);
   const foregroundCanvasRef = useRef(null);
   const maskCanvasRef = useRef(null);
   const riveRef = useRef(null);
@@ -237,8 +239,9 @@ function App() {
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
   const rivePlayPraiseRef = useRef(null);
-  const riveRestartRandomPlaybackRef = useRef(null);
-  const riveShuffleTimerRef = useRef(null);
+  const riveMarkCaptureRef = useRef(null);
+  const rivePrepareCaptureRef = useRef(null);
+  const riveCaptureMomentRef = useRef(null);
   const riveCropXRef = useRef(RIVE_DEFAULT_CROP_X);
   const riveCropTimeoutsRef = useRef([]);
 
@@ -394,8 +397,8 @@ function App() {
     context.restore();
   }, [captionMode, paddedDay]);
 
-  const drawRiveLayer = useCallback((outputContext, outputCanvas, welcomeMode = false) => {
-    const riveCanvas = riveCanvasRef.current;
+  const drawRiveLayer = useCallback((outputContext, outputCanvas, welcomeMode = false, riveCanvasOverride = null) => {
+    const riveCanvas = riveCanvasOverride || riveCanvasRef.current;
     const targetWidth = outputCanvas.width;
     const targetHeight = outputCanvas.height;
 
@@ -446,7 +449,7 @@ function App() {
     drawRiveLayer(outputContext, outputCanvas, true);
   }, [drawRiveLayer]);
 
-  const renderFrame = useCallback((includeCaption = recordingRef.current) => {
+  const renderFrame = useCallback((includeCaption = recordingRef.current, riveCanvasOverride = null) => {
     const video = videoRef.current;
     const outputCanvas = outputCanvasRef.current;
     const foregroundCanvas = foregroundCanvasRef.current;
@@ -488,7 +491,7 @@ function App() {
 
     if (personLayer === "behind") drawPerson();
 
-    drawRiveLayer(outputContext, outputCanvas);
+    drawRiveLayer(outputContext, outputCanvas, false, riveCanvasOverride);
 
     if (personLayer === "front") drawPerson();
 
@@ -586,13 +589,27 @@ function App() {
                 ));
               };
 
+              let activeAnimationName = null;
+              let switchingAnimation = false;
+              let completionQueued = false;
+
+              const getActiveAnimation = (name = activeAnimationName) => (
+                instance.animator?.animations?.find((animation) => animation.name === name) || null
+              );
+
               const playAtIndex = (index) => {
                 const availableAnimations = riveAnimationsRef.current;
                 if (!availableAnimations.length) return;
                 const normalizedIndex = (index + availableAnimations.length) % availableAnimations.length;
                 const nextAnimation = availableAnimations[normalizedIndex];
-                instance.stop();
-                instance.play(nextAnimation);
+                switchingAnimation = true;
+                try {
+                  instance.stop();
+                  instance.play(nextAnimation);
+                  activeAnimationName = nextAnimation;
+                } finally {
+                  switchingAnimation = false;
+                }
                 riveAnimationIndexRef.current = normalizedIndex;
                 setRiveAnimationName(nextAnimation);
                 scheduleCropAnalysis();
@@ -607,29 +624,107 @@ function App() {
                 playAtIndex(riveAnimationIndexRef.current + offset);
               };
 
-              const restartRandomPlayback = () => {
-                if (riveShuffleTimerRef.current) window.clearTimeout(riveShuffleTimerRef.current);
-                const scheduleNext = () => {
-                  const playbackRate = Math.max(rivePlaybackRateRef.current, 0.01);
-                  const delay = RIVE_RANDOM_INTERVAL_MS / playbackRate;
-                  riveShuffleTimerRef.current = window.setTimeout(() => {
-                    playRandom();
-                    scheduleNext();
-                  }, delay);
-                };
-                scheduleNext();
+              const queueNextAfterCompletion = (event) => {
+                if (cancelled || switchingAnimation || completionQueued || !activeAnimationName) return;
+                const completedAnimation = event.type === EventType.Loop
+                  ? event.data?.animation
+                  : Array.isArray(event.data) && event.data.includes(activeAnimationName)
+                    ? activeAnimationName
+                    : null;
+                if (completedAnimation !== activeAnimationName) return;
+                completionQueued = true;
+                queueMicrotask(() => {
+                  completionQueued = false;
+                  if (!cancelled) playRandom();
+                });
               };
 
-              riveRestartRandomPlaybackRef.current = restartRandomPlayback;
+              instance.on(EventType.Loop, queueNextAfterCompletion);
+              instance.on(EventType.Stop, queueNextAfterCompletion);
+
+              riveMarkCaptureRef.current = () => {
+                const animation = getActiveAnimation();
+                if (!animation?.instance || !activeAnimationName) return null;
+                const fps = Math.max(animation.animation?.fps || 30, 1);
+                const finalFrame = animation.animation?.workEnd || animation.animation?.duration || 0;
+                return {
+                  animationName: activeAnimationName,
+                  time: animation.time,
+                  duration: finalFrame / fps,
+                  fps,
+                };
+              };
+
+              rivePrepareCaptureRef.current = (captureMoment) => {
+                const sourceCanvas = riveCanvasRef.current;
+                if (!sourceCanvas?.width || !captureMoment) return sourceCanvas;
+
+                try {
+                  let animation = getActiveAnimation(captureMoment.animationName);
+                  if (!animation) {
+                    const captureIndex = riveAnimationsRef.current.indexOf(captureMoment.animationName);
+                    if (captureIndex < 0) return sourceCanvas;
+                    playAtIndex(captureIndex);
+                    animation = getActiveAnimation(captureMoment.animationName);
+                  }
+                  if (!animation?.instance) return sourceCanvas;
+
+                  const fps = Math.max(captureMoment.fps || animation.animation?.fps || 30, 1);
+                  const finalFrame = animation.animation?.workEnd || animation.animation?.duration || 0;
+                  const duration = captureMoment.duration || finalFrame / fps;
+                  const frameDuration = 1 / fps;
+                  const lastDetailedFrame = Math.max(0, duration - frameDuration);
+                  const captureTime = clamp(
+                    captureMoment.time + RIVE_CAPTURE_ADVANCE_FRAMES * frameDuration,
+                    0,
+                    lastDetailedFrame,
+                  );
+                  animation.time = captureTime;
+                  animation.apply(1);
+                  instance.artboard?.advance?.(0);
+
+                  const cameraStage = sourceCanvas.closest(".camera-stage");
+                  if (cameraStage) {
+                    cameraStage.dataset.riveCaptureAnimation = captureMoment.animationName;
+                    cameraStage.dataset.riveCaptureFromTime = captureMoment.time.toFixed(4);
+                    cameraStage.dataset.riveCaptureTime = captureTime.toFixed(4);
+                    cameraStage.dataset.riveCaptureFps = String(fps);
+                  }
+
+                  const renderer = instance.renderer;
+                  if (renderer && instance.artboard) {
+                    renderer.clear();
+                    renderer.save();
+                    instance.alignRenderer();
+                    instance.artboard.draw(renderer);
+                    renderer.restore();
+                    renderer.flush();
+                    instance.runtime?.resolveAnimationFrame?.();
+                  }
+
+                  const captureCanvas = riveCaptureCanvasRef.current || document.createElement("canvas");
+                  riveCaptureCanvasRef.current = captureCanvas;
+                  if (captureCanvas.width !== sourceCanvas.width || captureCanvas.height !== sourceCanvas.height) {
+                    captureCanvas.width = sourceCanvas.width;
+                    captureCanvas.height = sourceCanvas.height;
+                  }
+                  const captureContext = captureCanvas.getContext("2d");
+                  captureContext.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
+                  captureContext.drawImage(sourceCanvas, 0, 0);
+                  return captureCanvas;
+                } catch (error) {
+                  console.warn("Rive capture frame preparation failed", error);
+                  return sourceCanvas;
+                }
+              };
+
               rivePlayPraiseRef.current = () => {
                 const praiseIndex = riveAnimationsRef.current.indexOf(CLICK_RIVE_ANIMATION);
                 if (praiseIndex < 0) return false;
                 playAtIndex(praiseIndex);
-                restartRandomPlayback();
                 return true;
               };
               playAtIndex(0);
-              restartRandomPlayback();
               setRiveReady(true);
               setLoadProgress((value) => Math.max(value, 92));
               resolve(true);
@@ -685,16 +780,14 @@ function App() {
 
     return () => {
       cancelled = true;
-      if (riveShuffleTimerRef.current) {
-        window.clearTimeout(riveShuffleTimerRef.current);
-        riveShuffleTimerRef.current = null;
-      }
       riveCropTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
       riveCropTimeoutsRef.current = [];
       riveRef.current?.cleanup();
       riveRef.current = null;
       rivePlayPraiseRef.current = null;
-      riveRestartRandomPlaybackRef.current = null;
+      riveMarkCaptureRef.current = null;
+      rivePrepareCaptureRef.current = null;
+      riveCaptureMomentRef.current = null;
       segmenterRef.current?.close();
       segmenterRef.current = null;
     };
@@ -706,7 +799,6 @@ function App() {
       : COVER_RIVE_PLAYBACK_RATE;
     if (rivePlaybackRateRef.current === nextPlaybackRate) return;
     rivePlaybackRateRef.current = nextPlaybackRate;
-    riveRestartRandomPlaybackRef.current?.();
   }, [cameraState]);
 
   useEffect(() => {
@@ -735,7 +827,6 @@ function App() {
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingIntervalRef.current) window.clearInterval(recordingIntervalRef.current);
-    if (riveShuffleTimerRef.current) window.clearTimeout(riveShuffleTimerRef.current);
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
     if (autoStopTimerRef.current) window.clearTimeout(autoStopTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -819,11 +910,27 @@ function App() {
   const takePhoto = useCallback(() => {
     const canvas = outputCanvasRef.current;
     if (!canvas || cameraState !== "ready") return;
-    renderFrame(true);
+    const captureMoment = riveCaptureMomentRef.current || riveMarkCaptureRef.current?.();
+    riveCaptureMomentRef.current = null;
+    const captureRiveCanvas = rivePrepareCaptureRef.current?.(captureMoment) || riveCanvasRef.current;
+    renderFrame(true, captureRiveCanvas);
+
+    const photoCanvas = photoCanvasRef.current || document.createElement("canvas");
+    photoCanvasRef.current = photoCanvas;
+    if (photoCanvas.width !== canvas.width || photoCanvas.height !== canvas.height) {
+      photoCanvas.width = canvas.width;
+      photoCanvas.height = canvas.height;
+    }
+    const photoContext = photoCanvas.getContext("2d", { alpha: false });
+    if (!photoContext) {
+      showToast("照片生成失败，请再试一次");
+      return;
+    }
+    photoContext.drawImage(canvas, 0, 0);
     setFlash(true);
     window.setTimeout(() => setFlash(false), 170);
 
-    canvas.toBlob((blob) => {
+    photoCanvas.toBlob((blob) => {
       if (!blob) {
         showToast("照片生成失败，请再试一次");
         return;
@@ -851,6 +958,7 @@ function App() {
       ) return;
 
       event.preventDefault();
+      riveCaptureMomentRef.current = riveMarkCaptureRef.current?.() || null;
       takePhoto();
     };
 
@@ -875,6 +983,7 @@ function App() {
   }, []);
 
   const startRecording = useCallback(() => {
+    riveCaptureMomentRef.current = null;
     const canvas = outputCanvasRef.current;
     const mimeType = chooseRecordingMimeType();
     if (!canvas?.captureStream || !window.MediaRecorder || !mimeType) {
@@ -935,6 +1044,7 @@ function App() {
     event.currentTarget.setPointerCapture?.(event.pointerId);
     pointerDownRef.current = true;
     longPressTriggeredRef.current = false;
+    riveCaptureMomentRef.current = riveMarkCaptureRef.current?.() || null;
     longPressTimerRef.current = window.setTimeout(() => {
       if (!pointerDownRef.current) return;
       longPressTriggeredRef.current = true;
@@ -950,6 +1060,7 @@ function App() {
       longPressTimerRef.current = null;
     }
     if (recordingRef.current) {
+      riveCaptureMomentRef.current = null;
       stopRecording();
     } else if (!longPressTriggeredRef.current) {
       takePhoto();
@@ -958,6 +1069,7 @@ function App() {
 
   const onShutterPointerCancel = useCallback(() => {
     pointerDownRef.current = false;
+    riveCaptureMomentRef.current = null;
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
     if (recordingRef.current) stopRecording();
   }, [stopRecording]);
@@ -977,7 +1089,6 @@ function App() {
   const formattedRecordingTime = `${String(Math.floor(recordingTime / 1000)).padStart(2, "0")}.${Math.floor((recordingTime % 1000) / 100)}`;
   const readyForCamera = engineState !== "error";
   const activeRivePlaybackRate = cameraState === "ready" ? CAMERA_RIVE_PLAYBACK_RATE : COVER_RIVE_PLAYBACK_RATE;
-  const activeRiveShuffleInterval = RIVE_RANDOM_INTERVAL_MS / activeRivePlaybackRate;
 
   return (
     <main className={`app-shell is-${frameOrientation} ${isMobileDevice ? "is-mobile-device" : "is-desktop-device"}`}>
@@ -986,7 +1097,8 @@ function App() {
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
         data-rive-playback-rate={activeRivePlaybackRate}
-        data-rive-shuffle-interval={activeRiveShuffleInterval}
+        data-rive-switch-mode="on-complete"
+        data-rive-capture-offset-frames={RIVE_CAPTURE_ADVANCE_FRAMES}
         data-person-layer={personLayer}
         data-reading-day={day}
         data-caption-mode={captionMode}
@@ -1128,18 +1240,20 @@ function App() {
 
         {mediaPreview && (
           <div className={`media-preview is-${mediaPreview.type}`} role="dialog" aria-modal="true" aria-label={mediaPreview.type === "photo" ? "照片预览" : "录像预览"}>
-            <button className="preview-close" type="button" onClick={closePreview} aria-label="关闭预览">
-              <X size={22} weight="bold" />
-            </button>
             <div className="preview-media-wrap">
-              {mediaPreview.type === "photo" ? (
-                <img
-                  src={mediaPreview.url}
-                  alt={getCaptionText(mediaPreview.captionMode || captionMode, mediaPreview.day || paddedDay)}
-                />
-              ) : (
-                <video src={mediaPreview.url} playsInline controls autoPlay loop />
-              )}
+              <div className="preview-media-clip">
+                {mediaPreview.type === "photo" ? (
+                  <img
+                    src={mediaPreview.url}
+                    alt={getCaptionText(mediaPreview.captionMode || captionMode, mediaPreview.day || paddedDay)}
+                  />
+                ) : (
+                  <video src={mediaPreview.url} playsInline controls autoPlay loop />
+                )}
+              </div>
+              <button className="preview-close" type="button" onClick={closePreview} aria-label="关闭预览">
+                <X size={28} weight="bold" />
+              </button>
             </div>
             <div className="preview-actions">
               <div>
