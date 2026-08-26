@@ -3,7 +3,7 @@
 | 任务 | 状态 | 备注 |
 | --- | --- | --- |
 | 家长成长沟通单页 Demo | 已完成并已验证 | `https://jojodemos.mikeywa.icu/report/`：四类时间点、两类触达方式、报告封面至可滚动正文 |
-| 家长成长沟通 Figma 实图版 | 已完成并已验证 | `https://jojodemos.mikeywa.icu/report-codex/`：四类时间点、真实 Figma 消息图与报告图的分步演示 |
+| 家长成长沟通 Figma 实图版 | 已完成并已验证 | `https://jojodemos.mikeywa.icu/report-codex/`：补齐日报三类入口、公众号、指导师后台、班班触达、阶段封面和可滚动的日报/月报/阶段报信息流；桌面与 390px 移动端均已验证 |
 
 ## 当前任务
 
