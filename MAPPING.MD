@@ -19,5 +19,7 @@
 | 页面底部大字 | `/report-codex/` | `.page-title` | 每张原稿图下方唯一保留的说明标题 |
 | 原稿整图热区 | `/report-codex/` | `.shot-button` / `data-next` | 整张原稿图片可点击，点击后进入下一演示步骤 |
 | 报告长信息流 | `/report-codex/` | `.report-phone` / `.report-scroll` | 日报、月报、阶段报的手机尺寸纵向滚动容器 |
-| 下一步淡显 | `/report-codex/` | `.next-peek` | 当前步骤右侧以低透明度预览下一步内容 |
+| 流程图片预加载 | `/report-codex/` | `link[rel="preload"][as="image"]` | 首屏提前加载后续流程使用的全部 WebP 图片 |
 | 课程预告窗口 | `/report-codex/` | `.course-frame` | 直接载入 `assets/course-preview.html` 的滚动窗口 |
+| 课程预告水印图 | `/report-codex/` | `.hero-art` | 课程插画在首屏右侧以低透明度、无边框方式作为水印纹理 |
+| 阶段报告手机框 | `/report-codex/` | `.stage-pair .report-phone` | 与封面比例一致的细黑手机框，封面使用 `object-fit: cover` 铺满 |

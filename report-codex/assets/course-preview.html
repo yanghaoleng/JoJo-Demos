@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>本周课程预告 · 解释词语的方法</title>
+<link rel="preload" as="image" type="image/webp" href="course-preview-hero.webp">
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap">
 <style>
 :root{
@@ -49,7 +50,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;}
 .hero{
   position:relative;
   background:linear-gradient(180deg,var(--hero-1) 0%,var(--hero-2) 100%);
-  padding:calc(24px + env(safe-area-inset-top)) 22px 0;
+  min-height:270px;
+  padding:calc(24px + env(safe-area-inset-top)) 22px 34px;
+  display:flex;
+  align-items:center;
   overflow:hidden;
 }
 .hero::before{ /* 纸纹圆点 */
@@ -60,7 +64,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;}
   opacity:.5;
   pointer-events:none;
 }
-.hero-inner{position:relative;z-index:1;}
+.hero-inner{position:relative;z-index:1;max-width:78%;}
 .eyebrow{
   display:inline-flex;align-items:center;gap:8px;
   font-size:13px;font-weight:700;letter-spacing:.16em;
@@ -92,14 +96,23 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;}
   padding:4px 11px;
 }
 .hero-art{
-  position:relative;z-index:1;
-  display:block;width:100%;
-  margin-top:20px;
-  border-radius:18px 18px 0 0;
-  border:1px solid var(--hero-line);
-  border-bottom:none;
+  position:absolute;
+  z-index:0;
+  right:-32%;
+  top:50%;
+  display:block;
+  width:118%;
+  margin:0;
+  border:0;
+  border-radius:0;
   object-fit:cover;
-  box-shadow:0 -6px 24px rgba(90,62,30,.10);
+  opacity:.16;
+  filter:saturate(.58) sepia(.12);
+  mix-blend-mode:multiply;
+  transform:translateY(-46%);
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.42) 30%,#000 62%);
+  mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.42) 30%,#000 62%);
+  pointer-events:none;
 }
 
 /* ===== 弱化 Tab 栏（可点、可滚动联动，样式从简） ===== */
@@ -258,7 +271,10 @@ footer.ops .ops-label{font-weight:700;color:var(--opt);}
 footer.ops .ver{margin-top:6px;color:#B3A692;}
 
 @media (max-width:380px){
+  .hero{min-height:252px;padding-bottom:28px;}
+  .hero-inner{max-width:82%;}
   .hero h1{font-size:28px;}
+  .hero-art{right:-42%;width:132%;opacity:.14;}
   .stat b{font-size:18px;}
 }
 </style>
