@@ -31,6 +31,8 @@ const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const CLICK_RIVE_ANIMATION = "TalkingEmotion_Praise";
 const RIVE_RANDOM_INTERVAL_MS = 1_000;
+const COVER_RIVE_PLAYBACK_RATE = 0.5;
+const CAMERA_RIVE_PLAYBACK_RATE = 1;
 const MAX_RANDOM_DAY = 520;
 const VOLUME_SHUTTER_KEYS = new Set([
   "AudioVolumeUp",
@@ -190,6 +192,14 @@ async function saveBlob(blob, filename, title) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
+function applyRivePlaybackRate(instance, playbackRateRef) {
+  const advance = instance?.advanceAndReportChanges?.bind(instance);
+  if (!advance) return;
+  instance.advanceAndReportChanges = (elapsedTime) => {
+    advance(elapsedTime * playbackRateRef.current);
+  };
+}
+
 function App() {
   const [isMobileDevice] = useState(getIsMobileDevice);
   const [shareUrl] = useState(getShareUrl);
@@ -205,6 +215,7 @@ function App() {
   const foregroundCanvasRef = useRef(null);
   const maskCanvasRef = useRef(null);
   const riveRef = useRef(null);
+  const rivePlaybackRateRef = useRef(COVER_RIVE_PLAYBACK_RATE);
   const segmenterRef = useRef(null);
   const streamRef = useRef(null);
   const frameRef = useRef(0);
@@ -615,6 +626,7 @@ function App() {
             },
             onLoadError: () => resolve(false),
           });
+          applyRivePlaybackRate(instance, rivePlaybackRateRef);
           riveRef.current = instance;
         });
 
@@ -676,6 +688,12 @@ function App() {
       segmenterRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    rivePlaybackRateRef.current = cameraState === "ready"
+      ? CAMERA_RIVE_PLAYBACK_RATE
+      : COVER_RIVE_PLAYBACK_RATE;
+  }, [cameraState]);
 
   useEffect(() => {
     const loop = (timestamp) => {
@@ -951,6 +969,7 @@ function App() {
         className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""} ${riveReady ? "is-rive-ready" : ""}`}
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
+        data-rive-playback-rate={cameraState === "ready" ? CAMERA_RIVE_PLAYBACK_RATE : COVER_RIVE_PLAYBACK_RATE}
         data-person-layer={personLayer}
         data-reading-day={day}
         data-caption-mode={captionMode}
