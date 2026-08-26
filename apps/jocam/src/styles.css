@@ -67,6 +67,14 @@ button {
   padding: 24px;
 }
 
+.app-shell.is-landscape {
+  grid-template-columns: minmax(0, 960px);
+}
+
+.app-shell.is-landscape .desktop-note {
+  display: none;
+}
+
 .camera-stage {
   position: relative;
   width: min(100%, 510px);
@@ -78,6 +86,11 @@ button {
   border: 1px solid rgba(244, 248, 230, 0.12);
   border-radius: 30px;
   box-shadow: 0 30px 100px rgba(3, 5, 2, 0.5);
+}
+
+.camera-stage.is-landscape {
+  width: min(100%, 960px);
+  aspect-ratio: 16 / 9;
 }
 
 .camera-source,
@@ -97,6 +110,30 @@ button {
   height: 100%;
   object-fit: cover;
   background: #1a1d15;
+}
+
+.jiaojiao-hit-area {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  bottom: 0;
+  width: 64%;
+  height: 64%;
+  padding: 0;
+  border: 0;
+  border-radius: 0 28px 0 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms ease;
+}
+
+.jiaojiao-hit-area:active {
+  background: rgba(213, 255, 76, 0.05);
+}
+
+.camera-stage.is-landscape .jiaojiao-hit-area {
+  width: 20.25%;
 }
 
 .live-caption {
@@ -141,6 +178,13 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  pointer-events: none;
+}
+
+.camera-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   pointer-events: none;
 }
 
@@ -192,6 +236,17 @@ button {
   transform: scale(0.94) rotate(-16deg);
 }
 
+.round-control.is-active {
+  border-color: rgba(213, 255, 76, 0.42);
+  background: rgba(43, 51, 27, 0.86);
+  color: var(--accent);
+}
+
+.round-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .live-loading {
   position: absolute;
   z-index: 4;
@@ -236,12 +291,49 @@ button {
 }
 
 .round-control:focus-visible,
+.jiaojiao-hit-area:focus-visible,
 .shutter:focus-visible,
 .open-camera-button:focus-visible,
 .preview-close:focus-visible,
 .preview-actions button:focus-visible {
   outline: 3px solid rgba(213, 255, 76, 0.8);
   outline-offset: 3px;
+}
+
+.camera-stage.is-landscape .live-caption {
+  top: max(12px, env(safe-area-inset-top));
+}
+
+.camera-stage.is-landscape .top-controls {
+  top: max(44px, calc(env(safe-area-inset-top) + 34px));
+}
+
+.camera-stage.is-landscape .capture-controls {
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.camera-stage.is-landscape .capture-hint,
+.camera-stage.is-landscape .capture-limit {
+  display: none;
+}
+
+.camera-stage.is-landscape .shutter {
+  width: 64px;
+  height: 64px;
+}
+
+.camera-stage.is-landscape .shutter-core {
+  width: 48px;
+  height: 48px;
+}
+
+.camera-stage.is-landscape .shutter.is-recording .shutter-core {
+  width: 28px;
+  height: 28px;
+}
+
+.camera-stage.is-landscape .camera-toast {
+  bottom: 88px;
 }
 
 .capture-controls {
@@ -707,6 +799,12 @@ button {
     padding: 0;
   }
 
+  .app-shell.is-landscape {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .camera-stage {
     width: 100%;
     height: 100dvh;
@@ -715,6 +813,13 @@ button {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .camera-stage.is-landscape {
+    width: 100%;
+    height: auto;
+    max-height: 100dvh;
+    aspect-ratio: 16 / 9;
   }
 
   .desktop-note {

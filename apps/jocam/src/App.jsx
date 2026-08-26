@@ -3,6 +3,7 @@ import {
   ArrowClockwise,
   Camera,
   Check,
+  DeviceRotate,
   DownloadSimple,
   LockSimple,
   Sparkle,
@@ -14,8 +15,14 @@ import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
 
 const BASE_URL = import.meta.env.BASE_URL;
-const OUTPUT_WIDTH = 720;
-const OUTPUT_HEIGHT = 1280;
+const FRAME_SIZES = {
+  portrait: { width: 720, height: 1280 },
+  landscape: { width: 1280, height: 720 },
+};
+const RIVE_SOURCE_SIZE = FRAME_SIZES.portrait;
+const RIVE_SCALE = 0.64;
+const DEFAULT_RIVE_ANIMATION = "Start_Dial";
+const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const SEGMENT_INTERVAL_MS = 92;
 const LONG_PRESS_MS = 430;
 const MAX_RECORDING_MS = 15_000;
@@ -67,9 +74,9 @@ function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
   };
 }
 
-function drawMirrored(context, source, rect) {
+function drawMirrored(context, source, rect, targetWidth) {
   context.save();
-  context.translate(OUTPUT_WIDTH, 0);
+  context.translate(targetWidth, 0);
   context.scale(-1, 1);
   context.drawImage(source, rect.x, rect.y, rect.width, rect.height);
   context.restore();
@@ -176,6 +183,8 @@ function App() {
   const autoStopTimerRef = useRef(null);
   const toastTimerRef = useRef(null);
   const mediaPreviewRef = useRef(null);
+  const riveAnimationsRef = useRef([]);
+  const riveAnimationIndexRef = useRef(0);
 
   const [engineState, setEngineState] = useState("loading");
   const [engineMessage, setEngineMessage] = useState("正在准备叫叫");
@@ -185,11 +194,14 @@ function App() {
   const [cameraState, setCameraState] = useState("idle");
   const [cameraError, setCameraError] = useState("");
   const [facingMode, setFacingMode] = useState("user");
+  const [frameOrientation, setFrameOrientation] = useState("portrait");
+  const [riveAnimationName, setRiveAnimationName] = useState(DEFAULT_RIVE_ANIMATION);
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [flash, setFlash] = useState(false);
   const [toast, setToast] = useState("");
   const [mediaPreview, setMediaPreview] = useState(null);
+  const frameSize = FRAME_SIZES[frameOrientation];
 
   useEffect(() => {
     mediaPreviewRef.current = mediaPreview;
@@ -233,9 +245,9 @@ function App() {
     maskReadyRef.current = true;
   }, []);
 
-  const drawCaption = useCallback((context) => {
-    const centerX = OUTPUT_WIDTH / 2;
-    const top = 62;
+  const drawCaption = useCallback((context, targetWidth, targetHeight) => {
+    const centerX = targetWidth / 2;
+    const top = targetHeight < targetWidth ? 44 : 62;
     const copy = `我和叫叫一起阅读的第 ${paddedDay} 天`;
 
     context.save();
@@ -263,18 +275,22 @@ function App() {
     const foregroundContext = foregroundCanvas.getContext("2d");
     const sourceWidth = video.videoWidth || 1280;
     const sourceHeight = video.videoHeight || 720;
-    const rect = getCoverRect(sourceWidth, sourceHeight, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+    const targetWidth = outputCanvas.width;
+    const targetHeight = outputCanvas.height;
+    const rect = getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight);
 
     outputContext.fillStyle = "#181b14";
-    outputContext.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
-    drawMirrored(outputContext, video, rect);
+    outputContext.fillRect(0, 0, targetWidth, targetHeight);
+    drawMirrored(outputContext, video, rect, targetWidth);
 
     if (riveReady && riveCanvas?.width && riveCanvas?.height) {
-      outputContext.drawImage(riveCanvas, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+      const riveHeight = targetHeight * RIVE_SCALE;
+      const riveWidth = riveHeight * (RIVE_SOURCE_SIZE.width / RIVE_SOURCE_SIZE.height);
+      outputContext.drawImage(riveCanvas, 0, targetHeight - riveHeight, riveWidth, riveHeight);
     }
 
     if (maskReadyRef.current && maskCanvas?.width && maskCanvas?.height) {
-      foregroundContext.clearRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+      foregroundContext.clearRect(0, 0, targetWidth, targetHeight);
       foregroundContext.globalCompositeOperation = "source-over";
       foregroundContext.drawImage(video, rect.x, rect.y, rect.width, rect.height);
       foregroundContext.globalCompositeOperation = "destination-in";
@@ -284,12 +300,12 @@ function App() {
       drawMirrored(outputContext, foregroundCanvas, {
         x: 0,
         y: 0,
-        width: OUTPUT_WIDTH,
-        height: OUTPUT_HEIGHT,
-      });
+        width: targetWidth,
+        height: targetHeight,
+      }, targetWidth);
     }
 
-    if (includeCaption) drawCaption(outputContext);
+    if (includeCaption) drawCaption(outputContext, targetWidth, targetHeight);
   }, [drawCaption, riveReady]);
 
   useEffect(() => {
@@ -322,15 +338,27 @@ function App() {
           const instance = new Rive({
             buffer: riveBuffer,
             canvas: riveCanvasRef.current,
-            autoplay: true,
+            autoplay: false,
             autoBind: true,
             layout: new Layout({ fit: Fit.Cover, alignment: Alignment.Center }),
             onLoad: () => {
               if (cancelled) return;
-              const stateMachines = instance.stateMachineNames || [];
               const animations = instance.animationNames || [];
-              if (stateMachines.length) instance.play(stateMachines[0]);
-              else if (animations.length) instance.play(animations);
+              const talkingAnimations = animations.filter((name) => (
+                name.startsWith("TalkingEmotion") && !name.endsWith("表情")
+              ));
+              const animationOrder = [...new Set([
+                DEFAULT_RIVE_ANIMATION,
+                SECOND_RIVE_ANIMATION,
+                ...talkingAnimations,
+              ])].filter((name) => animations.includes(name));
+              riveAnimationsRef.current = animationOrder;
+              riveAnimationIndexRef.current = 0;
+              const firstAnimation = animationOrder[0] || animations[0];
+              if (firstAnimation) {
+                instance.play(firstAnimation);
+                setRiveAnimationName(firstAnimation);
+              }
               setRiveReady(true);
               setLoadProgress((value) => Math.max(value, 92));
               resolve(true);
@@ -469,6 +497,28 @@ function App() {
     openCamera(facingMode === "user" ? "environment" : "user");
   }, [facingMode, openCamera]);
 
+  const switchFrameOrientation = useCallback(() => {
+    if (recordingRef.current) return;
+    setFrameOrientation((current) => {
+      const next = current === "portrait" ? "landscape" : "portrait";
+      showToast(next === "landscape" ? "已切换为横屏" : "已切换为竖屏");
+      return next;
+    });
+  }, [showToast]);
+
+  const switchRiveAnimation = useCallback(() => {
+    const instance = riveRef.current;
+    const animations = riveAnimationsRef.current;
+    if (!instance || animations.length < 2) return;
+    const nextIndex = (riveAnimationIndexRef.current + 1) % animations.length;
+    const nextAnimation = animations[nextIndex];
+    instance.stop();
+    instance.play(nextAnimation);
+    riveAnimationIndexRef.current = nextIndex;
+    setRiveAnimationName(nextAnimation);
+    showToast("叫叫换了一个动作");
+  }, [showToast]);
+
   const closePreview = useCallback(() => {
     setMediaPreview((current) => {
       if (current?.url) URL.revokeObjectURL(current.url);
@@ -604,13 +654,27 @@ function App() {
   const readyForCamera = engineState !== "error";
 
   return (
-    <main className="app-shell">
-      <section className={`camera-stage ${cameraState === "ready" ? "is-live" : ""}`} aria-label="和叫叫合拍相机">
+    <main className={`app-shell is-${frameOrientation}`}>
+      <section
+        className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""}`}
+        data-frame-orientation={frameOrientation}
+        data-rive-animation={riveAnimationName}
+        aria-label="和叫叫合拍相机"
+      >
         <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
-        <canvas ref={riveCanvasRef} className="rive-source" width={OUTPUT_WIDTH} height={OUTPUT_HEIGHT} aria-hidden="true" />
-        <canvas ref={foregroundCanvasRef} className="render-source" width={OUTPUT_WIDTH} height={OUTPUT_HEIGHT} aria-hidden="true" />
+        <canvas ref={riveCanvasRef} className="rive-source" width={RIVE_SOURCE_SIZE.width} height={RIVE_SOURCE_SIZE.height} aria-hidden="true" />
+        <canvas ref={foregroundCanvasRef} className="render-source" width={frameSize.width} height={frameSize.height} aria-hidden="true" />
         <canvas ref={maskCanvasRef} className="render-source" width="256" height="256" aria-hidden="true" />
-        <canvas ref={outputCanvasRef} className="camera-output" width={OUTPUT_WIDTH} height={OUTPUT_HEIGHT} aria-label="实时合拍画面" />
+        <canvas ref={outputCanvasRef} className="camera-output" width={frameSize.width} height={frameSize.height} aria-label="实时合拍画面" />
+
+        {cameraState === "ready" && riveReady && (
+          <button
+            className="jiaojiao-hit-area"
+            type="button"
+            onClick={switchRiveAnimation}
+            aria-label={`切换叫叫动作，当前 ${riveAnimationName}`}
+          />
+        )}
 
         {cameraState === "ready" && (
           <>
@@ -634,9 +698,20 @@ function App() {
                 <Sparkle size={15} weight="fill" />
                 <span>{segmenterReady ? "人像已在前景" : "正在识别人像"}</span>
               </div>
-              <button className="round-control" type="button" onClick={switchCamera} aria-label="切换前后摄像头">
-                <ArrowClockwise size={22} weight="bold" />
-              </button>
+              <div className="camera-actions">
+                <button
+                  className={`round-control ${frameOrientation === "landscape" ? "is-active" : ""}`}
+                  type="button"
+                  disabled={recording}
+                  onClick={switchFrameOrientation}
+                  aria-label={frameOrientation === "portrait" ? "切换为横屏" : "切换为竖屏"}
+                >
+                  <DeviceRotate size={22} weight="bold" />
+                </button>
+                <button className="round-control" type="button" disabled={recording} onClick={switchCamera} aria-label="切换前后摄像头">
+                  <ArrowClockwise size={22} weight="bold" />
+                </button>
+              </div>
             </div>
 
             {engineState === "loading" && (
