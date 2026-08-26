@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>本周课程预告 · 解释词语的方法</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#FBF7F1;
+  --bg-outer:#EFE4D4;
+  --card:#FFFFFF;
+  --hero-1:#EAD8C2;
+  --hero-2:#DDBF9D;
+  --hero-line:#C9A87E;
+  --ink:#44311F;
+  --ink-2:#7A6248;
+  --ink-3:#A08A6E;
+  --line:#E8DBC8;
+  --accent:#A9743F;
+  --accent-deep:#8A5A2B;
+  --accent-soft:#F3E7D6;
+  --opt:#8E7A63;
+  --opt-soft:#EFE8DC;
+  --font-display:"Noto Serif SC","Songti SC","SimSun",serif;
+  --font-body:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:var(--font-body);
+  background:var(--bg-outer);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.55;
+}
+button{font-family:inherit;border:none;background:none;cursor:pointer;}
+
+/* ===== 页面外壳：手机上全宽，桌面居中成"手机页" ===== */
+.page{
+  max-width:520px;
+  margin:0 auto;
+  background:var(--bg);
+  min-height:100vh;
+  box-shadow:0 0 40px rgba(90,62,30,.08);
+}
+
+/* ===== Hero 淡棕色头部 ===== */
+.hero{
+  position:relative;
+  background:linear-gradient(180deg,var(--hero-1) 0%,var(--hero-2) 100%);
+  padding:calc(24px + env(safe-area-inset-top)) 22px 0;
+  overflow:hidden;
+}
+.hero::before{ /* 纸纹圆点 */
+  content:"";
+  position:absolute;inset:0;
+  background-image:radial-gradient(rgba(138,90,43,.14) 1.1px, transparent 1.4px);
+  background-size:16px 16px;
+  opacity:.5;
+  pointer-events:none;
+}
+.hero-inner{position:relative;z-index:1;}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:700;letter-spacing:.16em;
+  color:var(--accent-deep);
+  background:rgba(255,255,255,.55);
+  border:1px solid rgba(138,90,43,.25);
+  border-radius:999px;
+  padding:5px 12px;
+}
+.eyebrow svg{width:13px;height:13px;}
+.hero h1{
+  margin-top:16px;
+  font-family:var(--font-display);
+  font-size:32px;font-weight:900;letter-spacing:.01em;
+  color:var(--ink);
+  text-wrap:balance;
+}
+.hero .sub{
+  margin-top:8px;
+  font-size:15px;color:var(--ink-2);
+  max-width:30em;
+}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+.chip{
+  font-size:12px;color:var(--accent-deep);
+  background:rgba(255,255,255,.62);
+  border:1px solid rgba(138,90,43,.22);
+  border-radius:999px;
+  padding:4px 11px;
+}
+.hero-art{
+  position:relative;z-index:1;
+  display:block;width:100%;
+  margin-top:20px;
+  border-radius:18px 18px 0 0;
+  border:1px solid var(--hero-line);
+  border-bottom:none;
+  object-fit:cover;
+  box-shadow:0 -6px 24px rgba(90,62,30,.10);
+}
+
+/* ===== 弱化 Tab 栏（可点、可滚动联动，样式从简） ===== */
+.tabbar{
+  position:sticky;top:0;z-index:20;
+  display:flex;
+  background:rgba(251,247,241,.92);
+  -webkit-backdrop-filter:blur(10px);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+  padding-top:6px;
+}
+.tab{
+  position:relative;flex:1;
+  padding:13px 0 14px;
+  font-size:15px;font-weight:500;
+  color:var(--ink-3);
+  transition:color .25s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.tab.active{color:var(--ink);font-weight:700;}
+.tab-indicator{
+  position:absolute;left:0;bottom:0;
+  height:3px;width:24px;border-radius:3px;
+  background:var(--accent);
+  transition:transform .28s cubic-bezier(.4,0,.2,1),width .28s ease;
+}
+
+/* ===== 信息流正文 ===== */
+main{padding:6px 18px 8px;}
+.sec{scroll-margin-top:70px;padding-top:18px;}
+.sec-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin:6px 2px 14px;
+}
+.sec-title{
+  font-family:var(--font-display);
+  font-size:20px;font-weight:700;color:var(--ink);
+  display:flex;align-items:center;gap:8px;
+}
+.sec-title::before{
+  content:"";width:5px;height:18px;border-radius:3px;
+  background:var(--accent);
+}
+.sec-count{font-size:12px;color:var(--ink-3);}
+
+/* ---- 课表：周计划时间轴卡片 ---- */
+.feed{display:flex;flex-direction:column;gap:12px;}
+.day{display:flex;gap:12px;}
+.day-rail{display:flex;flex-direction:column;align-items:center;width:46px;flex:none;}
+.day-tag{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:46px;height:46px;flex:none;
+  border-radius:12px;
+  font-size:13px;font-weight:700;color:#FFF;
+  letter-spacing:.02em;
+}
+.day-tag.must{background:linear-gradient(160deg,#C08B52,#A9743F);box-shadow:0 4px 10px rgba(169,116,63,.30);}
+.day-tag.opt{background:linear-gradient(160deg,#A8967E,#8E7A63);box-shadow:0 4px 10px rgba(142,122,99,.28);}
+.rail-line{flex:1;width:2px;background:var(--line);margin-top:8px;border-radius:2px;}
+.day:last-child .rail-line{background:transparent;}
+
+.card{
+  flex:1;min-width:0;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:14px 15px;
+  box-shadow:0 6px 18px rgba(90,62,30,.05);
+}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.card h3{font-size:16px;font-weight:700;color:var(--ink);line-height:1.35;}
+.badge{
+  flex:none;font-size:11px;font-weight:700;
+  padding:3px 9px;border-radius:999px;
+}
+.badge.must{color:var(--accent-deep);background:var(--accent-soft);}
+.badge.opt{color:var(--opt);background:var(--opt-soft);}
+.card-tip{margin-top:7px;font-size:13px;color:var(--ink-2);}
+.card-meta{
+  display:flex;align-items:center;gap:6px;
+  margin-top:11px;padding-top:10px;
+  border-top:1px dashed var(--line);
+  font-size:12.5px;color:var(--ink-3);
+}
+.card-meta svg{width:14px;height:14px;color:var(--accent);flex:none;}
+
+/* ---- 重点提炼 ---- */
+.method{
+  display:flex;gap:13px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:15px;
+  box-shadow:0 6px 18px rgba(90,62,30,.05);
+}
+.method-no{
+  flex:none;width:38px;height:38px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-size:15px;font-weight:700;
+  color:var(--accent-deep);background:var(--accent-soft);
+  border:1px solid rgba(169,116,63,.28);
+}
+.method-body{flex:1;min-width:0;}
+.method-body h3{font-size:16px;font-weight:700;color:var(--ink);}
+.method-body .use{margin-top:4px;font-size:12.5px;color:var(--ink-3);}
+.example{
+  margin-top:9px;padding:9px 12px;
+  background:var(--accent-soft);
+  border-radius:10px;
+  font-size:13px;color:var(--accent-deep);
+}
+
+/* ---- 课程价值 ---- */
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  margin-bottom:12px;
+}
+.stat{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:11px 6px;text-align:center;
+}
+.stat b{display:block;font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--accent-deep);}
+.stat span{display:block;margin-top:2px;font-size:11px;color:var(--ink-3);}
+.value{
+  display:flex;gap:13px;align-items:flex-start;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:15px;
+  box-shadow:0 6px 18px rgba(90,62,30,.05);
+}
+.value-ic{
+  flex:none;width:40px;height:40px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent-soft);border:1px solid rgba(169,116,63,.28);
+  color:var(--accent-deep);
+}
+.value-ic svg{width:20px;height:20px;}
+.value h3{font-size:15px;font-weight:700;color:var(--ink);}
+.value p{margin-top:3px;font-size:13px;color:var(--ink-2);}
+
+/* ---- 页脚运营备注（家长端不展示） ---- */
+footer.ops{
+  margin:26px 18px 30px;
+  padding:13px 15px;
+  border-radius:14px;
+  background:var(--opt-soft);
+  border:1px dashed #C9BCA8;
+  color:var(--ink-3);
+  font-size:12px;line-height:1.7;
+}
+footer.ops .ops-label{font-weight:700;color:var(--opt);}
+footer.ops .ver{margin-top:6px;color:#B3A692;}
+
+@media (max-width:380px){
+  .hero h1{font-size:28px;}
+  .stat b{font-size:18px;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ===== 头部：淡棕色 ===== -->
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="eyebrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.6l-4.8 2.5.9-5.4L4.2 8.7l5.4-.8z"/></svg>
+        本周课程预告
+      </div>
+      <h1>解释词语的方法</h1>
+      <p class="sub">本周用 3 个方法，专治“解释词语意思题”。</p>
+      <div class="chips">
+        <span class="chip">三年级 · 阅读</span>
+        <span class="chip">5 天计划</span>
+        <span class="chip">配套纸质练习</span>
+      </div>
+    </div>
+    <img class="hero-art" src="course-preview-hero.webp" alt="绘本阅读插画">
+  </header>
+
+  <!-- ===== 弱化 Tab：可点击 + 滚动自动选中 ===== -->
+  <nav class="tabbar" id="tabbar" aria-label="内容分区">
+    <button class="tab active" data-sec="schedule">本周课表</button>
+    <button class="tab" data-sec="keypoints">重点提炼</button>
+    <button class="tab" data-sec="value">课程价值</button>
+    <span class="tab-indicator" id="tabIndicator"></span>
+  </nav>
+
+  <main>
+    <!-- 本周课表 -->
+    <section class="sec" id="schedule">
+      <div class="sec-head">
+        <div class="sec-title">本周课表</div>
+        <span class="sec-count">共 5 节 · 必修 3 / 选修 2</span>
+      </div>
+      <div class="feed" id="scheduleFeed"></div>
+    </section>
+
+    <!-- 重点提炼 -->
+    <section class="sec" id="keypoints">
+      <div class="sec-head">
+        <div class="sec-title">重点提炼</div>
+        <span class="sec-count">本周 3 个方法</span>
+      </div>
+      <div class="feed" id="keypointFeed"></div>
+    </section>
+
+    <!-- 课程价值 -->
+    <section class="sec" id="value">
+      <div class="sec-head">
+        <div class="sec-title">课程价值</div>
+        <span class="sec-count">学完有什么收获</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>3</b><span>个方法</span></div>
+        <div class="stat"><b>5</b><span>天课程</span></div>
+        <div class="stat"><b>2</b><span>篇精读</span></div>
+        <div class="stat"><b>1</b><span>套练习册</span></div>
+      </div>
+      <div class="feed" id="valueFeed"></div>
+    </section>
+  </main>
+
+  <!-- 运营参考（家长端不展示） -->
+  <footer class="ops">
+    <div class="ops-label">运营参考（家长端不展示）</div>
+    <p>【本周课程预告】解释词语的方法：本周主打 3 个方法（拆字组词法、抓熟法、联系上下文法），紧跟校内三年级阅读重点。线上课学完后可搭配《学过的别忘了》第一册练习巩固，想分享就发群里带 #本周闯关#。</p>
+    <div class="ver">周预告物料 · 交互 H5 打样 v13（去年级标签 · 课程名加大招 · Tab 滚动联动）</div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ===== 模拟数据 ===== */
+  var SCHEDULE = [
+    { day:"周一", type:"must", title:"大招：拆字组词法", tip:"把词语拆开，逐字解释，再连成一句通顺的话。", meta:"配套练习：《学过的别忘了》第一册 8~9 页", metaIcon:"book" },
+    { day:"周二", type:"must", title:"大招：抓熟法 + 联系上下文法", tip:"先抓住句中的“熟词”，再顺着前后句的语境猜出词义。", meta:"配套练习：《学过的别忘了》第一册 12~13 页", metaIcon:"book" },
+    { day:"周三", type:"must", title:"综合练：三个方法连用", tip:"真题连练，学会判断“这道题该用哪个方法”。", meta:"配套练习：《学过的别忘了》第一册 14~17 页", metaIcon:"book" },
+    { day:"周四", type:"opt",  title:"精读篇目《面包房里的猫》", tip:"0 点一次性解锁 2 节，随到随学。", meta:"线上精读 · 无纸质练习", metaIcon:"lock" },
+    { day:"周五", type:"opt",  title:"精读篇目《狗知道》", tip:"（周四已解锁）· 无纸质练习。", meta:"线上精读 · 无纸质练习", metaIcon:"lock" }
+  ];
+
+  var KEYPOINTS = [
+    { no:"01", name:"拆字组词法", use:"每个字都认识、拆得动的时候用", example:"例：聚拢 → 聚＝聚集，拢＝合拢" },
+    { no:"02", name:"抓熟法", use:"词太长拆不动、句子里能找到熟词的时候用", example:"例：先抓住“安静”，再去猜“宁静”的意思" },
+    { no:"03", name:"联系上下文法", use:"前后句有明显提示、能顺着语境猜的时候用", example:"例：读到“霎时，天空下起了大雨”，猜“霎时”＝一会儿" }
+  ];
+
+  var VALUES = [
+    { icon:"target", title:"直击校内重点", desc:"紧跟三年级语文阅读考点，“解释词语意思题”是高频题型。" },
+    { icon:"swap",   title:"方法可迁移", desc:"3 个方法应对不同题型，课上学完，考试会灵活用。" },
+    { icon:"book",   title:"配套练习巩固", desc:"搭配《学过的别忘了》第一册纸质练习，学完即练、及时巩固。" },
+    { icon:"chat",   title:"亲子互动 tip", desc:"学完让孩子用一句话“教”给你，记得更牢。" }
+  ];
+
+  /* ===== 内联 SVG 图标 ===== */
+  var ICONS = {
+    book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/><path d="M9 7h6"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
+    swap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13m0 0l-3-3m3 3l3-3"/><path d="M17 20V7m0 0l-3 3m3-3l3 3"/></svg>',
+    chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg>'
+  };
+
+  /* ===== 渲染 ===== */
+  function renderSchedule(){
+    var html = SCHEDULE.map(function(d){
+      return (
+        '<div class="day">' +
+          '<div class="day-rail">' +
+            '<div class="day-tag ' + d.type + '">' + d.day + '</div>' +
+            '<div class="rail-line"></div>' +
+          '</div>' +
+          '<article class="card">' +
+            '<div class="card-top">' +
+              '<h3>' + d.title + '</h3>' +
+              '<span class="badge ' + d.type + '">' + (d.type === "must" ? "必修" : "选修") + '</span>' +
+            '</div>' +
+            '<p class="card-tip">' + d.tip + '</p>' +
+            '<p class="card-meta">' + ICONS[d.metaIcon] + '<span>' + d.meta + '</span></p>' +
+          '</article>' +
+        '</div>'
+      );
+    }).join("");
+    document.getElementById("scheduleFeed").innerHTML = html;
+  }
+
+  function renderKeypoints(){
+    var html = KEYPOINTS.map(function(k){
+      return (
+        '<div class="method">' +
+          '<div class="method-no">' + k.no + '</div>' +
+          '<div class="method-body">' +
+            '<h3>' + k.name + '</h3>' +
+            '<p class="use">适合：' + k.use + '</p>' +
+            '<p class="example">' + k.example + '</p>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+    document.getElementById("keypointFeed").innerHTML = html;
+  }
+
+  function renderValues(){
+    var html = VALUES.map(function(v){
+      return (
+        '<div class="value">' +
+          '<div class="value-ic">' + ICONS[v.icon] + '</div>' +
+          '<div>' +
+            '<h3>' + v.title + '</h3>' +
+            '<p>' + v.desc + '</p>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join("");
+    document.getElementById("valueFeed").innerHTML = html;
+  }
+
+  /* ===== Tab：点击 + 滚动联动 ===== */
+  var tabbar = document.getElementById("tabbar");
+  var indicator = document.getElementById("tabIndicator");
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  var secs = ["schedule","keypoints","value"].map(function(id){ return document.getElementById(id); });
+  var activeIndex = 0;
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function placeIndicator(){
+    var t = tabs[activeIndex];
+    indicator.style.width = t.offsetWidth + "px";
+    indicator.style.transform = "translateX(" + t.offsetLeft + "px)";
+  }
+
+  function setActive(i, scroll){
+    if (i === activeIndex && !scroll) return;
+    activeIndex = i;
+    tabs.forEach(function(t, idx){ t.classList.toggle("active", idx === i); });
+    placeIndicator();
+    if (scroll){
+      var top = secs[i].offsetTop - tabbar.offsetHeight - 8;
+      window.scrollTo({ top: Math.max(top, 0), behavior: reduced ? "auto" : "smooth" });
+    }
+  }
+
+  tabs.forEach(function(t, i){
+    t.addEventListener("click", function(){ setActive(i, true); });
+  });
+
+  var ticking = false;
+  function computeActive(){
+    var anchor = tabbar.offsetHeight + 8;
+    var idx = 0;
+    for (var i = 0; i < secs.length; i++){
+      if (secs[i].offsetTop - anchor <= window.scrollY + 4) idx = i;
+    }
+    setActive(idx, false);
+    ticking = false;
+  }
+  window.addEventListener("scroll", function(){
+    if (!ticking){
+      ticking = true;
+      requestAnimationFrame(computeActive);
+    }
+  }, { passive:true });
+  window.addEventListener("resize", placeIndicator);
+
+  /* ===== 初始化 ===== */
+  renderSchedule();
+  renderKeypoints();
+  renderValues();
+  placeIndicator();
+})();
+</script>
+</body>
+</html>
