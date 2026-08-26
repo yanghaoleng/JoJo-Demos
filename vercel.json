@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/report",
+      "destination": "/report/",
+      "permanent": false
+    },
+    {
       "source": "/upnotes",
       "destination": "/upnotes/",
       "permanent": false

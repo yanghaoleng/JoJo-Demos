@@ -10,3 +10,6 @@
 | 索引页文件夹 | `/DEMO/index.html` | `.folder-visual`, `.folder-back`, `.folder-front` | 一体成形的项目文件夹；后盖为 SVG 轮廓，前盖负责磨砂与展开动效 |
 | 文件夹缩略图 | `/DEMO/index.html` | `.folder-paper`, `.folder-shot`, `.folder-preview` | 文件夹内部的 3 张项目截图，hover / focus 时扇形展开 |
 | 文件夹内部图标 | `/DEMO/index.html` | `.folder-favicon` | 收在文件夹内部最右侧的项目 favicon，不再放置在文件夹外部 |
+| 家长报告时间点 | `/report/` | `.stage-tab` / `stageKey` | 每日、周日夜、每月、阶段四个时间节点 |
+| 家长报告触达方式 | `/report/` | `.channel-tabs` / `channelKey` | 产品小程序消息或班主任、指导师班班消息 |
+| 阶段报告正文 | `/report/` | `.report-cover` / `.report-scroll` | 点击封面进入可上下浏览的报告正文 |
