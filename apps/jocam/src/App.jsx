@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowClockwise,
+  ArrowsLeftRight,
   Camera,
   Check,
   DownloadSimple,
@@ -24,13 +25,15 @@ const RIVE_DEFAULT_CROP_X = 64;
 const RIVE_EDGE_PADDING = 4;
 const RIVE_ANALYSIS_SIZE = { width: 600, height: 320 };
 const RIVE_SCALE = 0.512;
+const RIVE_DISPLAY_MULTIPLIER = 1.25;
+const RIVE_LEFT_OVERFLOW_RATIO = 0.035;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const RIVE_RANDOM_INTERVAL_MS = 1_000;
 const MAX_RANDOM_DAY = 520;
 const CAPTION_MODES = {
-  together: { prefix: "我和叫叫一起阅读的第", suffix: "天" },
-  streak: { prefix: "坚持连续学习叫叫阅读第", suffix: "天" },
+  together: { prefix: "我和叫叫一起阅读的", dayPrefix: "第", suffix: "天" },
+  streak: { prefix: "坚持连续学习叫叫阅读", dayPrefix: "第", suffix: "天" },
 };
 const SEGMENT_INTERVAL_MS = 92;
 const PERSON_MASK_THRESHOLD = 0.52;
@@ -57,7 +60,7 @@ function getRandomValue(max, excludedValue) {
 
 function getCaptionText(mode, value) {
   const caption = CAPTION_MODES[mode] || CAPTION_MODES.together;
-  return `${caption.prefix} ${value} ${caption.suffix}`;
+  return `${caption.prefix}${caption.dayPrefix} ${value} ${caption.suffix}`;
 }
 
 function getViewportOrientation() {
@@ -279,45 +282,57 @@ function App() {
   const drawCaption = useCallback((context, targetWidth, targetHeight) => {
     const activeCaption = CAPTION_MODES[captionMode];
     const centerX = targetWidth / 2;
-    const top = targetHeight < targetWidth ? 58 : 86;
-    const labelFontSize = targetHeight < targetWidth ? 35 : 33;
-    const numberFontSize = targetHeight < targetWidth ? 64 : 60;
+    const isLandscape = targetHeight < targetWidth;
+    const firstLineY = isLandscape ? 48 : 66;
+    const dayLineY = isLandscape ? 108 : 132;
+    const labelFontSize = isLandscape ? 35 : 33;
+    const dayLabelFontSize = labelFontSize * 1.25;
+    const numberFontSize = (isLandscape ? 64 : 60) * 1.25;
     const gap = 8;
     const labelFont = `700 ${labelFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
+    const dayLabelFont = `700 ${dayLabelFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
     const numberFont = `700 ${numberFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
 
     context.save();
-    context.textAlign = "left";
+    context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineJoin = "round";
 
     context.font = labelFont;
-    const prefixWidth = context.measureText(activeCaption.prefix).width;
+    context.lineWidth = 10;
+    context.strokeStyle = "rgba(20, 22, 15, 0.52)";
+    context.strokeText(activeCaption.prefix, centerX, firstLineY);
+    context.fillStyle = "#f8f8f1";
+    context.fillText(activeCaption.prefix, centerX, firstLineY);
+
+    context.textAlign = "left";
+    context.font = dayLabelFont;
+    const dayPrefixWidth = context.measureText(activeCaption.dayPrefix).width;
     const suffixWidth = context.measureText(activeCaption.suffix).width;
     context.font = numberFont;
     const numberWidth = context.measureText(paddedDay).width;
-    let cursorX = centerX - ((prefixWidth + numberWidth + suffixWidth + gap * 2) / 2);
+    let cursorX = centerX - ((dayPrefixWidth + numberWidth + suffixWidth + gap * 2) / 2);
 
-    const drawLabel = (copy) => {
-      context.font = labelFont;
-      context.lineWidth = 10;
+    const drawDayLabel = (copy) => {
+      context.font = dayLabelFont;
+      context.lineWidth = 11;
       context.strokeStyle = "rgba(20, 22, 15, 0.52)";
-      context.strokeText(copy, cursorX, top);
+      context.strokeText(copy, cursorX, dayLineY);
       context.fillStyle = "#f8f8f1";
-      context.fillText(copy, cursorX, top);
+      context.fillText(copy, cursorX, dayLineY);
       cursorX += context.measureText(copy).width;
     };
 
-    drawLabel(activeCaption.prefix);
+    drawDayLabel(activeCaption.dayPrefix);
     cursorX += gap;
     context.font = numberFont;
-    context.lineWidth = 11;
+    context.lineWidth = captionMode === "streak" ? 14 : 11;
     context.strokeStyle = captionMode === "streak" ? "#fffdf8" : "rgba(20, 22, 15, 0.52)";
-    context.strokeText(paddedDay, cursorX, top);
+    context.strokeText(paddedDay, cursorX, dayLineY);
     context.fillStyle = captionMode === "streak" ? "#ef3f37" : "#d5ff4c";
-    context.fillText(paddedDay, cursorX, top);
+    context.fillText(paddedDay, cursorX, dayLineY);
     cursorX += numberWidth + gap;
-    drawLabel(activeCaption.suffix);
+    drawDayLabel(activeCaption.suffix);
     context.restore();
   }, [captionMode, paddedDay]);
 
@@ -369,19 +384,21 @@ function App() {
       const displayHeight = outputCanvas.clientHeight || targetHeight;
       const displayScale = Math.max(displayWidth / targetWidth, displayHeight / targetHeight);
       const visibleTargetWidth = Math.min(targetWidth, displayWidth / displayScale);
-      const scale = Math.min(
+      const baseScale = Math.min(
         (targetHeight * RIVE_SCALE) / RIVE_VISIBLE_SOURCE.height,
         visibleTargetWidth / RIVE_VISIBLE_SOURCE.width,
       );
+      const scale = baseScale * RIVE_DISPLAY_MULTIPLIER;
       const riveWidth = RIVE_VISIBLE_SOURCE.width * scale;
       const riveHeight = RIVE_VISIBLE_SOURCE.height * scale;
+      const riveX = -visibleTargetWidth * RIVE_LEFT_OVERFLOW_RATIO;
       outputContext.drawImage(
         riveCanvas,
         riveCropXRef.current,
         RIVE_VISIBLE_SOURCE.y,
         RIVE_VISIBLE_SOURCE.width,
         RIVE_VISIBLE_SOURCE.height,
-        0,
+        riveX,
         targetHeight - riveHeight,
         riveWidth,
         riveHeight,
@@ -855,18 +872,21 @@ function App() {
               onClick={switchCaption}
               aria-label={`${getCaptionText(captionMode, day)}，点击切换字幕和数值`}
             >
-              <span>{caption.prefix}</span>
-              <Calligraph
-                className="reading-day"
-                variant="number"
-                animation="bouncy"
-                initial
-                trend={1}
-                aria-label={`${day}`}
-              >
-                {paddedDay}
-              </Calligraph>
-              <span>{caption.suffix}</span>
+              <span className="caption-line caption-line-copy">{caption.prefix}</span>
+              <span className="caption-line caption-line-day">
+                <span>{caption.dayPrefix}</span>
+                <Calligraph
+                  className="reading-day"
+                  variant="number"
+                  animation="bouncy"
+                  initial
+                  trend={1}
+                  aria-label={`${day}`}
+                >
+                  {paddedDay}
+                </Calligraph>
+                <span>{caption.suffix}</span>
+              </span>
             </button>
           )}
 
@@ -883,40 +903,38 @@ function App() {
 
         {cameraState === "ready" && (
           <div className="control-deck">
-            <div className="top-controls" aria-label="相机工具">
+            <div className="capture-toolbar" aria-label="拍摄工具">
               <button
-                className={`person-status ${segmenterReady ? "is-ready" : ""} ${personLayer === "behind" ? "is-behind" : ""}`}
+                className={`round-control layer-control ${segmenterReady ? "is-ready" : ""} ${personLayer === "behind" ? "is-behind" : ""}`}
                 type="button"
                 disabled={!segmenterReady}
                 aria-pressed={personLayer === "front"}
                 aria-label={`切换人像图层，当前人像在叫叫${personLayer === "front" ? "前面" : "后面"}`}
                 onClick={togglePersonLayer}
               >
-                <Sparkle size={15} weight="fill" />
-                <span>{segmenterReady ? `人像在${personLayer === "front" ? "前" : "后"}` : "正在识别人像"}</span>
+                <ArrowsLeftRight size={24} weight="bold" />
               </button>
-              <div className="camera-actions">
-                <button className="round-control" type="button" disabled={recording} onClick={switchCamera} aria-label="切换前后摄像头">
-                  <ArrowClockwise size={22} weight="bold" />
-                </button>
-              </div>
-            </div>
 
-            <div className="capture-controls">
-              <span className="capture-hint">轻点拍照 · 按住录像</span>
-              <button
-                className={`shutter ${recording ? "is-recording" : ""}`}
-                type="button"
-                aria-label={recording ? "松开结束录像" : "轻点拍照，长按录像"}
-                onPointerDown={onShutterPointerDown}
-                onPointerUp={onShutterPointerUp}
-                onPointerCancel={onShutterPointerCancel}
-                onContextMenu={(event) => event.preventDefault()}
-              >
-                <span className="shutter-core" />
-                {recording && <span className="recording-time">{formattedRecordingTime}</span>}
+              <div className="capture-controls">
+                <span className="capture-hint">轻点拍照 · 按住录像</span>
+                <button
+                  className={`shutter ${recording ? "is-recording" : ""}`}
+                  type="button"
+                  aria-label={recording ? "松开结束录像" : "轻点拍照，长按录像"}
+                  onPointerDown={onShutterPointerDown}
+                  onPointerUp={onShutterPointerUp}
+                  onPointerCancel={onShutterPointerCancel}
+                  onContextMenu={(event) => event.preventDefault()}
+                >
+                  <span className="shutter-core" />
+                  {recording && <span className="recording-time">{formattedRecordingTime}</span>}
+                </button>
+                <span className="capture-limit">最长 15 秒</span>
+              </div>
+
+              <button className="round-control camera-switch" type="button" disabled={recording} onClick={switchCamera} aria-label="切换前后摄像头">
+                <ArrowClockwise size={23} weight="bold" />
               </button>
-              <span className="capture-limit">最长 15 秒</span>
             </div>
           </div>
         )}

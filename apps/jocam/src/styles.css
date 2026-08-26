@@ -173,9 +173,10 @@ button {
   top: max(28px, calc(env(safe-area-inset-top) + 10px));
   left: 50%;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 0.28em;
+  gap: 0.24em;
   width: max-content;
   max-width: calc(100% - 36px);
   padding: 0;
@@ -185,12 +186,23 @@ button {
   color: #f8f8f2;
   font-size: clamp(14px, 3.6vw, 20px);
   font-weight: 700;
-  line-height: 1;
+  line-height: 0.98;
   white-space: nowrap;
   text-shadow: 0 2px 12px rgba(8, 9, 6, 0.52);
   cursor: pointer;
   touch-action: manipulation;
   transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.caption-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.28em;
+}
+
+.caption-line-day {
+  font-size: 1.25em;
 }
 
 .live-caption:active:not(:disabled) {
@@ -222,26 +234,20 @@ button {
   text-shadow: 0 2px 12px rgba(84, 8, 4, 0.48);
 }
 
-.top-controls {
+.capture-toolbar {
   position: absolute;
   z-index: 4;
-  top: max(72px, calc(env(safe-area-inset-top) + 52px));
-  left: 16px;
-  right: 16px;
-  display: flex;
-  justify-content: space-between;
+  left: 50%;
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
+  display: grid;
+  grid-template-columns: 48px auto 48px;
   align-items: center;
+  justify-content: center;
+  gap: clamp(22px, 7vw, 38px);
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
-.camera-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.person-status,
 .round-control {
   min-height: 38px;
   border: 1px solid rgba(244, 248, 230, 0.16);
@@ -252,40 +258,16 @@ button {
   backdrop-filter: blur(14px);
 }
 
-.person-status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  pointer-events: auto;
-  cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
-}
-
-.person-status svg {
-  color: rgba(247, 248, 241, 0.56);
-}
-
-.person-status.is-ready {
-  color: #f7f8f1;
-}
-
-.person-status.is-ready svg {
+.layer-control.is-ready {
   color: var(--accent);
 }
 
-.person-status.is-ready.is-behind {
+.layer-control.is-ready.is-behind {
   border-color: rgba(213, 255, 76, 0.34);
   background: rgba(42, 48, 28, 0.86);
 }
 
-.person-status:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.person-status:disabled {
+.layer-control:disabled {
   cursor: wait;
 }
 
@@ -302,6 +284,10 @@ button {
 }
 
 .round-control:active {
+  transform: scale(0.94);
+}
+
+.camera-switch:active {
   transform: scale(0.94) rotate(-16deg);
 }
 
@@ -360,7 +346,6 @@ button {
 }
 
 .round-control:focus-visible,
-.person-status:focus-visible,
 .live-caption:focus-visible,
 .jiaojiao-hit-area:focus-visible,
 .shutter:focus-visible,
@@ -373,14 +358,6 @@ button {
 
 .camera-stage.is-landscape .live-caption {
   top: max(24px, calc(env(safe-area-inset-top) + 12px));
-}
-
-.camera-stage.is-landscape .top-controls {
-  top: max(62px, calc(env(safe-area-inset-top) + 48px));
-}
-
-.camera-stage.is-landscape .capture-controls {
-  bottom: max(12px, env(safe-area-inset-bottom));
 }
 
 .camera-stage.is-landscape .capture-hint,
@@ -408,15 +385,11 @@ button {
 }
 
 .capture-controls {
-  position: absolute;
   z-index: 4;
-  left: 50%;
-  bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px));
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 9px;
-  transform: translateX(-50%);
 }
 
 .capture-hint,
@@ -910,24 +883,21 @@ button {
     width: 100%;
     min-height: calc(184px + env(safe-area-inset-bottom));
     flex: 1 0 auto;
-    display: grid;
-    grid-template-rows: 52px minmax(0, 1fr);
-    padding: 8px 16px max(10px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px max(12px, env(safe-area-inset-bottom));
     background: #000;
   }
 
-  .camera-stage.is-live.is-portrait .top-controls {
+  .camera-stage.is-live.is-portrait .capture-toolbar {
     position: static;
-    width: 100%;
-    align-self: center;
+    width: min(100%, 330px);
+    transform: none;
   }
 
   .camera-stage.is-live.is-portrait .capture-controls {
-    position: static;
-    align-self: center;
-    justify-self: center;
     gap: 7px;
-    transform: none;
   }
 
   .camera-stage.is-live.is-portrait .live-caption {
@@ -955,11 +925,33 @@ button {
   .camera-stage.is-live.is-landscape .viewfinder {
     inset:
       max(8px, env(safe-area-inset-top))
-      max(8px, env(safe-area-inset-right))
+      max(96px, calc(env(safe-area-inset-right) + 88px))
       max(8px, env(safe-area-inset-bottom))
       max(8px, env(safe-area-inset-left));
     border: 1px solid rgba(247, 248, 241, 0.14);
     border-radius: 18px;
+  }
+
+  .camera-stage.is-live.is-landscape .control-deck {
+    inset: 0 0 0 auto;
+    width: max(88px, calc(env(safe-area-inset-right) + 80px));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(12px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) 8px;
+    background: #000;
+  }
+
+  .camera-stage.is-live.is-landscape .capture-toolbar {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transform: none;
+  }
+
+  .camera-stage.is-live.is-landscape .camera-toast {
+    left: calc(50% - 44px);
   }
 }
 
@@ -1003,7 +995,6 @@ button {
 }
 
 @supports not (backdrop-filter: blur(1px)) {
-  .person-status,
   .round-control,
   .preview-close {
     background: rgba(20, 22, 17, 0.92);
