@@ -6,13 +6,12 @@ import {
   Check,
   DownloadSimple,
   LockSimple,
-  Sparkle,
-  VideoCamera,
   X,
 } from "@phosphor-icons/react";
 import { Rive, Layout, Fit, Alignment, RuntimeLoader } from "@rive-app/canvas";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
+import QRCode from "qrcode";
 
 const BASE_URL = import.meta.env.BASE_URL;
 const FRAME_SIZES = {
@@ -26,13 +25,20 @@ const RIVE_EDGE_PADDING = 4;
 const RIVE_ANALYSIS_SIZE = { width: 600, height: 320 };
 const RIVE_SCALE = 0.512;
 const RIVE_DISPLAY_MULTIPLIER = 1.25;
-const RIVE_LANDSCAPE_MULTIPLIER = 1.5;
+const RIVE_LANDSCAPE_MULTIPLIER = 1.35;
 const RIVE_LEFT_OVERFLOW_RATIO = 0.035;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const CLICK_RIVE_ANIMATION = "TalkingEmotion_Praise";
 const RIVE_RANDOM_INTERVAL_MS = 1_000;
 const MAX_RANDOM_DAY = 520;
+const VOLUME_SHUTTER_KEYS = new Set([
+  "AudioVolumeUp",
+  "AudioVolumeDown",
+  "VolumeUp",
+  "VolumeDown",
+]);
+const VOLUME_SHUTTER_KEY_CODES = new Set([174, 175]);
 const CAPTION_MODES = {
   together: { prefix: "我和叫叫一起阅读的", dayPrefix: "第", suffix: "天" },
   streak: { prefix: "坚持连续学习叫叫阅读", dayPrefix: "第", suffix: "天" },
@@ -70,6 +76,22 @@ function getViewportOrientation() {
   const isLandscape = window.matchMedia?.("(orientation: landscape)").matches
     ?? window.innerWidth > window.innerHeight;
   return isLandscape ? "landscape" : "portrait";
+}
+
+function getIsMobileDevice() {
+  if (typeof window === "undefined") return false;
+  const navigatorMobile = window.navigator.userAgentData?.mobile;
+  const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent);
+  const iPadDesktopMode = window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1;
+  return Boolean(navigatorMobile || mobileUserAgent || iPadDesktopMode || window.matchMedia?.("(pointer: coarse)").matches);
+}
+
+function getShareUrl() {
+  if (typeof window === "undefined") return "https://mikeywa.site/jocam/";
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  return url.href;
 }
 
 function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -169,6 +191,9 @@ async function saveBlob(blob, filename, title) {
 }
 
 function App() {
+  const [isMobileDevice] = useState(getIsMobileDevice);
+  const [shareUrl] = useState(getShareUrl);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [day, setDay] = useState(() => getRandomValue(MAX_RANDOM_DAY));
   const [captionMode, setCaptionMode] = useState("together");
   const paddedDay = String(day).padStart(2, "0");
@@ -212,6 +237,24 @@ function App() {
   const [segmenterReady, setSegmenterReady] = useState(false);
   const [cameraState, setCameraState] = useState("idle");
   const [cameraError, setCameraError] = useState("");
+
+  useEffect(() => {
+    if (isMobileDevice) return undefined;
+    let cancelled = false;
+    QRCode.toDataURL(shareUrl, {
+      width: 288,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: { dark: "#251d08", light: "#ffd84d" },
+    }).then((url) => {
+      if (!cancelled) setQrCodeUrl(url);
+    }).catch((error) => {
+      console.warn("QR code generation failed", error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMobileDevice, shareUrl]);
   const [facingMode, setFacingMode] = useState("user");
   const [frameOrientation, setFrameOrientation] = useState(getViewportOrientation);
   const [riveAnimationName, setRiveAnimationName] = useState(DEFAULT_RIVE_ANIMATION);
@@ -332,7 +375,7 @@ function App() {
     context.lineWidth = (captionMode === "streak" ? 14 : 11) * portraitCaptionScale;
     context.strokeStyle = captionMode === "streak" ? "#fffdf8" : "rgba(20, 22, 15, 0.52)";
     context.strokeText(paddedDay, cursorX, dayLineY);
-    context.fillStyle = captionMode === "streak" ? "#ef3f37" : "#d5ff4c";
+    context.fillStyle = captionMode === "streak" ? "#ef3f37" : "#ffd84d";
     context.fillText(paddedDay, cursorX, dayLineY);
     cursorX += numberWidth + gap;
     drawDayLabel(activeCaption.suffix);
@@ -732,6 +775,29 @@ function App() {
     }, "image/jpeg", 0.94);
   }, [cameraState, captionMode, paddedDay, renderFrame, showToast]);
 
+  useEffect(() => {
+    const onVolumeShutter = (event) => {
+      const keyCode = event.keyCode || event.which;
+      const isVolumeKey = VOLUME_SHUTTER_KEYS.has(event.key)
+        || VOLUME_SHUTTER_KEYS.has(event.code)
+        || VOLUME_SHUTTER_KEY_CODES.has(keyCode);
+
+      if (
+        !isVolumeKey
+        || event.repeat
+        || cameraState !== "ready"
+        || recordingRef.current
+        || mediaPreviewRef.current
+      ) return;
+
+      event.preventDefault();
+      takePhoto();
+    };
+
+    window.addEventListener("keydown", onVolumeShutter, true);
+    return () => window.removeEventListener("keydown", onVolumeShutter, true);
+  }, [cameraState, takePhoto]);
+
   const stopRecording = useCallback(() => {
     if (!recordingRef.current) return;
     recordingRef.current = false;
@@ -852,7 +918,7 @@ function App() {
   const readyForCamera = engineState !== "error";
 
   return (
-    <main className={`app-shell is-${frameOrientation}`}>
+    <main className={`app-shell is-${frameOrientation} ${isMobileDevice ? "is-mobile-device" : "is-desktop-device"}`}>
       <section
         className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""}`}
         data-frame-orientation={frameOrientation}
@@ -926,7 +992,8 @@ function App() {
                 aria-label={`切换人像图层，当前人像在叫叫${personLayer === "front" ? "前面" : "后面"}`}
                 onClick={togglePersonLayer}
               >
-                <ArrowsLeftRight size={24} weight="bold" />
+                <ArrowsLeftRight size={18} weight="bold" />
+                <span>{personLayer === "front" ? "人在前" : "鸡在前"}</span>
               </button>
 
               <div className="capture-controls">
@@ -1028,15 +1095,21 @@ function App() {
         )}
       </section>
 
-      <aside className="desktop-note" aria-hidden="true">
-        <span className="desktop-kicker">JOCAM / 叫叫合拍</span>
-        <h2>把阅读的每一天，留在同一个镜头里。</h2>
-        <div className="desktop-features">
-          <span><Sparkle size={18} weight="fill" />实时人像前景</span>
-          <span><Camera size={18} weight="fill" />轻点拍照</span>
-          <span><VideoCamera size={18} weight="fill" />按住录像</span>
-        </div>
-      </aside>
+      {!isMobileDevice && (
+        <aside className="desktop-note">
+          <span className="desktop-kicker">推荐使用移动设备</span>
+          <h2>扫码打开<br />JOCAM</h2>
+          <p>用手机或 Pad 打开，取景框会自动放大，更适合拍照和录像。</p>
+          <div className="desktop-qr">
+            {qrCodeUrl ? (
+              <img src={qrCodeUrl} alt={`打开 ${shareUrl} 的二维码`} />
+            ) : (
+              <span role="status">正在生成二维码</span>
+            )}
+          </div>
+          <span className="desktop-domain">{shareUrl.replace(/^https?:\/\//, "")}</span>
+        </aside>
+      )}
     </main>
   );
 }
