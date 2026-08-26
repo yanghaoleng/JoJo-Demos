@@ -397,9 +397,16 @@ function App() {
         visibleTargetWidth / RIVE_VISIBLE_SOURCE.width,
       );
       const isPortraitWelcome = welcomeMode && targetHeight > targetWidth;
+      const isDesktopLandscape = !isMobileDevice && targetWidth > targetHeight;
       const orientationMultiplier = targetWidth > targetHeight ? RIVE_LANDSCAPE_MULTIPLIER : 1;
       const welcomeMultiplier = isPortraitWelcome ? 1.45 : 1;
-      const scale = baseScale * RIVE_DISPLAY_MULTIPLIER * orientationMultiplier * welcomeMultiplier;
+      const preferredScale = baseScale * RIVE_DISPLAY_MULTIPLIER * orientationMultiplier * welcomeMultiplier;
+      const desktopSafeScale = (
+        visibleTargetWidth * (1 + RIVE_LEFT_OVERFLOW_RATIO)
+      ) / RIVE_VISIBLE_SOURCE.width;
+      const scale = isDesktopLandscape
+        ? Math.min(preferredScale, desktopSafeScale)
+        : preferredScale;
       const riveWidth = RIVE_VISIBLE_SOURCE.width * scale;
       const riveHeight = RIVE_VISIBLE_SOURCE.height * scale;
       const riveX = -visibleTargetWidth * RIVE_LEFT_OVERFLOW_RATIO;
@@ -416,7 +423,7 @@ function App() {
         riveHeight,
       );
     }
-  }, [riveReady]);
+  }, [isMobileDevice, riveReady]);
 
   const renderWelcomeFrame = useCallback(() => {
     const outputCanvas = outputCanvasRef.current;
