@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#fdf7eb" />
   <title>叫叫 · 家长成长沟通 Demo</title>
+  <link rel="preload" as="image" type="image/svg+xml" href="assets/jiaojiao-flag-logo.svg" />
   <link rel="preload" as="image" type="image/webp" href="assets/daily-journey-entry.webp" />
   <link rel="preload" as="image" type="image/webp" href="assets/daily-official-account-entry.webp" />
   <link rel="preload" as="image" type="image/webp" href="assets/daily-tutor-entry.webp" />
@@ -22,38 +23,48 @@
     :root{--paper:#fdf7eb;--brown:#684218;--brown-2:#986c31;--orange:#ef963e;--muted:#a87d50;--line:#e9cfab;--cream:#fff9ef;--sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}*{box-sizing:border-box}html,body{min-height:100%;margin:0}body{font-family:var(--sans);background:var(--paper);color:var(--brown);-webkit-font-smoothing:antialiased}.page{min-height:100dvh;padding:28px clamp(20px,5vw,76px) 42px;background:radial-gradient(circle at 95% 4%,#ffe0a4 0,transparent 29%),radial-gradient(circle at 4% 94%,#fff0cf 0,transparent 27%),var(--paper)}.top{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;letter-spacing:.08em;color:#975f25}.top i{display:block;width:9px;height:9px;border-radius:3px;background:var(--orange);transform:rotate(45deg)}.layout{display:grid;grid-template-columns:180px minmax(0,1fr);gap:clamp(28px,6vw,100px);max-width:1280px;margin:clamp(45px,9vh,110px) auto 0}.timeline{position:relative;padding:2px 0}.timeline:before{content:"";position:absolute;top:31px;bottom:31px;left:15px;border-left:1px dashed #d5ae7c}.time-btn{position:relative;z-index:1;display:flex;align-items:center;gap:13px;width:100%;padding:13px 8px;border:0;border-radius:13px;background:transparent;color:#987a5b;text-align:left;cursor:pointer;transition:background .22s,color .22s}.time-btn:hover,.time-btn[aria-selected="true"]{background:#fff0d3;color:var(--brown)}.time-num{display:grid;place-items:center;width:31px;height:31px;flex:none;border:1px solid #dcbd92;border-radius:50%;background:var(--paper);font-size:11px;font-weight:800}.time-btn[aria-selected="true"] .time-num{border-color:var(--orange);background:var(--orange);color:white;box-shadow:0 0 0 5px #ffedcf}.time-btn b,.time-btn small{display:block}.time-btn b{font-size:15px}.time-btn small{margin-top:2px;font-size:11px;color:#ac8c6b}.flow{min-width:0}.stage-note{margin:0;color:#b5702e;font-size:12px;font-weight:700;letter-spacing:.1em}.flow h1{margin:7px 0 0;font-size:clamp(26px,3.6vw,46px);line-height:1.18;letter-spacing:-.05em}.step-strip{display:flex;gap:8px;align-items:center;overflow-x:auto;margin:28px -4px 0;padding:4px;scrollbar-width:thin}.step{display:inline-flex;align-items:center;gap:7px;flex:none;padding:8px 12px;border:0;border-radius:99px;background:#f3e4cf;color:#a78661;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}.step b{display:grid;place-items:center;width:19px;height:19px;border-radius:50%;background:#ddbd93;color:white;font-size:10px}.step.active{background:#ffe5bb;color:#85501a}.step.active b{background:var(--orange)}.screen-stage{display:grid;place-items:center;min-height:min(64vh,740px);margin-top:17px}.screen{display:flex;gap:clamp(22px,4vw,62px);align-items:center;justify-content:center;width:100%;animation:in .36s cubic-bezier(.2,.8,.2,1) both}.shot-button{position:relative;display:block;padding:0;border:0;background:transparent;cursor:pointer;border-radius:23px;box-shadow:0 24px 50px #6e471d26;overflow:hidden;max-width:100%}.shot-button img{display:block;width:auto;max-width:min(100%,335px);max-height:min(62vh,650px);border-radius:22px}.shot-button.wide img{max-width:min(100%,710px)}.shot-button:focus-visible,.reset-flow:focus-visible,.step:focus-visible,.time-btn:focus-visible{outline:3px solid #e8892c;outline-offset:4px}.shot-tip{position:absolute;right:12px;bottom:12px;padding:7px 10px;border-radius:99px;background:#684218dd;color:#fffaf0;font-size:12px;font-weight:700;opacity:0;transform:translateY(6px);transition:.2s}.shot-button:hover .shot-tip,.shot-button:focus-visible .shot-tip{opacity:1;transform:none}.screen-copy{max-width:282px}.screen-copy span{display:block;color:#bd7d38;font-size:12px;font-weight:700;letter-spacing:.1em}.screen-copy h2{margin:8px 0;color:var(--brown);font-size:clamp(21px,2.4vw,30px);line-height:1.3;letter-spacing:-.04em}.screen-copy p{margin:0;color:#967452;font-size:14px;line-height:1.75}.screen-copy .click-note{margin-top:13px;color:#bd7d38;font-size:12px;font-weight:700}.report-view{display:flex;gap:clamp(22px,4vw,62px);align-items:center;justify-content:center;width:100%;animation:in .36s cubic-bezier(.2,.8,.2,1) both}.report-phone{position:relative;width:min(100%,375px);height:min(69vh,680px);overflow:hidden;border:7px solid #4e3520;border-radius:32px;background:#fff;box-shadow:0 25px 56px #6e471d35}.report-phone.stage{border-color:#986c31;background:#fef7e5}.report-scroll{height:100%;overflow-y:auto;overscroll-behavior:contain;background:#f4f5fb;scrollbar-width:thin;scrollbar-color:#d5ae7c transparent}.report-scroll::-webkit-scrollbar{width:6px}.report-scroll::-webkit-scrollbar-thumb{background:#d5ae7c;border-radius:99px}.report-scroll img{display:block;width:100%;height:auto}.report-scroll .raw-block{width:100%;display:block}.scroll-hint{position:absolute;right:12px;top:12px;z-index:2;padding:7px 10px;border-radius:99px;background:#684218e8;color:#fffaf0;font-size:11px;font-weight:700;pointer-events:none}.detail-copy{max-width:290px}.detail-copy span{display:block;color:#bd7d38;font-size:12px;font-weight:700;letter-spacing:.1em}.detail-copy h2{margin:8px 0;color:var(--brown);font-size:clamp(21px,2.4vw,30px);line-height:1.3;letter-spacing:-.04em}.detail-copy p{margin:0;color:#967452;font-size:14px;line-height:1.75}.reset-flow{margin-top:18px;padding:10px 14px;border:1px solid #d9b98f;border-radius:11px;background:transparent;color:#85501a;font:700 13px var(--sans);cursor:pointer}.continuation{padding:14px 20px 32px;background:#f7f8fc}.continuation.month{background:#f6f7fb}.continuation.stage-flow{background:linear-gradient(#c09660,#fef7e5 12%);padding-top:21px}.source-label{margin:0 0 11px;color:#8b7199;font-size:12px;font-weight:700}.raw-card{margin:14px 0 0;padding:18px 15px;border-radius:18px;background:#fff;box-shadow:0 4px 16px #1f284d0b;color:#1f284d}.raw-card h3{margin:0 0 10px;font-size:19px;line-height:1.35}.raw-card h4{margin:18px 0 8px;font-size:16px}.raw-card p,.raw-card li{margin:0;color:#596689;font-size:14px;line-height:1.7}.raw-card ol{margin:0;padding-left:20px}.data-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.data-cell{padding:11px 10px;border-radius:12px;background:#f0f4ff}.data-cell b{display:block;color:#3e609b;font-size:18px}.data-cell span{display:block;margin-top:2px;color:#7a88a6;font-size:12px}.lesson-list{margin-top:11px}.lesson-row{display:flex;justify-content:space-between;gap:8px;padding:12px 0;border-top:1px solid #edf0f6;font-size:14px}.lesson-row b{font-size:14px}.lesson-row span{color:#8792aa;font-size:12px;white-space:nowrap}.stage-card{margin:16px 0 0;padding:18px 14px;border-radius:22px;background:#fff;box-shadow:0 0 10px #00000008;color:#664314}.stage-card h3{margin:0 0 12px;font-size:20px}.stage-card p{margin:0;font-size:14px;line-height:1.7;color:#765f41}.metric-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:11px 0;background:#f0dcc2}.metric{padding:11px;background:#fff}.metric b{display:block;font-size:23px}.metric span{display:block;margin-top:3px;color:#806b53;font-size:13px}.course-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;border-top:1px solid #f0dcc2}.course-line:first-of-type{border-top:0}.course-line b{font-size:16px}.course-line small{display:block;margin-top:3px;color:#8e7659;font-size:12px}.course-line em{font-style:normal;color:#986c31}.work-tabs{display:flex;gap:16px;padding-bottom:10px;border-bottom:2px solid #f3e9d8;color:#b2b2b2;font-size:14px}.work-tabs b{color:#664314;border-bottom:3px solid #fcda00;padding-bottom:7px}.booking{display:flex;align-items:center;justify-content:space-between;gap:10px}.booking b{font-size:17px}.booking span{display:block;color:#c09660;font-size:12px;margin-top:3px}.booking button{border:1px solid #ffd738;border-radius:16px;background:#fff;color:#6b410b;padding:7px 13px;font:700 13px var(--sans)}@keyframes in{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}@media(max-width:700px){.page{padding:22px 18px}.layout{grid-template-columns:1fr;gap:28px;margin-top:35px}.timeline{display:flex;gap:5px;overflow:auto;padding:0 0 3px}.timeline:before{display:none}.time-btn{min-width:96px;flex-direction:column;gap:4px;padding:9px;text-align:center}.time-btn small{font-size:9px}.flow h1{font-size:29px}.screen-stage{min-height:0;padding-top:7px}.screen,.report-view{flex-direction:column}.shot-button img{max-width:min(100%,290px);max-height:58vh}.shot-button.wide img{max-width:100%;max-height:48vh}.screen-copy,.detail-copy{max-width:330px;text-align:center}.step-strip{margin-top:21px}.report-phone{height:64vh;max-height:640px}.scroll-hint{top:10px;right:10px}.shot-tip{opacity:1;transform:none;font-size:10px}.detail-copy{padding-bottom:8px}}
   </style>
   <style>
-    .timeline:before{left:23.5px}
-    .screen-stage{place-items:center start}
+    html,body{max-width:100%;overflow-x:hidden;overflow-x:clip}
+    .page{overflow-x:hidden;overflow-x:clip}
+    .top{gap:7px}
+    .top i{display:none}
+    .brand-logo{display:block;width:auto;height:20px;flex:none}
+    .brand-name{white-space:nowrap}
+    .layout,.flow,.screen-stage,.screen,.report-view,.slide-stack,.pair-stack{min-width:0;max-width:100%}
+    .timeline{align-self:start}
+    .timeline:before{top:34px;bottom:34px;left:23.5px}
+    .flow h1{margin:0}
+    .stage-note{margin-top:10px;max-width:900px;font-size:14px;line-height:1.7;letter-spacing:0}
+    .screen-stage{place-items:center start;overflow:visible}
     .slide-stack{position:relative;display:block;max-width:100%;isolation:isolate}
     .slide-stack .shot-button{position:relative;z-index:2}
     .screen-copy{position:relative;z-index:3}
     .course-frame{display:block;width:100%;height:100%;border:0;background:#fbf7f1}
     .long-report-image{display:block;width:100%;height:auto}
-    .screen,.report-view{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:18px}
+    .screen,.report-view{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:18px;overflow:visible}
     .page-title{margin:0;max-width:680px;color:var(--brown);font-size:clamp(21px,2.4vw,30px);line-height:1.3;letter-spacing:-.04em;text-align:center}
-    .paired-pages{display:flex;align-items:flex-end;justify-content:flex-start;gap:clamp(18px,3vw,40px);max-width:100%}
-    .page-card{display:flex;flex-direction:column;align-items:center;gap:14px;margin:0;min-width:0}
+    .paired-pages{display:flex;align-items:flex-end;justify-content:flex-start;gap:clamp(18px,3vw,40px);max-width:100%;overflow:visible}
+    .page-card{display:flex;flex-direction:column;align-items:center;gap:14px;margin:0;min-width:0;overflow:visible}
     .page-card .shot-button img{max-width:min(42vw,560px);max-height:min(54vh,560px);object-fit:contain}
     .page-card .page-title{max-width:430px;font-size:clamp(18px,2vw,25px)}
     .pair-stack{max-width:100%}
     .stage-pair .report-phone{width:auto;height:min(62vh,640px);aspect-ratio:375/812;border:4px solid #21160f;border-radius:25px;background:#fff}
     .stage-cover-page{display:block;width:100%;height:100%;object-fit:cover;object-position:top;background:#fff}
-    @media(max-width:700px){.slide-stack{max-width:100%}.paired-pages{justify-content:flex-start;gap:16px;max-width:100%;overflow-x:auto;padding:0 18px 8px 0;scroll-snap-type:x proximity}.page-card{flex:none;scroll-snap-align:start}.page-card .shot-button img{max-width:72vw;max-height:52vh}.stage-pair .report-phone{width:auto;height:min(60vh,600px)}.page-title{font-size:22px}}
+    @media(max-width:700px){.flow,.screen-stage,.screen,.report-view{width:100%;min-width:0}.slide-stack{width:100%;max-width:100%;overflow:visible}.paired-pages{width:calc(100% + 18px);max-width:none;margin:-28px 0 -42px -18px;padding:28px 26px 42px 18px;justify-content:flex-start;gap:16px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;scroll-padding-inline:18px 26px;scroll-snap-type:x proximity;scrollbar-width:none}.paired-pages::-webkit-scrollbar{display:none}.page-card{flex:none;scroll-snap-align:start}.page-card .shot-button img{max-width:72vw;max-height:52vh}.stage-pair .report-phone{width:auto;height:min(60vh,600px)}.shot-button{box-shadow:0 18px 32px #6e471d22}.report-phone{box-shadow:0 18px 32px #6e471d2b}.page-title{font-size:22px}.brand-logo{height:19px}.brand-name{font-size:12px;letter-spacing:.04em}}
   </style>
 </head>
 <body>
   <main class="page">
-    <div class="top"><i></i>叫叫 · 家长成长沟通 Demo</div>
+    <div class="top"><img class="brand-logo" src="assets/jiaojiao-flag-logo.svg" alt="叫叫" /><span class="brand-name">家长成长沟通 Demo</span></div>
     <div class="layout">
       <nav class="timeline" aria-label="时间节点">
-        <button class="time-btn" data-stage="daily" aria-selected="true"><span class="time-num">1</span><span><b>每日</b><small>每次学习后</small></span></button>
-        <button class="time-btn" data-stage="sunday" aria-selected="false"><span class="time-num">2</span><span><b>每周日晚</b><small>每周日晚 20:00</small></span></button>
-        <button class="time-btn" data-stage="monthly" aria-selected="false"><span class="time-num">3</span><span><b>每月</b><small>每月最后一天</small></span></button>
-        <button class="time-btn" data-stage="halfyear" aria-selected="false"><span class="time-num">4</span><span><b>阶段</b><small>约每 6 个月</small></span></button>
+        <button class="time-btn" data-stage="sunday" aria-selected="true"><span class="time-num">1</span><span><b>每周学情预告</b><small>每周日晚</small></span></button>
+        <button class="time-btn" data-stage="daily" aria-selected="false"><span class="time-num">2</span><span><b>日学情反馈</b><small>首周内任意一节完课</small></span></button>
+        <button class="time-btn" data-stage="monthly" aria-selected="false"><span class="time-num">3</span><span><b>主题月学情反馈</b><small>主题月结束</small></span></button>
+        <button class="time-btn" data-stage="halfyear" aria-selected="false"><span class="time-num">4</span><span><b>阶段学情反馈</b><small>M6-8蜜续期</small></span></button>
       </nav>
       <section class="flow" aria-live="polite">
-        <p class="stage-note" id="stage-note"></p>
         <h1 id="stage-title"></h1>
+        <p class="stage-note" id="stage-note"></p>
         <div class="step-strip" id="step-strip" aria-label="原稿流程步骤"></div>
         <div class="screen-stage" id="screen-stage"></div>
       </section>
@@ -61,21 +72,21 @@
   </main>
   <script>
     const flows={
-      daily:{note:'每日 · 学习即时反馈',title:'今天完成的学习，今天被看见。',steps:[
+      daily:{note:'触达时机：首周内任意一节完课，主动触达家长同步学习情况',title:'日学情反馈',steps:[
         {label:'产品触达',kind:'pair',pages:[{src:'assets/daily-journey-entry.webp',layout:'wide',title:'课程完成后，从环节列表进入学习报告'},{src:'assets/daily-official-account-entry.webp',title:'在叫叫家长中心收到学习完成通知'}]},
         {label:'班班触达',kind:'pair',pages:[{src:'assets/daily-tutor-entry.webp',layout:'wide',title:'指导师后台手动发送学习日报'},{src:'assets/daily-class-chat.webp',title:'班班把学习日报发给家长'}]},
         {label:'学习日报',kind:'detail',detail:'daily',title:'打开日报，向上滑动查看完整学习信息流'}]},
-      sunday:{note:'每周日晚 · 下周课程预告',title:'在周末，把下一周的学习安排讲清楚。',steps:[
+      sunday:{note:'触达时机：每周日晚发送，同步家长未来一周的学习内容',title:'每周学情预告',steps:[
         {label:'班班触达',kind:'image',src:'assets/weekly-class-chat-updated.webp',title:'班班推送专属阅读成长规划',copy:'原稿中更新后的每周日晚班班消息。'},
         {label:'下周课程预告',kind:'course',title:'打开下周课程预告',copy:'直接呈现课程预告页面中的课表、重点提炼与课程价值。'}]},
-      monthly:{note:'每月 · 学习月报',title:'一个月的积累，值得被认真看见。',steps:[
+      monthly:{note:'触达时机：主题月结束，主动触达家长同步学习情况',title:'主题月学情反馈',steps:[
         {label:'指导师发送',kind:'image',src:'assets/monthly-tutor-message.webp',title:'指导师发送家长端月报入口',copy:'原稿中的班班消息与“点击查看”入口。'},
         {label:'学习月报',kind:'detail',detail:'monthly',title:'打开月报告，向上滑动查看完整主题月信息流'}]},
-      halfyear:{note:'约半年 · 阶段成长报告',title:'让长期成长，也有一份郑重的记录。',steps:[
+      halfyear:{note:'触达时机：M6-8蜜续期基于阶段灵活（M1-5,M1-6..）汇总阶段学情，主动触达家长同步学习情况（发送报告-电话沟通）',title:'阶段学情反馈',steps:[
         {label:'班班发送',kind:'image',src:'assets/stage-class-chat.webp',title:'班班发送阶段成长报告',copy:'原稿中的阶段报告小程序卡片。'},
         {label:'阶段报告',kind:'stagePair',pages:[{src:'assets/stage-cover.webp',title:'阶段报告封面'},{src:'assets/stage-report-long.webp',title:'完整阶段报告'}]}]}
     };
-    let stage='daily',step=0;
+    let stage='sunday',step=0;
     const q=s=>document.querySelector(s),qa=s=>document.querySelectorAll(s);
     const detailAssets={daily:'assets/daily-report-long.webp',monthly:'assets/monthly-report-long.webp',stage:'assets/stage-report-long.webp'};
     const imageSlide=item=>`<div class="screen"><div class="slide-stack"><button class="shot-button ${item.layout==='wide'?'wide':''}" data-next aria-label="点击${item.label}查看下一步"><img src="${item.src}" alt="Figma 原稿：${item.label}" loading="eager" decoding="async" /></button></div><h2 class="page-title">${item.title}</h2></div>`;

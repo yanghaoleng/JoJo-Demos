@@ -13,9 +13,12 @@
 | 家长报告时间点 | `/report/` | `.stage-tab` / `stageKey` | 每日、周日夜、每月、阶段四个时间节点 |
 | 家长报告触达方式 | `/report/` | `.channel-tabs` / `channelKey` | 产品小程序消息或班主任、指导师班班消息 |
 | 阶段报告正文 | `/report/` | `.report-cover` / `.report-scroll` | 点击封面进入可上下浏览的报告正文 |
-| Figma 实图版时间点 | `/report-codex/` | `.time-btn` / `data-stage` | 每日、每周日晚、每月、阶段四个时间节点 |
+| 页首叫叫标志旗 | `/report-codex/` | `.brand-logo`, `.brand-name` | 小尺寸公司 Logo，后接“家长成长沟通 Demo” |
+| Figma 实图版时间点 | `/report-codex/` | `.time-btn` / `data-stage` | 每周学情预告、日学情反馈、主题月学情反馈、阶段学情反馈四个节点 |
+| 时间轴虚线 | `/report-codex/` | `.timeline::before` | 桌面端连接四个圆心并在阶段节点终止，手机端隐藏 |
 | Figma 实图版步骤 | `/report-codex/` | `.step` / `data-step` | 触达与报告步骤胶囊，可直接跳转 |
 | 双页并排区 | `/report-codex/` | `.paired-pages`, `.page-card` | 日报双图触达、阶段封面与完整报告的并排容器 |
+| 手机横向滑动内栏 | `/report-codex/` | `.paired-pages` 移动端样式 | 限定在全窗口背景中滚动，并用滚动层内边距保留卡片投影 |
 | 页面底部大字 | `/report-codex/` | `.page-title` | 每张原稿图下方唯一保留的说明标题 |
 | 原稿整图热区 | `/report-codex/` | `.shot-button` / `data-next` | 整张原稿图片可点击，点击后进入下一演示步骤 |
 | 报告长信息流 | `/report-codex/` | `.report-phone` / `.report-scroll` | 日报、月报、阶段报的手机尺寸纵向滚动容器 |
