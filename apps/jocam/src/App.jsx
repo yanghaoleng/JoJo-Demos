@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowClockwise,
   Camera,
@@ -23,6 +23,8 @@ const RIVE_SOURCE_SIZE = FRAME_SIZES.portrait;
 const RIVE_SCALE = 0.64;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
+const RIVE_RANDOM_INTERVAL_MS = 1_000;
+const MAX_RANDOM_DAY = 520;
 const SEGMENT_INTERVAL_MS = 92;
 const LONG_PRESS_MS = 430;
 const MAX_RECORDING_MS = 15_000;
@@ -38,27 +40,10 @@ const LOAD_TOTAL_BYTES = LOAD_ASSETS.reduce((total, asset) => total + asset.byte
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function getReadingDay() {
-  const params = new URLSearchParams(window.location.search);
-  const fromUrl = Number.parseInt(params.get("day") || "", 10);
-  if (Number.isFinite(fromUrl) && fromUrl > 0) return clamp(fromUrl, 1, 999);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  let startedAt = today.getTime();
-
-  try {
-    const saved = Number.parseInt(localStorage.getItem("jocam-reading-start") || "", 10);
-    if (Number.isFinite(saved) && saved > 0) {
-      startedAt = saved;
-    } else {
-      localStorage.setItem("jocam-reading-start", String(startedAt));
-    }
-  } catch {
-    // Private browsing may deny storage. Day one is still a useful default.
-  }
-
-  return clamp(Math.floor((today.getTime() - startedAt) / 86_400_000) + 1, 1, 999);
+function getRandomValue(max, excludedValue) {
+  if (!Number.isFinite(excludedValue)) return Math.floor(Math.random() * max) + 1;
+  const value = Math.floor(Math.random() * (max - 1)) + 1;
+  return value >= excludedValue ? value + 1 : value;
 }
 
 function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -158,7 +143,7 @@ async function saveBlob(blob, filename, title) {
 }
 
 function App() {
-  const day = useMemo(getReadingDay, []);
+  const [day, setDay] = useState(() => getRandomValue(MAX_RANDOM_DAY));
   const paddedDay = String(day).padStart(2, "0");
 
   const videoRef = useRef(null);
@@ -176,6 +161,7 @@ function App() {
   const recorderRef = useRef(null);
   const recordingChunksRef = useRef([]);
   const recordingStartedAtRef = useRef(0);
+  const recordingDayRef = useRef(paddedDay);
   const recordingIntervalRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const pointerDownRef = useRef(false);
@@ -185,6 +171,8 @@ function App() {
   const mediaPreviewRef = useRef(null);
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
+  const rivePlayRandomRef = useRef(null);
+  const riveShuffleIntervalRef = useRef(null);
 
   const [engineState, setEngineState] = useState("loading");
   const [engineMessage, setEngineMessage] = useState("正在准备叫叫");
@@ -196,6 +184,7 @@ function App() {
   const [facingMode, setFacingMode] = useState("user");
   const [frameOrientation, setFrameOrientation] = useState("portrait");
   const [riveAnimationName, setRiveAnimationName] = useState(DEFAULT_RIVE_ANIMATION);
+  const [personLayer, setPersonLayer] = useState("front");
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [flash, setFlash] = useState(false);
@@ -283,13 +272,8 @@ function App() {
     outputContext.fillRect(0, 0, targetWidth, targetHeight);
     drawMirrored(outputContext, video, rect, targetWidth);
 
-    if (riveReady && riveCanvas?.width && riveCanvas?.height) {
-      const riveHeight = targetHeight * RIVE_SCALE;
-      const riveWidth = riveHeight * (RIVE_SOURCE_SIZE.width / RIVE_SOURCE_SIZE.height);
-      outputContext.drawImage(riveCanvas, 0, targetHeight - riveHeight, riveWidth, riveHeight);
-    }
-
-    if (maskReadyRef.current && maskCanvas?.width && maskCanvas?.height) {
+    const drawPerson = () => {
+      if (!maskReadyRef.current || !maskCanvas?.width || !maskCanvas?.height) return;
       foregroundContext.clearRect(0, 0, targetWidth, targetHeight);
       foregroundContext.globalCompositeOperation = "source-over";
       foregroundContext.drawImage(video, rect.x, rect.y, rect.width, rect.height);
@@ -303,10 +287,20 @@ function App() {
         width: targetWidth,
         height: targetHeight,
       }, targetWidth);
+    };
+
+    if (personLayer === "behind") drawPerson();
+
+    if (riveReady && riveCanvas?.width && riveCanvas?.height) {
+      const riveHeight = targetHeight * RIVE_SCALE;
+      const riveWidth = riveHeight * (RIVE_SOURCE_SIZE.width / RIVE_SOURCE_SIZE.height);
+      outputContext.drawImage(riveCanvas, 0, targetHeight - riveHeight, riveWidth, riveHeight);
     }
 
+    if (personLayer === "front") drawPerson();
+
     if (includeCaption) drawCaption(outputContext, targetWidth, targetHeight);
-  }, [drawCaption, riveReady]);
+  }, [drawCaption, personLayer, riveReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -340,7 +334,7 @@ function App() {
             canvas: riveCanvasRef.current,
             autoplay: false,
             autoBind: true,
-            layout: new Layout({ fit: Fit.Cover, alignment: Alignment.Center }),
+            layout: new Layout({ fit: Fit.Cover, alignment: Alignment.BottomLeft }),
             onLoad: () => {
               if (cancelled) return;
               const animations = instance.animationNames || [];
@@ -354,11 +348,32 @@ function App() {
               ])].filter((name) => animations.includes(name));
               riveAnimationsRef.current = animationOrder;
               riveAnimationIndexRef.current = 0;
-              const firstAnimation = animationOrder[0] || animations[0];
-              if (firstAnimation) {
-                instance.play(firstAnimation);
-                setRiveAnimationName(firstAnimation);
-              }
+
+              const playAtIndex = (index) => {
+                const availableAnimations = riveAnimationsRef.current;
+                if (!availableAnimations.length) return;
+                const normalizedIndex = (index + availableAnimations.length) % availableAnimations.length;
+                const nextAnimation = availableAnimations[normalizedIndex];
+                instance.stop();
+                instance.play(nextAnimation);
+                riveAnimationIndexRef.current = normalizedIndex;
+                setRiveAnimationName(nextAnimation);
+              };
+
+              const playRandom = () => {
+                const availableAnimations = riveAnimationsRef.current;
+                if (!availableAnimations.length) return;
+                const offset = availableAnimations.length > 1
+                  ? Math.floor(Math.random() * (availableAnimations.length - 1)) + 1
+                  : 0;
+                playAtIndex(riveAnimationIndexRef.current + offset);
+                setDay((current) => getRandomValue(MAX_RANDOM_DAY, current));
+              };
+
+              rivePlayRandomRef.current = playRandom;
+              playAtIndex(0);
+              if (riveShuffleIntervalRef.current) window.clearInterval(riveShuffleIntervalRef.current);
+              riveShuffleIntervalRef.current = window.setInterval(playRandom, RIVE_RANDOM_INTERVAL_MS);
               setRiveReady(true);
               setLoadProgress((value) => Math.max(value, 92));
               resolve(true);
@@ -413,8 +428,13 @@ function App() {
 
     return () => {
       cancelled = true;
+      if (riveShuffleIntervalRef.current) {
+        window.clearInterval(riveShuffleIntervalRef.current);
+        riveShuffleIntervalRef.current = null;
+      }
       riveRef.current?.cleanup();
       riveRef.current = null;
+      rivePlayRandomRef.current = null;
       segmenterRef.current?.close();
       segmenterRef.current = null;
     };
@@ -444,6 +464,7 @@ function App() {
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingIntervalRef.current) window.clearInterval(recordingIntervalRef.current);
+    if (riveShuffleIntervalRef.current) window.clearInterval(riveShuffleIntervalRef.current);
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
     if (autoStopTimerRef.current) window.clearTimeout(autoStopTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -507,16 +528,17 @@ function App() {
   }, [showToast]);
 
   const switchRiveAnimation = useCallback(() => {
-    const instance = riveRef.current;
-    const animations = riveAnimationsRef.current;
-    if (!instance || animations.length < 2) return;
-    const nextIndex = (riveAnimationIndexRef.current + 1) % animations.length;
-    const nextAnimation = animations[nextIndex];
-    instance.stop();
-    instance.play(nextAnimation);
-    riveAnimationIndexRef.current = nextIndex;
-    setRiveAnimationName(nextAnimation);
+    if (!rivePlayRandomRef.current) return;
+    rivePlayRandomRef.current();
     showToast("叫叫换了一个动作");
+  }, [showToast]);
+
+  const togglePersonLayer = useCallback(() => {
+    setPersonLayer((current) => {
+      const next = current === "front" ? "behind" : "front";
+      showToast(next === "front" ? "人像已切到叫叫前面" : "人像已切到叫叫后面");
+      return next;
+    });
   }, [showToast]);
 
   const closePreview = useCallback(() => {
@@ -540,10 +562,10 @@ function App() {
       }
       setMediaPreview((current) => {
         if (current?.url) URL.revokeObjectURL(current.url);
-        return { type: "photo", blob, url: URL.createObjectURL(blob) };
+        return { type: "photo", blob, url: URL.createObjectURL(blob), day: paddedDay };
       });
     }, "image/jpeg", 0.94);
-  }, [cameraState, renderFrame, showToast]);
+  }, [cameraState, paddedDay, renderFrame, showToast]);
 
   const stopRecording = useCallback(() => {
     if (!recordingRef.current) return;
@@ -589,10 +611,11 @@ function App() {
         }
         setMediaPreview((current) => {
           if (current?.url) URL.revokeObjectURL(current.url);
-          return { type: "video", blob, url: URL.createObjectURL(blob) };
+          return { type: "video", blob, url: URL.createObjectURL(blob), day: recordingDayRef.current };
         });
       };
 
+      recordingDayRef.current = paddedDay;
       recordingStartedAtRef.current = performance.now();
       recordingRef.current = true;
       setRecording(true);
@@ -606,7 +629,7 @@ function App() {
       console.warn("Recording failed", error);
       showToast("录像启动失败，可以先拍照");
     }
-  }, [showToast, stopRecording]);
+  }, [paddedDay, showToast, stopRecording]);
 
   const onShutterPointerDown = useCallback((event) => {
     if (cameraState !== "ready") return;
@@ -642,11 +665,12 @@ function App() {
 
   const savePreview = useCallback(async () => {
     if (!mediaPreview) return;
+    const previewDay = mediaPreview.day || paddedDay;
     const extension = mediaPreview.type === "photo" ? "jpg" : getFileExtension(mediaPreview.blob.type);
     await saveBlob(
       mediaPreview.blob,
-      `我和叫叫-第${paddedDay}天-${getTimestamp()}.${extension}`,
-      `我和叫叫一起阅读的第 ${paddedDay} 天`,
+      `我和叫叫-第${previewDay}天-${getTimestamp()}.${extension}`,
+      `我和叫叫一起阅读的第 ${previewDay} 天`,
     );
   }, [mediaPreview, paddedDay]);
 
@@ -659,6 +683,8 @@ function App() {
         className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""}`}
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
+        data-person-layer={personLayer}
+        data-reading-day={day}
         aria-label="和叫叫合拍相机"
       >
         <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
@@ -694,10 +720,17 @@ function App() {
             </div>
 
             <div className="top-controls">
-              <div className={`person-status ${segmenterReady ? "is-ready" : ""}`} role="status">
+              <button
+                className={`person-status ${segmenterReady ? "is-ready" : ""} ${personLayer === "behind" ? "is-behind" : ""}`}
+                type="button"
+                disabled={!segmenterReady}
+                aria-pressed={personLayer === "front"}
+                aria-label={`切换人像图层，当前人像在叫叫${personLayer === "front" ? "前面" : "后面"}`}
+                onClick={togglePersonLayer}
+              >
                 <Sparkle size={15} weight="fill" />
-                <span>{segmenterReady ? "人像已在前景" : "正在识别人像"}</span>
-              </div>
+                <span>{segmenterReady ? `人像在${personLayer === "front" ? "前" : "后"}` : "正在识别人像"}</span>
+              </button>
               <div className="camera-actions">
                 <button
                   className={`round-control ${frameOrientation === "landscape" ? "is-active" : ""}`}
@@ -796,7 +829,7 @@ function App() {
             </button>
             <div className="preview-media-wrap">
               {mediaPreview.type === "photo" ? (
-                <img src={mediaPreview.url} alt={`我和叫叫一起阅读的第 ${paddedDay} 天`} />
+                <img src={mediaPreview.url} alt={`我和叫叫一起阅读的第 ${mediaPreview.day || paddedDay} 天`} />
               ) : (
                 <video src={mediaPreview.url} playsInline controls autoPlay loop />
               )}
@@ -804,7 +837,7 @@ function App() {
             <div className="preview-actions">
               <div>
                 <strong>{mediaPreview.type === "photo" ? "这一刻拍好了" : "这一段录好了"}</strong>
-                <span>我和叫叫 · 第 {paddedDay} 天</span>
+                <span>我和叫叫 · 第 {mediaPreview.day || paddedDay} 天</span>
               </div>
               <button type="button" onClick={savePreview}>
                 <DownloadSimple size={20} weight="bold" />

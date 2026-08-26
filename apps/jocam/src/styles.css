@@ -206,6 +206,9 @@ button {
   padding: 0 12px;
   border-radius: 999px;
   font-size: 11px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
 }
 
 .person-status svg {
@@ -218,6 +221,19 @@ button {
 
 .person-status.is-ready svg {
   color: var(--accent);
+}
+
+.person-status.is-ready.is-behind {
+  border-color: rgba(213, 255, 76, 0.34);
+  background: rgba(42, 48, 28, 0.86);
+}
+
+.person-status:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.person-status:disabled {
+  cursor: wait;
 }
 
 .round-control {
@@ -291,6 +307,7 @@ button {
 }
 
 .round-control:focus-visible,
+.person-status:focus-visible,
 .jiaojiao-hit-area:focus-visible,
 .shutter:focus-visible,
 .open-camera-button:focus-visible,
