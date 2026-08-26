@@ -245,7 +245,7 @@ function App() {
       width: 288,
       margin: 1,
       errorCorrectionLevel: "M",
-      color: { dark: "#251d08", light: "#ffd84d" },
+      color: { dark: "#251d08", light: "#ffffff" },
     }).then((url) => {
       if (!cancelled) setQrCodeUrl(url);
     }).catch((error) => {
@@ -382,10 +382,54 @@ function App() {
     context.restore();
   }, [captionMode, paddedDay]);
 
+  const drawRiveLayer = useCallback((outputContext, outputCanvas, welcomeMode = false) => {
+    const riveCanvas = riveCanvasRef.current;
+    const targetWidth = outputCanvas.width;
+    const targetHeight = outputCanvas.height;
+
+    if (riveReady && riveCanvas?.width && riveCanvas?.height) {
+      const displayWidth = outputCanvas.clientWidth || targetWidth;
+      const displayHeight = outputCanvas.clientHeight || targetHeight;
+      const displayScale = Math.max(displayWidth / targetWidth, displayHeight / targetHeight);
+      const visibleTargetWidth = Math.min(targetWidth, displayWidth / displayScale);
+      const baseScale = Math.min(
+        (targetHeight * RIVE_SCALE) / RIVE_VISIBLE_SOURCE.height,
+        visibleTargetWidth / RIVE_VISIBLE_SOURCE.width,
+      );
+      const isPortraitWelcome = welcomeMode && targetHeight > targetWidth;
+      const orientationMultiplier = targetWidth > targetHeight ? RIVE_LANDSCAPE_MULTIPLIER : 1;
+      const welcomeMultiplier = isPortraitWelcome ? 1.45 : 1;
+      const scale = baseScale * RIVE_DISPLAY_MULTIPLIER * orientationMultiplier * welcomeMultiplier;
+      const riveWidth = RIVE_VISIBLE_SOURCE.width * scale;
+      const riveHeight = RIVE_VISIBLE_SOURCE.height * scale;
+      const riveX = -visibleTargetWidth * RIVE_LEFT_OVERFLOW_RATIO;
+      const riveY = targetHeight - riveHeight - (isPortraitWelcome ? targetHeight * 0.12 : 0);
+      outputContext.drawImage(
+        riveCanvas,
+        riveCropXRef.current,
+        RIVE_VISIBLE_SOURCE.y,
+        RIVE_VISIBLE_SOURCE.width,
+        RIVE_VISIBLE_SOURCE.height,
+        riveX,
+        riveY,
+        riveWidth,
+        riveHeight,
+      );
+    }
+  }, [riveReady]);
+
+  const renderWelcomeFrame = useCallback(() => {
+    const outputCanvas = outputCanvasRef.current;
+    if (!outputCanvas) return;
+    const outputContext = outputCanvas.getContext("2d", { alpha: false });
+    outputContext.fillStyle = "#211c10";
+    outputContext.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+    drawRiveLayer(outputContext, outputCanvas, true);
+  }, [drawRiveLayer]);
+
   const renderFrame = useCallback((includeCaption = recordingRef.current) => {
     const video = videoRef.current;
     const outputCanvas = outputCanvasRef.current;
-    const riveCanvas = riveCanvasRef.current;
     const foregroundCanvas = foregroundCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
 
@@ -425,37 +469,12 @@ function App() {
 
     if (personLayer === "behind") drawPerson();
 
-    if (riveReady && riveCanvas?.width && riveCanvas?.height) {
-      const displayWidth = outputCanvas.clientWidth || targetWidth;
-      const displayHeight = outputCanvas.clientHeight || targetHeight;
-      const displayScale = Math.max(displayWidth / targetWidth, displayHeight / targetHeight);
-      const visibleTargetWidth = Math.min(targetWidth, displayWidth / displayScale);
-      const baseScale = Math.min(
-        (targetHeight * RIVE_SCALE) / RIVE_VISIBLE_SOURCE.height,
-        visibleTargetWidth / RIVE_VISIBLE_SOURCE.width,
-      );
-      const orientationMultiplier = targetWidth > targetHeight ? RIVE_LANDSCAPE_MULTIPLIER : 1;
-      const scale = baseScale * RIVE_DISPLAY_MULTIPLIER * orientationMultiplier;
-      const riveWidth = RIVE_VISIBLE_SOURCE.width * scale;
-      const riveHeight = RIVE_VISIBLE_SOURCE.height * scale;
-      const riveX = -visibleTargetWidth * RIVE_LEFT_OVERFLOW_RATIO;
-      outputContext.drawImage(
-        riveCanvas,
-        riveCropXRef.current,
-        RIVE_VISIBLE_SOURCE.y,
-        RIVE_VISIBLE_SOURCE.width,
-        RIVE_VISIBLE_SOURCE.height,
-        riveX,
-        targetHeight - riveHeight,
-        riveWidth,
-        riveHeight,
-      );
-    }
+    drawRiveLayer(outputContext, outputCanvas);
 
     if (personLayer === "front") drawPerson();
 
     if (includeCaption) drawCaption(outputContext, targetWidth, targetHeight);
-  }, [drawCaption, personLayer, riveReady]);
+  }, [drawCaption, drawRiveLayer, personLayer]);
 
   useEffect(() => {
     let cancelled = false;
@@ -664,13 +683,15 @@ function App() {
           }
         }
         renderFrame();
+      } else if (riveReady) {
+        renderWelcomeFrame();
       }
       frameRef.current = window.requestAnimationFrame(loop);
     };
 
     frameRef.current = window.requestAnimationFrame(loop);
     return () => window.cancelAnimationFrame(frameRef.current);
-  }, [cameraState, renderFrame, updateMask]);
+  }, [cameraState, renderFrame, renderWelcomeFrame, riveReady, updateMask]);
 
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -920,7 +941,7 @@ function App() {
   return (
     <main className={`app-shell is-${frameOrientation} ${isMobileDevice ? "is-mobile-device" : "is-desktop-device"}`}>
       <section
-        className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""}`}
+        className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""} ${riveReady ? "is-rive-ready" : ""}`}
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
         data-person-layer={personLayer}
@@ -1022,10 +1043,6 @@ function App() {
 
         {cameraState !== "ready" && (
           <div className="welcome-panel">
-            <div className="welcome-brand" aria-hidden="true">
-              <span className="brand-dot" />
-              JOCAM
-            </div>
             <div className="welcome-copy">
               <span className="welcome-icon"><Camera size={30} weight="fill" /></span>
               <h1>和叫叫，拍一张<br />会动的阅读合照</h1>
@@ -1098,7 +1115,7 @@ function App() {
       {!isMobileDevice && (
         <aside className="desktop-note">
           <span className="desktop-kicker">推荐使用移动设备</span>
-          <h2>扫码打开<br />JOCAM</h2>
+          <h2>扫码和叫叫合影</h2>
           <p>用手机或 Pad 打开，取景框会自动放大，更适合拍照和录像。</p>
           <div className="desktop-qr">
             {qrCodeUrl ? (
