@@ -26,9 +26,11 @@ const RIVE_EDGE_PADDING = 4;
 const RIVE_ANALYSIS_SIZE = { width: 600, height: 320 };
 const RIVE_SCALE = 0.512;
 const RIVE_DISPLAY_MULTIPLIER = 1.25;
+const RIVE_LANDSCAPE_MULTIPLIER = 1.5;
 const RIVE_LEFT_OVERFLOW_RATIO = 0.035;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
+const CLICK_RIVE_ANIMATION = "TalkingEmotion_Praise";
 const RIVE_RANDOM_INTERVAL_MS = 1_000;
 const MAX_RANDOM_DAY = 520;
 const CAPTION_MODES = {
@@ -198,7 +200,7 @@ function App() {
   const mediaPreviewRef = useRef(null);
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
-  const rivePlayRandomRef = useRef(null);
+  const rivePlayPraiseRef = useRef(null);
   const riveShuffleIntervalRef = useRef(null);
   const riveCropXRef = useRef(RIVE_DEFAULT_CROP_X);
   const riveCropTimeoutsRef = useRef([]);
@@ -213,7 +215,7 @@ function App() {
   const [facingMode, setFacingMode] = useState("user");
   const [frameOrientation, setFrameOrientation] = useState(getViewportOrientation);
   const [riveAnimationName, setRiveAnimationName] = useState(DEFAULT_RIVE_ANIMATION);
-  const [personLayer, setPersonLayer] = useState("front");
+  const [personLayer, setPersonLayer] = useState("behind");
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [flash, setFlash] = useState(false);
@@ -283,12 +285,13 @@ function App() {
     const activeCaption = CAPTION_MODES[captionMode];
     const centerX = targetWidth / 2;
     const isLandscape = targetHeight < targetWidth;
-    const firstLineY = isLandscape ? 48 : 66;
-    const dayLineY = isLandscape ? 108 : 132;
-    const labelFontSize = isLandscape ? 35 : 33;
+    const portraitCaptionScale = isLandscape ? 1 : 1.25;
+    const firstLineY = isLandscape ? 48 : 104;
+    const dayLineY = isLandscape ? 108 : 172;
+    const labelFontSize = (isLandscape ? 35 : 33) * portraitCaptionScale;
     const dayLabelFontSize = labelFontSize * 1.25;
-    const numberFontSize = (isLandscape ? 64 : 60) * 1.25;
-    const gap = 8;
+    const numberFontSize = (isLandscape ? 64 : 60) * 1.25 * portraitCaptionScale;
+    const gap = 8 * portraitCaptionScale;
     const labelFont = `700 ${labelFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
     const dayLabelFont = `700 ${dayLabelFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
     const numberFont = `700 ${numberFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
@@ -299,7 +302,7 @@ function App() {
     context.lineJoin = "round";
 
     context.font = labelFont;
-    context.lineWidth = 10;
+    context.lineWidth = 10 * portraitCaptionScale;
     context.strokeStyle = "rgba(20, 22, 15, 0.52)";
     context.strokeText(activeCaption.prefix, centerX, firstLineY);
     context.fillStyle = "#f8f8f1";
@@ -315,7 +318,7 @@ function App() {
 
     const drawDayLabel = (copy) => {
       context.font = dayLabelFont;
-      context.lineWidth = 11;
+      context.lineWidth = 11 * portraitCaptionScale;
       context.strokeStyle = "rgba(20, 22, 15, 0.52)";
       context.strokeText(copy, cursorX, dayLineY);
       context.fillStyle = "#f8f8f1";
@@ -326,7 +329,7 @@ function App() {
     drawDayLabel(activeCaption.dayPrefix);
     cursorX += gap;
     context.font = numberFont;
-    context.lineWidth = captionMode === "streak" ? 14 : 11;
+    context.lineWidth = (captionMode === "streak" ? 14 : 11) * portraitCaptionScale;
     context.strokeStyle = captionMode === "streak" ? "#fffdf8" : "rgba(20, 22, 15, 0.52)";
     context.strokeText(paddedDay, cursorX, dayLineY);
     context.fillStyle = captionMode === "streak" ? "#ef3f37" : "#d5ff4c";
@@ -388,7 +391,8 @@ function App() {
         (targetHeight * RIVE_SCALE) / RIVE_VISIBLE_SOURCE.height,
         visibleTargetWidth / RIVE_VISIBLE_SOURCE.width,
       );
-      const scale = baseScale * RIVE_DISPLAY_MULTIPLIER;
+      const orientationMultiplier = targetWidth > targetHeight ? RIVE_LANDSCAPE_MULTIPLIER : 1;
+      const scale = baseScale * RIVE_DISPLAY_MULTIPLIER * orientationMultiplier;
       const riveWidth = RIVE_VISIBLE_SOURCE.width * scale;
       const riveHeight = RIVE_VISIBLE_SOURCE.height * scale;
       const riveX = -visibleTargetWidth * RIVE_LEFT_OVERFLOW_RATIO;
@@ -452,6 +456,7 @@ function App() {
               const animationOrder = [...new Set([
                 DEFAULT_RIVE_ANIMATION,
                 SECOND_RIVE_ANIMATION,
+                CLICK_RIVE_ANIMATION,
                 ...talkingAnimations,
               ])].filter((name) => animations.includes(name));
               riveAnimationsRef.current = animationOrder;
@@ -521,10 +526,20 @@ function App() {
                 playAtIndex(riveAnimationIndexRef.current + offset);
               };
 
-              rivePlayRandomRef.current = playRandom;
+              const restartRandomPlayback = () => {
+                if (riveShuffleIntervalRef.current) window.clearInterval(riveShuffleIntervalRef.current);
+                riveShuffleIntervalRef.current = window.setInterval(playRandom, RIVE_RANDOM_INTERVAL_MS);
+              };
+
+              rivePlayPraiseRef.current = () => {
+                const praiseIndex = riveAnimationsRef.current.indexOf(CLICK_RIVE_ANIMATION);
+                if (praiseIndex < 0) return false;
+                playAtIndex(praiseIndex);
+                restartRandomPlayback();
+                return true;
+              };
               playAtIndex(0);
-              if (riveShuffleIntervalRef.current) window.clearInterval(riveShuffleIntervalRef.current);
-              riveShuffleIntervalRef.current = window.setInterval(playRandom, RIVE_RANDOM_INTERVAL_MS);
+              restartRandomPlayback();
               setRiveReady(true);
               setLoadProgress((value) => Math.max(value, 92));
               resolve(true);
@@ -587,7 +602,7 @@ function App() {
       riveCropTimeoutsRef.current = [];
       riveRef.current?.cleanup();
       riveRef.current = null;
-      rivePlayRandomRef.current = null;
+      rivePlayPraiseRef.current = null;
       segmenterRef.current?.close();
       segmenterRef.current = null;
     };
@@ -672,9 +687,8 @@ function App() {
   }, [facingMode, openCamera]);
 
   const switchRiveAnimation = useCallback(() => {
-    if (!rivePlayRandomRef.current) return;
-    rivePlayRandomRef.current();
-    showToast("叫叫换了一个动作");
+    if (!rivePlayPraiseRef.current?.()) return;
+    showToast("叫叫正在夸夸你");
   }, [showToast]);
 
   const switchCaption = useCallback(() => {
@@ -860,7 +874,7 @@ function App() {
               className="jiaojiao-hit-area"
               type="button"
               onClick={switchRiveAnimation}
-              aria-label={`切换叫叫动作，当前 ${riveAnimationName}`}
+              aria-label={`播放叫叫夸夸动作，当前 ${riveAnimationName}`}
             />
           )}
 
@@ -948,7 +962,7 @@ function App() {
             <div className="welcome-copy">
               <span className="welcome-icon"><Camera size={30} weight="fill" /></span>
               <h1>和叫叫，拍一张<br />会动的阅读合照</h1>
-              <p>相机在透明区域里，人像会站到叫叫前面。</p>
+              <p>相机在透明区域里，叫叫默认站在人像前面。</p>
             </div>
 
             {cameraState === "error" && <p className="camera-error" role="alert">{cameraError}</p>}
@@ -986,7 +1000,7 @@ function App() {
         {toast && <div className="camera-toast" role="status">{toast}</div>}
 
         {mediaPreview && (
-          <div className="media-preview" role="dialog" aria-modal="true" aria-label={mediaPreview.type === "photo" ? "照片预览" : "录像预览"}>
+          <div className={`media-preview is-${mediaPreview.type}`} role="dialog" aria-modal="true" aria-label={mediaPreview.type === "photo" ? "照片预览" : "录像预览"}>
             <button className="preview-close" type="button" onClick={closePreview} aria-label="关闭预览">
               <X size={22} weight="bold" />
             </button>
