@@ -40,10 +40,8 @@ const LOAD_TOTAL_BYTES = LOAD_ASSETS.reduce((total, asset) => total + asset.byte
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function getRandomValue(max, excludedValue) {
-  if (!Number.isFinite(excludedValue)) return Math.floor(Math.random() * max) + 1;
-  const value = Math.floor(Math.random() * (max - 1)) + 1;
-  return value >= excludedValue ? value + 1 : value;
+function getRandomValue(max) {
+  return Math.floor(Math.random() * max) + 1;
 }
 
 function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -143,7 +141,7 @@ async function saveBlob(blob, filename, title) {
 }
 
 function App() {
-  const [day, setDay] = useState(() => getRandomValue(MAX_RANDOM_DAY));
+  const [day] = useState(() => getRandomValue(MAX_RANDOM_DAY));
   const paddedDay = String(day).padStart(2, "0");
 
   const videoRef = useRef(null);
@@ -367,7 +365,6 @@ function App() {
                   ? Math.floor(Math.random() * (availableAnimations.length - 1)) + 1
                   : 0;
                 playAtIndex(riveAnimationIndexRef.current + offset);
-                setDay((current) => getRandomValue(MAX_RANDOM_DAY, current));
               };
 
               rivePlayRandomRef.current = playRandom;
