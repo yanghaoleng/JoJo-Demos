@@ -68,7 +68,14 @@ button {
 }
 
 .app-shell.is-landscape {
-  grid-template-columns: minmax(0, 960px);
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 0;
+  display: block;
+  overflow: hidden;
+  padding: 0;
 }
 
 .app-shell.is-landscape .desktop-note {
@@ -89,8 +96,18 @@ button {
 }
 
 .camera-stage.is-landscape {
-  width: min(100%, 960px);
-  aspect-ratio: 16 / 9;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100dvh;
+  height: 100vw;
+  max-height: none;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center;
 }
 
 .camera-source,
@@ -117,8 +134,8 @@ button {
   z-index: 2;
   left: 0;
   bottom: 0;
-  width: 64%;
-  height: 64%;
+  width: 51.2%;
+  height: 51.2%;
   padding: 0;
   border: 0;
   border-radius: 0 28px 0 0;
@@ -133,7 +150,7 @@ button {
 }
 
 .camera-stage.is-landscape .jiaojiao-hit-area {
-  width: 20.25%;
+  width: 16.2%;
 }
 
 .live-caption {
@@ -147,6 +164,9 @@ button {
   gap: 0.28em;
   width: max-content;
   max-width: calc(100% - 36px);
+  padding: 0;
+  border: 0;
+  background: transparent;
   transform: translateX(-50%);
   color: #f8f8f2;
   font-size: clamp(13px, 3.25vw, 18px);
@@ -154,19 +174,38 @@ button {
   line-height: 1;
   white-space: nowrap;
   text-shadow: 0 2px 12px rgba(8, 9, 6, 0.52);
-  transition: opacity 160ms ease;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.live-caption:active:not(:disabled) {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.live-caption:disabled {
+  cursor: default;
 }
 
 .live-caption.is-canvas-rendered {
   opacity: 0;
+  pointer-events: none;
 }
 
 .reading-day {
-  min-width: 1.45em;
+  min-width: 1.35em;
   color: var(--accent);
-  font-size: 1.45em;
-  letter-spacing: -0.06em;
+  font-size: 2em;
+  letter-spacing: -0.04em;
   text-shadow: 0 2px 14px rgba(8, 9, 6, 0.58);
+}
+
+.live-caption.is-streak .reading-day,
+.live-caption.is-streak .reading-day * {
+  color: #ef3f37;
+  -webkit-text-stroke: 1.5px #fffdf8;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 12px rgba(84, 8, 4, 0.48);
 }
 
 .top-controls {
@@ -308,6 +347,7 @@ button {
 
 .round-control:focus-visible,
 .person-status:focus-visible,
+.live-caption:focus-visible,
 .jiaojiao-hit-area:focus-visible,
 .shutter:focus-visible,
 .open-camera-button:focus-visible,
@@ -816,12 +856,6 @@ button {
     padding: 0;
   }
 
-  .app-shell.is-landscape {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .camera-stage {
     width: 100%;
     height: 100dvh;
@@ -832,15 +866,18 @@ button {
     box-shadow: none;
   }
 
-  .camera-stage.is-landscape {
-    width: 100%;
-    height: auto;
-    max-height: 100dvh;
-    aspect-ratio: 16 / 9;
-  }
-
   .desktop-note {
     display: none;
+  }
+}
+
+@media (orientation: landscape) {
+  .camera-stage.is-landscape {
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100dvh;
+    transform: none;
   }
 }
 

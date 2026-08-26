@@ -20,11 +20,15 @@ const FRAME_SIZES = {
   landscape: { width: 1280, height: 720 },
 };
 const RIVE_SOURCE_SIZE = FRAME_SIZES.portrait;
-const RIVE_SCALE = 0.64;
+const RIVE_SCALE = 0.512;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const RIVE_RANDOM_INTERVAL_MS = 1_000;
 const MAX_RANDOM_DAY = 520;
+const CAPTION_MODES = {
+  together: { prefix: "我和叫叫一起阅读的第", suffix: "天" },
+  streak: { prefix: "坚持连续学习叫叫阅读第", suffix: "天" },
+};
 const SEGMENT_INTERVAL_MS = 92;
 const LONG_PRESS_MS = 430;
 const MAX_RECORDING_MS = 15_000;
@@ -40,8 +44,15 @@ const LOAD_TOTAL_BYTES = LOAD_ASSETS.reduce((total, asset) => total + asset.byte
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function getRandomValue(max) {
-  return Math.floor(Math.random() * max) + 1;
+function getRandomValue(max, excludedValue) {
+  if (!Number.isFinite(excludedValue)) return Math.floor(Math.random() * max) + 1;
+  const value = Math.floor(Math.random() * (max - 1)) + 1;
+  return value >= excludedValue ? value + 1 : value;
+}
+
+function getCaptionText(mode, value) {
+  const caption = CAPTION_MODES[mode] || CAPTION_MODES.together;
+  return `${caption.prefix} ${value} ${caption.suffix}`;
 }
 
 function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -141,8 +152,10 @@ async function saveBlob(blob, filename, title) {
 }
 
 function App() {
-  const [day] = useState(() => getRandomValue(MAX_RANDOM_DAY));
+  const [day, setDay] = useState(() => getRandomValue(MAX_RANDOM_DAY));
+  const [captionMode, setCaptionMode] = useState("together");
   const paddedDay = String(day).padStart(2, "0");
+  const caption = CAPTION_MODES[captionMode];
 
   const videoRef = useRef(null);
   const outputCanvasRef = useRef(null);
@@ -160,6 +173,7 @@ function App() {
   const recordingChunksRef = useRef([]);
   const recordingStartedAtRef = useRef(0);
   const recordingDayRef = useRef(paddedDay);
+  const recordingCaptionModeRef = useRef(captionMode);
   const recordingIntervalRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const pointerDownRef = useRef(false);
@@ -233,22 +247,49 @@ function App() {
   }, []);
 
   const drawCaption = useCallback((context, targetWidth, targetHeight) => {
+    const activeCaption = CAPTION_MODES[captionMode];
     const centerX = targetWidth / 2;
     const top = targetHeight < targetWidth ? 44 : 62;
-    const copy = `我和叫叫一起阅读的第 ${paddedDay} 天`;
+    const labelFontSize = targetHeight < targetWidth ? 32 : 30;
+    const numberFontSize = targetHeight < targetWidth ? 58 : 54;
+    const gap = 8;
+    const labelFont = `700 ${labelFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
+    const numberFont = `700 ${numberFontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
 
     context.save();
-    context.font = '700 36px "Mohr Rounded", "PingFang SC", sans-serif';
-    context.textAlign = "center";
+    context.textAlign = "left";
     context.textBaseline = "middle";
     context.lineJoin = "round";
-    context.lineWidth = 12;
-    context.strokeStyle = "rgba(20, 22, 15, 0.48)";
-    context.strokeText(copy, centerX, top);
-    context.fillStyle = "#f8f8f1";
-    context.fillText(copy, centerX, top);
+
+    context.font = labelFont;
+    const prefixWidth = context.measureText(activeCaption.prefix).width;
+    const suffixWidth = context.measureText(activeCaption.suffix).width;
+    context.font = numberFont;
+    const numberWidth = context.measureText(paddedDay).width;
+    let cursorX = centerX - ((prefixWidth + numberWidth + suffixWidth + gap * 2) / 2);
+
+    const drawLabel = (copy) => {
+      context.font = labelFont;
+      context.lineWidth = 10;
+      context.strokeStyle = "rgba(20, 22, 15, 0.52)";
+      context.strokeText(copy, cursorX, top);
+      context.fillStyle = "#f8f8f1";
+      context.fillText(copy, cursorX, top);
+      cursorX += context.measureText(copy).width;
+    };
+
+    drawLabel(activeCaption.prefix);
+    cursorX += gap;
+    context.font = numberFont;
+    context.lineWidth = captionMode === "streak" ? 7 : 11;
+    context.strokeStyle = captionMode === "streak" ? "#fffdf8" : "rgba(20, 22, 15, 0.52)";
+    context.strokeText(paddedDay, cursorX, top);
+    context.fillStyle = captionMode === "streak" ? "#ef3f37" : "#d5ff4c";
+    context.fillText(paddedDay, cursorX, top);
+    cursorX += numberWidth + gap;
+    drawLabel(activeCaption.suffix);
     context.restore();
-  }, [paddedDay]);
+  }, [captionMode, paddedDay]);
 
   const renderFrame = useCallback((includeCaption = recordingRef.current) => {
     const video = videoRef.current;
@@ -519,7 +560,7 @@ function App() {
     if (recordingRef.current) return;
     setFrameOrientation((current) => {
       const next = current === "portrait" ? "landscape" : "portrait";
-      showToast(next === "landscape" ? "已切换为横屏" : "已切换为竖屏");
+      showToast(next === "landscape" ? "已旋转为全屏横屏" : "已切换为竖屏");
       return next;
     });
   }, [showToast]);
@@ -528,6 +569,13 @@ function App() {
     if (!rivePlayRandomRef.current) return;
     rivePlayRandomRef.current();
     showToast("叫叫换了一个动作");
+  }, [showToast]);
+
+  const switchCaption = useCallback(() => {
+    if (recordingRef.current) return;
+    setCaptionMode((current) => (current === "together" ? "streak" : "together"));
+    setDay((current) => getRandomValue(MAX_RANDOM_DAY, current));
+    showToast("已切换字幕和阅读天数");
   }, [showToast]);
 
   const togglePersonLayer = useCallback(() => {
@@ -559,10 +607,10 @@ function App() {
       }
       setMediaPreview((current) => {
         if (current?.url) URL.revokeObjectURL(current.url);
-        return { type: "photo", blob, url: URL.createObjectURL(blob), day: paddedDay };
+        return { type: "photo", blob, url: URL.createObjectURL(blob), day: paddedDay, captionMode };
       });
     }, "image/jpeg", 0.94);
-  }, [cameraState, paddedDay, renderFrame, showToast]);
+  }, [cameraState, captionMode, paddedDay, renderFrame, showToast]);
 
   const stopRecording = useCallback(() => {
     if (!recordingRef.current) return;
@@ -608,11 +656,18 @@ function App() {
         }
         setMediaPreview((current) => {
           if (current?.url) URL.revokeObjectURL(current.url);
-          return { type: "video", blob, url: URL.createObjectURL(blob), day: recordingDayRef.current };
+          return {
+            type: "video",
+            blob,
+            url: URL.createObjectURL(blob),
+            day: recordingDayRef.current,
+            captionMode: recordingCaptionModeRef.current,
+          };
         });
       };
 
       recordingDayRef.current = paddedDay;
+      recordingCaptionModeRef.current = captionMode;
       recordingStartedAtRef.current = performance.now();
       recordingRef.current = true;
       setRecording(true);
@@ -626,7 +681,7 @@ function App() {
       console.warn("Recording failed", error);
       showToast("录像启动失败，可以先拍照");
     }
-  }, [paddedDay, showToast, stopRecording]);
+  }, [captionMode, paddedDay, showToast, stopRecording]);
 
   const onShutterPointerDown = useCallback((event) => {
     if (cameraState !== "ready") return;
@@ -663,13 +718,14 @@ function App() {
   const savePreview = useCallback(async () => {
     if (!mediaPreview) return;
     const previewDay = mediaPreview.day || paddedDay;
+    const previewCaptionMode = mediaPreview.captionMode || captionMode;
     const extension = mediaPreview.type === "photo" ? "jpg" : getFileExtension(mediaPreview.blob.type);
     await saveBlob(
       mediaPreview.blob,
       `我和叫叫-第${previewDay}天-${getTimestamp()}.${extension}`,
-      `我和叫叫一起阅读的第 ${previewDay} 天`,
+      getCaptionText(previewCaptionMode, previewDay),
     );
-  }, [mediaPreview, paddedDay]);
+  }, [captionMode, mediaPreview, paddedDay]);
 
   const formattedRecordingTime = `${String(Math.floor(recordingTime / 1000)).padStart(2, "0")}.${Math.floor((recordingTime % 1000) / 100)}`;
   const readyForCamera = engineState !== "error";
@@ -682,6 +738,7 @@ function App() {
         data-rive-animation={riveAnimationName}
         data-person-layer={personLayer}
         data-reading-day={day}
+        data-caption-mode={captionMode}
         aria-label="和叫叫合拍相机"
       >
         <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
@@ -701,8 +758,14 @@ function App() {
 
         {cameraState === "ready" && (
           <>
-            <div className={`live-caption ${recording ? "is-canvas-rendered" : ""}`}>
-              <span>我和叫叫一起阅读的第</span>
+            <button
+              className={`live-caption is-${captionMode} ${recording ? "is-canvas-rendered" : ""}`}
+              type="button"
+              disabled={recording}
+              onClick={switchCaption}
+              aria-label={`${getCaptionText(captionMode, day)}，点击切换字幕和数值`}
+            >
+              <span>{caption.prefix}</span>
               <Calligraph
                 className="reading-day"
                 variant="number"
@@ -713,8 +776,8 @@ function App() {
               >
                 {paddedDay}
               </Calligraph>
-              <span>天</span>
-            </div>
+              <span>{caption.suffix}</span>
+            </button>
 
             <div className="top-controls">
               <button
@@ -826,7 +889,10 @@ function App() {
             </button>
             <div className="preview-media-wrap">
               {mediaPreview.type === "photo" ? (
-                <img src={mediaPreview.url} alt={`我和叫叫一起阅读的第 ${mediaPreview.day || paddedDay} 天`} />
+                <img
+                  src={mediaPreview.url}
+                  alt={getCaptionText(mediaPreview.captionMode || captionMode, mediaPreview.day || paddedDay)}
+                />
               ) : (
                 <video src={mediaPreview.url} playsInline controls autoPlay loop />
               )}
@@ -834,7 +900,7 @@ function App() {
             <div className="preview-actions">
               <div>
                 <strong>{mediaPreview.type === "photo" ? "这一刻拍好了" : "这一段录好了"}</strong>
-                <span>我和叫叫 · 第 {mediaPreview.day || paddedDay} 天</span>
+                <span>{getCaptionText(mediaPreview.captionMode || captionMode, mediaPreview.day || paddedDay)}</span>
               </div>
               <button type="button" onClick={savePreview}>
                 <DownloadSimple size={20} weight="bold" />
