@@ -31,7 +31,7 @@ const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const CLICK_RIVE_ANIMATION = "TalkingEmotion_Praise";
 const RIVE_RANDOM_INTERVAL_MS = 1_000;
-const COVER_RIVE_PLAYBACK_RATE = 0.5;
+const COVER_RIVE_PLAYBACK_RATE = 0.25;
 const CAMERA_RIVE_PLAYBACK_RATE = 1;
 const MAX_RANDOM_DAY = 520;
 const VOLUME_SHUTTER_KEYS = new Set([
@@ -237,7 +237,8 @@ function App() {
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
   const rivePlayPraiseRef = useRef(null);
-  const riveShuffleIntervalRef = useRef(null);
+  const riveRestartRandomPlaybackRef = useRef(null);
+  const riveShuffleTimerRef = useRef(null);
   const riveCropXRef = useRef(RIVE_DEFAULT_CROP_X);
   const riveCropTimeoutsRef = useRef([]);
 
@@ -607,10 +608,19 @@ function App() {
               };
 
               const restartRandomPlayback = () => {
-                if (riveShuffleIntervalRef.current) window.clearInterval(riveShuffleIntervalRef.current);
-                riveShuffleIntervalRef.current = window.setInterval(playRandom, RIVE_RANDOM_INTERVAL_MS);
+                if (riveShuffleTimerRef.current) window.clearTimeout(riveShuffleTimerRef.current);
+                const scheduleNext = () => {
+                  const playbackRate = Math.max(rivePlaybackRateRef.current, 0.01);
+                  const delay = RIVE_RANDOM_INTERVAL_MS / playbackRate;
+                  riveShuffleTimerRef.current = window.setTimeout(() => {
+                    playRandom();
+                    scheduleNext();
+                  }, delay);
+                };
+                scheduleNext();
               };
 
+              riveRestartRandomPlaybackRef.current = restartRandomPlayback;
               rivePlayPraiseRef.current = () => {
                 const praiseIndex = riveAnimationsRef.current.indexOf(CLICK_RIVE_ANIMATION);
                 if (praiseIndex < 0) return false;
@@ -675,24 +685,28 @@ function App() {
 
     return () => {
       cancelled = true;
-      if (riveShuffleIntervalRef.current) {
-        window.clearInterval(riveShuffleIntervalRef.current);
-        riveShuffleIntervalRef.current = null;
+      if (riveShuffleTimerRef.current) {
+        window.clearTimeout(riveShuffleTimerRef.current);
+        riveShuffleTimerRef.current = null;
       }
       riveCropTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
       riveCropTimeoutsRef.current = [];
       riveRef.current?.cleanup();
       riveRef.current = null;
       rivePlayPraiseRef.current = null;
+      riveRestartRandomPlaybackRef.current = null;
       segmenterRef.current?.close();
       segmenterRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    rivePlaybackRateRef.current = cameraState === "ready"
+    const nextPlaybackRate = cameraState === "ready"
       ? CAMERA_RIVE_PLAYBACK_RATE
       : COVER_RIVE_PLAYBACK_RATE;
+    if (rivePlaybackRateRef.current === nextPlaybackRate) return;
+    rivePlaybackRateRef.current = nextPlaybackRate;
+    riveRestartRandomPlaybackRef.current?.();
   }, [cameraState]);
 
   useEffect(() => {
@@ -721,7 +735,7 @@ function App() {
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingIntervalRef.current) window.clearInterval(recordingIntervalRef.current);
-    if (riveShuffleIntervalRef.current) window.clearInterval(riveShuffleIntervalRef.current);
+    if (riveShuffleTimerRef.current) window.clearTimeout(riveShuffleTimerRef.current);
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
     if (autoStopTimerRef.current) window.clearTimeout(autoStopTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -962,6 +976,8 @@ function App() {
 
   const formattedRecordingTime = `${String(Math.floor(recordingTime / 1000)).padStart(2, "0")}.${Math.floor((recordingTime % 1000) / 100)}`;
   const readyForCamera = engineState !== "error";
+  const activeRivePlaybackRate = cameraState === "ready" ? CAMERA_RIVE_PLAYBACK_RATE : COVER_RIVE_PLAYBACK_RATE;
+  const activeRiveShuffleInterval = RIVE_RANDOM_INTERVAL_MS / activeRivePlaybackRate;
 
   return (
     <main className={`app-shell is-${frameOrientation} ${isMobileDevice ? "is-mobile-device" : "is-desktop-device"}`}>
@@ -969,7 +985,8 @@ function App() {
         className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""} ${riveReady ? "is-rive-ready" : ""}`}
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
-        data-rive-playback-rate={cameraState === "ready" ? CAMERA_RIVE_PLAYBACK_RATE : COVER_RIVE_PLAYBACK_RATE}
+        data-rive-playback-rate={activeRivePlaybackRate}
+        data-rive-shuffle-interval={activeRiveShuffleInterval}
         data-person-layer={personLayer}
         data-reading-day={day}
         data-caption-mode={captionMode}

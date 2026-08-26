@@ -888,6 +888,46 @@ button {
   white-space: nowrap;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .app-shell.is-desktop-device .desktop-note {
+    animation: desktop-note-enter-slow 1600ms 500ms both;
+    animation-timing-function: linear(
+      0,
+      0.014 5%,
+      0.052 10%,
+      0.11 15%,
+      0.182 20%,
+      0.264 25%,
+      0.352 30%,
+      0.441 35%,
+      0.529 40%,
+      0.612 45%,
+      0.689 50%,
+      0.757 55%,
+      0.816 60%,
+      0.866 65%,
+      0.907 70%,
+      0.939 75%,
+      0.963 80%,
+      0.98 85%,
+      0.991 90%,
+      0.997 95%,
+      1
+    );
+  }
+}
+
+@keyframes desktop-note-enter-slow {
+  from {
+    opacity: 0;
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
