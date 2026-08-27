@@ -66,6 +66,7 @@ import {
   hasConfidentMaskArea,
   hasSegmentedSubject,
 } from "./subject-segmentation.js";
+import { getNextVisionThrottle, getThrottledInterval } from "./vision-performance.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -380,10 +381,12 @@ const CAPTION_MODES = {
   together: { prefix: "我和叫叫一起阅读的", dayPrefix: "第", suffix: "天" },
   streak: { prefix: "坚持连续学习叫叫阅读", dayPrefix: "第", suffix: "天" },
 };
-const SEGMENT_INTERVAL_MS = 92;
-const SUBJECT_SEGMENT_INTERVAL_MS = 420;
-const FACE_INTERVAL_MS = 84;
-const GESTURE_INTERVAL_MS = 145;
+const RENDER_INTERVAL_MS = 33;
+const SEGMENT_INTERVAL_MS = 150;
+const SUBJECT_SEGMENT_INTERVAL_MS = 1_700;
+const SUBJECT_FALLBACK_DELAY_MS = 1_000;
+const FACE_INTERVAL_MS = 160;
+const GESTURE_INTERVAL_MS = 240;
 const FACE_MISSING_TIMEOUT_MS = 850;
 const PERSON_MASK_THRESHOLD = DEFAULT_PERSON_MASK_THRESHOLD;
 const PERSON_MIN_MASK_RATIO = DEFAULT_PERSON_MIN_RATIO;
@@ -744,13 +747,16 @@ function App() {
   const mouthAnchorRef = useRef(null);
   const lastFaceSeenAtRef = useRef(0);
   const frameRef = useRef(0);
+  const lastRenderAtRef = useRef(0);
   const lastSegmentAtRef = useRef(0);
   const lastSubjectSegmentAtRef = useRef(0);
   const lastFaceAtRef = useRef(0);
   const lastGestureAtRef = useRef(0);
+  const visionThrottleRef = useRef(1);
   const maskReadyRef = useRef(false);
   const personPresentRef = useRef(false);
   const personMissingFramesRef = useRef(0);
+  const personAbsentSinceRef = useRef(0);
   const personMaskRevisionRef = useRef(0);
   const gestureEffectUntilRef = useRef(0);
   const gestureEffectTimerRef = useRef(null);
@@ -1347,10 +1353,12 @@ function App() {
     personPresentRef.current = personPresent;
     if (!personPresent) {
       personMissingFramesRef.current += 1;
+      if (personMissingFramesRef.current === 1) personAbsentSinceRef.current = performance.now();
       if (personMissingFramesRef.current >= PERSON_MISSING_FRAME_LIMIT) maskReadyRef.current = false;
       return;
     }
     personMissingFramesRef.current = 0;
+    personAbsentSinceRef.current = 0;
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
 
@@ -2323,45 +2331,63 @@ function App() {
     const loop = (timestamp) => {
       const video = videoRef.current;
       if (cameraState === "ready" && video?.readyState >= 2) {
-        if (segmenterRef.current && timestamp - lastSegmentAtRef.current >= SEGMENT_INTERVAL_MS) {
-          lastSegmentAtRef.current = timestamp;
-          try {
-            segmenterRef.current.segmentForVideo(video, timestamp, updateMask);
-          } catch (error) {
-            console.warn("Person segmentation frame failed", error);
-          }
-        }
-        if (
-          subjectSegmenterRef.current
+        const visionThrottle = visionThrottleRef.current;
+        const personSegmentationDue = segmenterRef.current
+          && timestamp - lastSegmentAtRef.current >= getThrottledInterval(SEGMENT_INTERVAL_MS, visionThrottle);
+        const faceTrackingDue = faceLandmarkerRef.current
+          && timestamp - lastFaceAtRef.current >= getThrottledInterval(FACE_INTERVAL_MS, visionThrottle);
+        const gestureTrackingDue = gestureRecognizerRef.current
+          && timestamp - lastGestureAtRef.current >= getThrottledInterval(GESTURE_INTERVAL_MS, visionThrottle);
+        const subjectSegmentationDue = subjectSegmenterRef.current
           && !personPresentRef.current
-          && timestamp - lastSubjectSegmentAtRef.current >= SUBJECT_SEGMENT_INTERVAL_MS
-        ) {
-          lastSubjectSegmentAtRef.current = timestamp;
+          && personMissingFramesRef.current >= PERSON_MISSING_FRAME_LIMIT
+          && personAbsentSinceRef.current > 0
+          && timestamp - personAbsentSinceRef.current >= SUBJECT_FALLBACK_DELAY_MS
+          && timestamp - lastSubjectSegmentAtRef.current >= getThrottledInterval(SUBJECT_SEGMENT_INTERVAL_MS, visionThrottle);
+        const runVisionTask = (task, label) => {
+          const startedAt = performance.now();
           try {
-            subjectSegmenterRef.current.segmentForVideo(video, timestamp, updateSubjectMask);
+            task();
           } catch (error) {
-            console.warn("General subject segmentation frame failed", error);
+            console.warn(label, error);
+          } finally {
+            visionThrottleRef.current = getNextVisionThrottle(
+              visionThrottleRef.current,
+              performance.now() - startedAt,
+            );
           }
-        }
-        if (faceLandmarkerRef.current && timestamp - lastFaceAtRef.current >= FACE_INTERVAL_MS) {
+        };
+
+        if (personSegmentationDue) {
+          lastSegmentAtRef.current = timestamp;
+          runVisionTask(() => {
+            segmenterRef.current.segmentForVideo(video, timestamp, updateMask);
+          }, "Person segmentation frame failed");
+        } else if (faceTrackingDue) {
           lastFaceAtRef.current = timestamp;
-          try {
+          runVisionTask(() => {
             updateMouthAnchor(faceLandmarkerRef.current.detectForVideo(video, timestamp));
-          } catch (error) {
-            console.warn("Face landmark frame failed", error);
-          }
-        }
-        if (gestureRecognizerRef.current && timestamp - lastGestureAtRef.current >= GESTURE_INTERVAL_MS) {
+          }, "Face landmark frame failed");
+        } else if (gestureTrackingDue) {
           lastGestureAtRef.current = timestamp;
-          try {
+          runVisionTask(() => {
             handleGestureResult(gestureRecognizerRef.current.recognizeForVideo(video, timestamp), timestamp);
-          } catch (error) {
-            console.warn("Hand gesture frame failed", error);
-          }
+          }, "Hand gesture frame failed");
+        } else if (subjectSegmentationDue) {
+          lastSubjectSegmentAtRef.current = timestamp;
+          runVisionTask(() => {
+            subjectSegmenterRef.current.segmentForVideo(video, timestamp, updateSubjectMask);
+          }, "General subject segmentation frame failed");
         }
-        renderFrame();
+        if (timestamp - lastRenderAtRef.current >= RENDER_INTERVAL_MS) {
+          lastRenderAtRef.current = timestamp;
+          renderFrame();
+        }
       } else if (riveReady) {
-        renderWelcomeFrame();
+        if (timestamp - lastRenderAtRef.current >= RENDER_INTERVAL_MS) {
+          lastRenderAtRef.current = timestamp;
+          renderWelcomeFrame();
+        }
       }
       frameRef.current = window.requestAnimationFrame(loop);
     };
@@ -2421,7 +2447,13 @@ function App() {
     maskReadyRef.current = false;
     personPresentRef.current = false;
     personMissingFramesRef.current = 0;
+    personAbsentSinceRef.current = 0;
+    lastRenderAtRef.current = 0;
+    lastSegmentAtRef.current = 0;
     lastSubjectSegmentAtRef.current = 0;
+    lastFaceAtRef.current = 0;
+    lastGestureAtRef.current = 0;
+    visionThrottleRef.current = 1;
     personMaskRevisionRef.current = 0;
     gestureEffectUntilRef.current = 0;
     gestureOutlineBuffersRef.current = null;

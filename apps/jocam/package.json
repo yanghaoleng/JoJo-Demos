@@ -15,7 +15,8 @@
     "test:library": "node --test src/media-library.test.js",
     "test:feedback": "node --test src/camera-feedback.test.js",
     "test:dual-camera": "node --test src/dual-camera.test.js",
-    "test:segmentation": "node --test src/subject-segmentation.test.js"
+    "test:segmentation": "node --test src/subject-segmentation.test.js",
+    "test:performance": "node --test src/vision-performance.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
