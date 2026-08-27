@@ -1,0 +1,31 @@
+{
+  "name": "童趣反应视频",
+  "short_name": "Intermotion",
+  "description": "边看童趣动画，边录下孩子的真实反应。",
+  "lang": "zh-CN",
+  "start_url": "/intermotion/",
+  "scope": "/intermotion/",
+  "display": "standalone",
+  "background_color": "#fff7e8",
+  "theme_color": "#f06a32",
+  "icons": [
+    {
+      "src": "/intermotion/icons/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/intermotion/icons/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/intermotion/icons/app-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

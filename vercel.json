@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/intermotion",
+      "destination": "/intermotion/",
+      "permanent": false
+    },
+    {
       "source": "/report-codex",
       "destination": "/report-codex/",
       "permanent": false
@@ -17,6 +22,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/intermotion/",
+      "destination": "/intermotion/index.html"
+    },
     {
       "source": "/poster",
       "destination": "/POSTER/index.html"
