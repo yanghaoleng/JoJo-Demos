@@ -5,17 +5,24 @@ import {
   DownloadSimple,
   Stop,
 } from "@phosphor-icons/react";
-import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
+import {
+  FaceDetector,
+  FilesetResolver,
+  ImageSegmenter,
+} from "@mediapipe/tasks-vision";
 
 const BASE_URL = import.meta.env.BASE_URL;
 const FILM_URL = `${BASE_URL}media/reaction-screen-recording.mp4`;
 const FILM_POSTER_URL = `${BASE_URL}media/reaction-screen-recording-poster.jpg`;
 const MODEL_URL = `${BASE_URL}models/selfie_segmenter.tflite`;
+const FACE_MODEL_URL = `${BASE_URL}models/blaze_face_short_range.tflite`;
 const WASM_URL = `${BASE_URL}wasm`;
 const OUTPUT_SIZE = { width: 1280, height: 720 };
 const MASK_THRESHOLD = 0.55;
 const MASK_FEATHER_PX = 3;
 const SEGMENT_INTERVAL_MS = 90;
+const FACE_INTERVAL_MS = 180;
+const FACE_HOLD_MS = 900;
 const OUTLINE_RADIUS_PX = 6;
 const OUTLINE_PADDING_PX = 24;
 const OUTLINE_STYLES = [
@@ -23,9 +30,174 @@ const OUTLINE_STYLES = [
   { id: "rainbow", label: "彩虹跑马灯" },
   { id: "orange", label: "橙色霓虹" },
 ];
+const DEFAULT_PERSON_BOUNDS = {
+  left: 0.18,
+  right: 0.82,
+  top: 0.05,
+  bottom: 1,
+};
+const FRONT_CAMERA_PATTERN =
+  /(front|user|facetime|true\s*depth|\u524d\u7f6e|\u81ea\u62cd)/i;
+const REAR_CAMERA_PATTERN =
+  /(back|rear|environment|telephoto|\u540e\u7f6e|\u957f\u7126)/i;
+const WIDE_CAMERA_PATTERN =
+  /(ultra[\s-]*wide|0[.,]5\s*[x×]?|wide[\s-]*angle|\u8d85\u5e7f\u89d2|\u5e7f\u89d2)/i;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function stabilizeValue(
+  previous,
+  next,
+  { alpha = 0.16, deadZone = 0.005, maxStep = 0.024 } = {},
+) {
+  const delta = next - previous;
+  if (Math.abs(delta) <= deadZone) return previous;
+  return previous + clamp(delta * alpha, -maxStep, maxStep);
+}
+
+function stabilizePosition(previous, next, timestamp) {
+  if (!previous) return { ...next, timestamp };
+  const elapsed = clamp(timestamp - previous.timestamp, 8, 80);
+  const alpha = 1 - Math.exp(-elapsed / 240);
+  const maxStep = 6 * (elapsed / 16);
+  const move = (current, target) => {
+    const delta = target - current;
+    if (Math.abs(delta) < 1.5) return current;
+    return current + clamp(delta * alpha, -maxStep, maxStep);
+  };
+  return {
+    x: move(previous.x, next.x),
+    y: move(previous.y, next.y),
+    timestamp,
+  };
+}
+
+export function getRandomDefaultOutlineIndex() {
+  if (globalThis.crypto?.getRandomValues) {
+    const value = new Uint8Array(1);
+    globalThis.crypto.getRandomValues(value);
+    return value[0] % 2 === 0 ? 1 : 2;
+  }
+  return Math.random() < 0.5 ? 1 : 2;
+}
+
+export function selectPreferredFrontCamera(devices, currentDeviceId = "") {
+  const videoDevices = devices.filter(
+    (device) => device.kind === "videoinput",
+  );
+  const frontDevices = videoDevices.filter((device) => {
+    const label = device.label || "";
+    if (REAR_CAMERA_PATTERN.test(label)) return false;
+    return (
+      FRONT_CAMERA_PATTERN.test(label) || device.deviceId === currentDeviceId
+    );
+  });
+  if (!frontDevices.length) return null;
+  return [...frontDevices].sort((left, right) => {
+    const score = (device) => {
+      const label = device.label || "";
+      return (
+        (WIDE_CAMERA_PATTERN.test(label) ? 100 : 0) +
+        (FRONT_CAMERA_PATTERN.test(label) ? 20 : 0) +
+        (device.deviceId === currentDeviceId ? 1 : 0)
+      );
+    };
+    return score(right) - score(left);
+  })[0];
+}
+
+async function applyWidestCameraSettings(track) {
+  if (!track?.applyConstraints || !track.getCapabilities) return;
+  let capabilities;
+  try {
+    capabilities = track.getCapabilities();
+  } catch {
+    return;
+  }
+  const enhancements = [];
+  if (Number.isFinite(capabilities.zoom?.min)) {
+    enhancements.push({ zoom: capabilities.zoom.min });
+  }
+  if (capabilities.focusMode?.includes("continuous")) {
+    enhancements.push({ focusMode: "continuous" });
+  }
+  if (capabilities.exposureMode?.includes("continuous")) {
+    enhancements.push({ exposureMode: "continuous" });
+  }
+  if (capabilities.whiteBalanceMode?.includes("continuous")) {
+    enhancements.push({ whiteBalanceMode: "continuous" });
+  }
+  for (const enhancement of enhancements) {
+    try {
+      await track.applyConstraints({ advanced: [enhancement] });
+    } catch {
+      // iOS Safari exposes fewer camera controls than desktop browsers.
+    }
+  }
+}
+
+async function preferWidestFrontCamera(initialStream) {
+  const initialTrack = initialStream.getVideoTracks()[0];
+  if (!initialTrack) return initialStream;
+  const currentDeviceId = initialTrack.getSettings?.().deviceId || "";
+  let preferredDevice = null;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    preferredDevice = selectPreferredFrontCamera(devices, currentDeviceId);
+  } catch {
+    // Device enumeration is optional after the first permission grant.
+  }
+
+  let activeStream = initialStream;
+  if (
+    preferredDevice?.deviceId &&
+    preferredDevice.deviceId !== currentDeviceId
+  ) {
+    let switchedOnCurrentTrack = false;
+    try {
+      await initialTrack.applyConstraints({
+        deviceId: { exact: preferredDevice.deviceId },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 },
+      });
+      switchedOnCurrentTrack =
+        initialTrack.getSettings?.().deviceId === preferredDevice.deviceId;
+    } catch {
+      switchedOnCurrentTrack = false;
+    }
+
+    if (!switchedOnCurrentTrack) {
+      try {
+        const wideVideoStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: { exact: preferredDevice.deviceId },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30 },
+          },
+          audio: false,
+        });
+        const wideTrack = wideVideoStream.getVideoTracks()[0];
+        if (wideTrack) {
+          activeStream = new MediaStream([
+            wideTrack,
+            ...initialStream.getAudioTracks(),
+          ]);
+          initialTrack.stop();
+        } else {
+          wideVideoStream.getTracks().forEach((track) => track.stop());
+        }
+      } catch {
+        activeStream = initialStream;
+      }
+    }
+  }
+
+  await applyWidestCameraSettings(activeStream.getVideoTracks()[0]);
+  return activeStream;
 }
 
 function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -219,6 +391,8 @@ function drawReactionOverlay(
   timestamp,
   outlineBuffers,
   personFrameRevision,
+  faceBounds,
+  overlayPlacement,
 ) {
   if (!cameraEnabled) return null;
   const source = personCanvas?.width ? personCanvas : cameraVideo;
@@ -226,9 +400,7 @@ function drawReactionOverlay(
     return null;
   }
 
-  const bounds = personCanvas?.width
-    ? personBounds
-    : { left: 0.18, right: 0.82, top: 0.05, bottom: 1 };
+  const bounds = personCanvas?.width ? personBounds : DEFAULT_PERSON_BOUNDS;
   const sourceWidth = source.width || source.videoWidth;
   const sourceHeight = source.height || source.videoHeight;
   if (!sourceWidth || !sourceHeight) return null;
@@ -249,8 +421,43 @@ function drawReactionOverlay(
     OUTPUT_SIZE.width * 0.44,
     targetHeight * (sw / sh),
   );
-  const x = OUTPUT_SIZE.width - targetWidth - 18;
-  const y = OUTPUT_SIZE.height - targetHeight;
+  const baseX = OUTPUT_SIZE.width - targetWidth - 18;
+  const baseY = OUTPUT_SIZE.height - targetHeight;
+  let desiredX = baseX;
+  let desiredY = baseY;
+  if (faceBounds && timestamp - faceBounds.lastSeen <= FACE_HOLD_MS) {
+    const faceCenterX = (faceBounds.left + faceBounds.right) / 2;
+    const faceCenterY = (faceBounds.top + faceBounds.bottom) / 2;
+    const relativeFaceX = clamp(
+      (faceCenterX - cropLeft) / Math.max(0.001, cropRight - cropLeft),
+      0,
+      1,
+    );
+    const relativeFaceY = clamp(
+      (faceCenterY - cropTop) / Math.max(0.001, cropBottom - cropTop),
+      0,
+      1,
+    );
+    const mirroredFaceX = (1 - relativeFaceX) * targetWidth;
+    const faceY = relativeFaceY * targetHeight;
+    desiredX = clamp(
+      OUTPUT_SIZE.width * 0.86 - mirroredFaceX,
+      baseX - 54,
+      baseX + 22,
+    );
+    desiredY = clamp(
+      OUTPUT_SIZE.height * 0.3 - faceY,
+      baseY - 72,
+      baseY + 18,
+    );
+  }
+  const placement = stabilizePosition(
+    overlayPlacement.current,
+    { x: desiredX, y: desiredY },
+    timestamp,
+  );
+  overlayPlacement.current = placement;
+  const { x, y } = placement;
 
   if (!personCanvas?.width) {
     context.save();
@@ -324,6 +531,8 @@ function drawComposition(
   timestamp,
   outlineBuffers,
   personFrameRevision,
+  faceBounds,
+  overlayPlacement,
 ) {
   drawFilmFrame(context, film);
   return drawReactionOverlay(
@@ -336,6 +545,8 @@ function drawComposition(
     timestamp,
     outlineBuffers,
     personFrameRevision,
+    faceBounds,
+    overlayPlacement,
   );
 }
 
@@ -358,6 +569,68 @@ async function createSegmenter() {
       baseOptions: { ...options.baseOptions, delegate: "CPU" },
     });
   }
+}
+
+async function createFaceDetector() {
+  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+  return FaceDetector.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: FACE_MODEL_URL,
+      delegate: "CPU",
+    },
+    runningMode: "VIDEO",
+    minDetectionConfidence: 0.55,
+    minSuppressionThreshold: 0.3,
+  });
+}
+
+function getLargestFaceBounds(result, cameraVideo, previous, timestamp) {
+  const cameraWidth = cameraVideo.videoWidth || 1;
+  const cameraHeight = cameraVideo.videoHeight || 1;
+  const detection = [...(result.detections || [])]
+    .filter((item) => item.boundingBox)
+    .sort(
+      (left, right) =>
+        right.boundingBox.width * right.boundingBox.height -
+        left.boundingBox.width * left.boundingBox.height,
+    )[0];
+  if (!detection?.boundingBox) {
+    return previous && timestamp - previous.lastSeen <= FACE_HOLD_MS
+      ? previous
+      : null;
+  }
+  const box = detection.boundingBox;
+  const next = {
+    left: clamp(box.originX / cameraWidth, 0, 1),
+    right: clamp((box.originX + box.width) / cameraWidth, 0, 1),
+    top: clamp(box.originY / cameraHeight, 0, 1),
+    bottom: clamp((box.originY + box.height) / cameraHeight, 0, 1),
+    lastSeen: timestamp,
+  };
+  if (!previous || timestamp - previous.lastSeen > FACE_HOLD_MS) return next;
+  return {
+    left: stabilizeValue(previous.left, next.left, {
+      alpha: 0.2,
+      deadZone: 0.006,
+      maxStep: 0.035,
+    }),
+    right: stabilizeValue(previous.right, next.right, {
+      alpha: 0.2,
+      deadZone: 0.006,
+      maxStep: 0.035,
+    }),
+    top: stabilizeValue(previous.top, next.top, {
+      alpha: 0.2,
+      deadZone: 0.006,
+      maxStep: 0.035,
+    }),
+    bottom: stabilizeValue(previous.bottom, next.bottom, {
+      alpha: 0.2,
+      deadZone: 0.006,
+      maxStep: 0.035,
+    }),
+    lastSeen: timestamp,
+  };
 }
 
 function RecorderStage({
@@ -477,19 +750,19 @@ export default function App() {
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const frameRequestRef = useRef(0);
+  const mediaSessionRef = useRef(0);
   const segmenterRef = useRef(null);
   const segmentingRef = useRef(false);
   const lastSegmentTimeRef = useRef(0);
+  const faceDetectorRef = useRef(null);
+  const lastFaceTimeRef = useRef(0);
+  const faceBoundsRef = useRef(null);
   const personCanvasRef = useRef(document.createElement("canvas"));
   const maskCanvasRef = useRef(document.createElement("canvas"));
   const outlineBuffersRef = useRef(createOutlineBuffers());
   const personFrameRevisionRef = useRef(0);
-  const personBoundsRef = useRef({
-    left: 0.18,
-    right: 0.82,
-    top: 0.05,
-    bottom: 1,
-  });
+  const personBoundsRef = useRef({ ...DEFAULT_PERSON_BOUNDS });
+  const overlayPlacementRef = useRef(null);
   const audioContextRef = useRef(null);
   const filmGainRef = useRef(null);
   const microphoneGainRef = useRef(null);
@@ -497,7 +770,7 @@ export default function App() {
   const stoppingRef = useRef(false);
   const cameraEnabledRef = useRef(true);
   const reactionDisplayBoundsRef = useRef(null);
-  const outlineStyleIndexRef = useRef(0);
+  const outlineStyleIndexRef = useRef(getRandomDefaultOutlineIndex());
   const lastTouchTapRef = useRef(null);
   const lastTouchCycleTimeRef = useRef(0);
 
@@ -507,6 +780,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const releaseMedia = useCallback(() => {
+    mediaSessionRef.current += 1;
     cancelAnimationFrame(frameRequestRef.current);
     frameRequestRef.current = 0;
     userStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -516,6 +790,11 @@ export default function App() {
     if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
     segmenterRef.current?.close();
     segmenterRef.current = null;
+    segmentingRef.current = false;
+    faceDetectorRef.current?.close();
+    faceDetectorRef.current = null;
+    faceBoundsRef.current = null;
+    overlayPlacementRef.current = null;
     audioContextRef.current?.close().catch(() => {});
     audioContextRef.current = null;
     filmGainRef.current = null;
@@ -602,10 +881,14 @@ export default function App() {
       };
       const previous = personBoundsRef.current;
       personBoundsRef.current = {
-        left: previous.left + (nextBounds.left - previous.left) * 0.22,
-        right: previous.right + (nextBounds.right - previous.right) * 0.22,
-        top: previous.top + (nextBounds.top - previous.top) * 0.22,
-        bottom: previous.bottom + (nextBounds.bottom - previous.bottom) * 0.22,
+        left: stabilizeValue(previous.left, nextBounds.left),
+        right: stabilizeValue(previous.right, nextBounds.right),
+        top: stabilizeValue(previous.top, nextBounds.top),
+        bottom: stabilizeValue(previous.bottom, nextBounds.bottom, {
+          alpha: 0.16,
+          deadZone: 0.005,
+          maxStep: 0.03,
+        }),
       };
     }
   }, []);
@@ -642,6 +925,27 @@ export default function App() {
         }
       }
 
+      const faceDetector = faceDetectorRef.current;
+      if (
+        faceDetector &&
+        camera.readyState >= 2 &&
+        !segmentingRef.current &&
+        timestamp - lastFaceTimeRef.current >= FACE_INTERVAL_MS
+      ) {
+        lastFaceTimeRef.current = timestamp;
+        try {
+          const result = faceDetector.detectForVideo(camera, timestamp);
+          faceBoundsRef.current = getLargestFaceBounds(
+            result,
+            camera,
+            faceBoundsRef.current,
+            timestamp,
+          );
+        } catch {
+          // Segmentation remains available if face detection is interrupted.
+        }
+      }
+
       reactionDisplayBoundsRef.current = drawComposition(
         context,
         film,
@@ -653,6 +957,8 @@ export default function App() {
         timestamp,
         outlineBuffersRef.current,
         personFrameRevisionRef.current,
+        faceBoundsRef.current,
+        overlayPlacementRef,
       );
       if (film.ended) {
         stopRecording();
@@ -681,18 +987,26 @@ export default function App() {
     personFrameRevisionRef.current = 0;
     outlineBuffersRef.current.cacheKey = "";
     reactionDisplayBoundsRef.current = null;
+    personBoundsRef.current = { ...DEFAULT_PERSON_BOUNDS };
+    faceBoundsRef.current = null;
+    overlayPlacementRef.current = null;
+    lastSegmentTimeRef.current = 0;
+    lastFaceTimeRef.current = 0;
+    outlineStyleIndexRef.current = getRandomDefaultOutlineIndex();
 
     try {
+      const mediaSession = mediaSessionRef.current;
       const film = filmVideoRef.current;
       const camera = cameraVideoRef.current;
       const canvas = canvasRef.current;
       if (!film || !camera || !canvas) throw new Error("拍摄画面没有准备好");
 
-      const userStream = await navigator.mediaDevices.getUserMedia({
+      const initialStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          facingMode: { ideal: "user" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 },
         },
         audio: {
           echoCancellation: true,
@@ -700,6 +1014,7 @@ export default function App() {
           autoGainControl: true,
         },
       });
+      const userStream = await preferWidestFrontCamera(initialStream);
       userStreamRef.current = userStream;
       camera.srcObject = userStream;
       camera.muted = true;
@@ -725,7 +1040,26 @@ export default function App() {
 
       createSegmenter()
         .then((segmenter) => {
-          segmenterRef.current = segmenter;
+          if (
+            mediaSessionRef.current === mediaSession &&
+            userStreamRef.current
+          ) {
+            segmenterRef.current = segmenter;
+          } else {
+            segmenter.close();
+          }
+        })
+        .catch(() => {});
+      createFaceDetector()
+        .then((faceDetector) => {
+          if (
+            mediaSessionRef.current === mediaSession &&
+            userStreamRef.current
+          ) {
+            faceDetectorRef.current = faceDetector;
+          } else {
+            faceDetector.close();
+          }
         })
         .catch(() => {});
 
@@ -778,7 +1112,9 @@ export default function App() {
         setErrorMessage("请允许浏览器使用摄像头和麦克风，然后再试一次。");
       } else {
         setErrorMessage(
-          error instanceof Error ? error.message : "拍摄启动失败，请再试一次。",
+          error instanceof Error && error.message
+            ? error.message
+            : "拍摄启动失败，请再试一次。",
         );
       }
     }
