@@ -2,15 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowCounterClockwise,
   Camera,
-  CameraSlash,
   DownloadSimple,
-  FilmSlate,
-  LockSimple,
-  Microphone,
-  MicrophoneSlash,
-  Play,
   Stop,
-  WarningCircle,
 } from "@phosphor-icons/react";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 
@@ -33,13 +26,6 @@ const OUTLINE_STYLES = [
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
-}
-
-function formatTime(value) {
-  const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
-  const minutes = Math.floor(safeValue / 60);
-  const seconds = Math.floor(safeValue % 60);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
@@ -73,20 +59,11 @@ function getFileExtension(mimeType) {
   return mimeType.includes("mp4") ? "mp4" : "webm";
 }
 
-function createFilmVideoElement(onMetadata) {
+function createFilmVideoElement() {
   const film = document.createElement("video");
   film.src = FILM_URL;
   film.preload = "auto";
   film.playsInline = true;
-  if (onMetadata) {
-    film.addEventListener(
-      "loadedmetadata",
-      () => onMetadata(film.duration || 0),
-      {
-        once: true,
-      },
-    );
-  }
   film.load();
   return film;
 }
@@ -386,53 +363,16 @@ async function createSegmenter() {
 function RecorderStage({
   phase,
   canvasRef,
-  progress,
-  currentTime,
-  duration,
-  cameraEnabled,
-  microphoneEnabled,
-  segmentationState,
   errorMessage,
   onStart,
   onStop,
-  onToggleCamera,
-  onToggleMicrophone,
-  outlineStyle,
   onStageDoubleClick,
   onStagePointerUp,
 }) {
   const isRecording = phase === "recording";
-  const isBusy = phase === "starting" || phase === "processing";
   return (
-    <main className="recorder-shell">
-      <header className="topbar">
-        <div className="title-lockup">
-          <FilmSlate size={22} weight="duotone" aria-hidden="true" />
-          <div>
-            <strong>童趣反应视频</strong>
-            <span>叫叫互动片段</span>
-          </div>
-        </div>
-
-        <div className={`recording-state ${isRecording ? "is-live" : ""}`}>
-          <span className="recording-dot" aria-hidden="true" />
-          {isRecording ? `正在录制 ${formatTime(currentTime)}` : "等待开始"}
-        </div>
-
-        {isRecording ? (
-          <button className="stop-button" type="button" onClick={onStop}>
-            <Stop size={17} weight="fill" aria-hidden="true" />
-            结束录制
-          </button>
-        ) : (
-          <span className="privacy-chip">
-            <LockSimple size={16} weight="fill" aria-hidden="true" />
-            本地生成
-          </span>
-        )}
-      </header>
-
-      <section className="stage-column" aria-label="反应视频拍摄区">
+    <main className={`capture-shell is-${phase}`}>
+      <section className="capture-layout" aria-label="反应视频拍摄区">
         <div
           className="video-stage"
           onDoubleClick={onStageDoubleClick}
@@ -450,103 +390,48 @@ function RecorderStage({
             width={OUTPUT_SIZE.width}
             height={OUTPUT_SIZE.height}
           />
-          <div className="stage-scrim" aria-hidden="true" />
+        </div>
 
+        <div className="action-dock" aria-label="拍摄操作">
           {(phase === "idle" || phase === "error") && (
-            <div className="start-panel">
-              {phase === "error" ? (
-                <WarningCircle size={32} weight="duotone" aria-hidden="true" />
-              ) : (
-                <Play size={32} weight="fill" aria-hidden="true" />
-              )}
-              <h1>{phase === "error" ? "摄像头没有准备好" : "开始拍摄"}</h1>
-              <p>
-                {phase === "error"
-                  ? errorMessage
-                  : "允许摄像头和麦克风后，动画与孩子的反应会同时录制。"}
-              </p>
-              <button
-                className="primary-button"
-                type="button"
-                onClick={onStart}
-              >
-                <Camera size={20} weight="fill" aria-hidden="true" />
-                {phase === "error" ? "重新授权" : "开始拍摄"}
-              </button>
-              <small>内容只在当前设备处理，不会自动上传。</small>
-            </div>
-          )}
-
-          {phase === "starting" && (
-            <div className="loading-panel" role="status">
-              <span className="loading-ring" aria-hidden="true" />
-              <strong>正在打开镜头</strong>
-              <span>动画马上开始</span>
-            </div>
-          )}
-
-          {isRecording && (
-            <div className="stage-controls" aria-label="拍摄控制">
-              <button
-                type="button"
-                className={!cameraEnabled ? "is-off" : ""}
-                onClick={onToggleCamera}
-                aria-label={cameraEnabled ? "关闭摄像头" : "打开摄像头"}
-              >
-                {cameraEnabled ? (
-                  <Camera size={21} />
-                ) : (
-                  <CameraSlash size={21} />
-                )}
-              </button>
-              <button
-                type="button"
-                className={!microphoneEnabled ? "is-off" : ""}
-                onClick={onToggleMicrophone}
-                aria-label={microphoneEnabled ? "关闭麦克风" : "打开麦克风"}
-              >
-                {microphoneEnabled ? (
-                  <Microphone size={21} />
-                ) : (
-                  <MicrophoneSlash size={21} />
-                )}
-              </button>
-            </div>
-          )}
-
-          {isRecording && (
-            <div
-              className={`outline-style-chip is-${outlineStyle.id}`}
-              aria-live="polite"
+            <button
+              className="action-button action-primary"
+              type="button"
+              onClick={onStart}
+              title={phase === "error" ? errorMessage : undefined}
             >
-              <span className="outline-style-dot" aria-hidden="true" />
-              <span>
-                <strong>{outlineStyle.label}</strong>
-                <small>双击人物切换</small>
-              </span>
-            </div>
+              <Camera size={23} weight="fill" aria-hidden="true" />
+              <span>{phase === "error" ? "重试" : "开始"}</span>
+            </button>
           )}
-
+          {phase === "starting" && (
+            <button className="action-button" type="button" disabled>
+              <Camera size={23} weight="fill" aria-hidden="true" />
+              <span>准备中</span>
+            </button>
+          )}
           {isRecording && (
-            <div className="progress-track" aria-hidden="true">
-              <span style={{ transform: `scaleX(${progress})` }} />
-            </div>
+            <button
+              className="action-button action-stop"
+              type="button"
+              onClick={onStop}
+            >
+              <Stop size={22} weight="fill" aria-hidden="true" />
+              <span>停止</span>
+            </button>
+          )}
+          {phase === "processing" && (
+            <button className="action-button" type="button" disabled>
+              <Stop size={22} weight="fill" aria-hidden="true" />
+              <span>生成中</span>
+            </button>
           )}
         </div>
-
-        <div className="stage-meta">
-          <span>
-            {segmentationState === "ready"
-              ? `人像边缘羽化最多 ${MASK_FEATHER_PX}px`
-              : segmentationState === "loading"
-                ? "正在加载人像抠图"
-                : "暂时使用原始镜头画面"}
+        {phase === "error" && (
+          <span className="visually-hidden" role="alert">
+            {errorMessage}
           </span>
-          <span>
-            {duration > 0 ? `片段时长 ${formatTime(duration)}` : "正在读取片段"}
-          </span>
-          <span>双击或双击轻触人物可换描边</span>
-        </div>
+        )}
       </section>
     </main>
   );
@@ -555,33 +440,28 @@ function RecorderStage({
 function ResultView({ videoUrl, mimeType, onAgain }) {
   const extension = getFileExtension(mimeType);
   return (
-    <main className="result-shell">
-      <section className="result-card">
-        <div className="result-video-wrap">
+    <main className="capture-shell result-shell">
+      <section className="capture-layout">
+        <div className="video-stage result-stage">
           <video src={videoUrl} controls playsInline autoPlay />
         </div>
-        <div className="result-copy">
-          <FilmSlate size={34} weight="duotone" aria-hidden="true" />
-          <h1>反应视频已经生成</h1>
-          <p>先看一遍，满意后保存到设备。文件仍然只在当前浏览器里。</p>
-          <div className="result-actions">
-            <a
-              className="primary-button"
-              href={videoUrl}
-              download={`童趣反应视频.${extension}`}
-            >
-              <DownloadSimple size={20} weight="bold" aria-hidden="true" />
-              保存视频
-            </a>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={onAgain}
-            >
-              <ArrowCounterClockwise size={20} aria-hidden="true" />
-              再拍一次
-            </button>
-          </div>
+        <div className="action-dock result-actions" aria-label="成片操作">
+          <a
+            className="action-button action-primary"
+            href={videoUrl}
+            download={`童趣反应视频.${extension}`}
+          >
+            <DownloadSimple size={23} weight="bold" aria-hidden="true" />
+            <span>保存</span>
+          </a>
+          <button
+            className="action-button action-secondary"
+            type="button"
+            onClick={onAgain}
+          >
+            <ArrowCounterClockwise size={23} aria-hidden="true" />
+            <span>重拍</span>
+          </button>
         </div>
       </section>
     </main>
@@ -622,15 +502,9 @@ export default function App() {
   const lastTouchCycleTimeRef = useRef(0);
 
   const [phase, setPhase] = useState("idle");
-  const [cameraEnabled, setCameraEnabled] = useState(true);
-  const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
-  const [segmentationState, setSegmentationState] = useState("idle");
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [videoUrl, setVideoUrl] = useState("");
   const [recordingMimeType, setRecordingMimeType] = useState("video/webm");
   const [errorMessage, setErrorMessage] = useState("");
-  const [outlineStyleIndex, setOutlineStyleIndex] = useState(0);
 
   const releaseMedia = useCallback(() => {
     cancelAnimationFrame(frameRequestRef.current);
@@ -765,7 +639,6 @@ export default function App() {
           });
         } catch {
           segmentingRef.current = false;
-          setSegmentationState("fallback");
         }
       }
 
@@ -781,12 +654,6 @@ export default function App() {
         outlineBuffersRef.current,
         personFrameRevisionRef.current,
       );
-      setCurrentTime((previous) =>
-        Math.abs(previous - film.currentTime) > 0.12
-          ? film.currentTime
-          : previous,
-      );
-
       if (film.ended) {
         stopRecording();
         return;
@@ -809,10 +676,6 @@ export default function App() {
     setErrorMessage("");
     stoppingRef.current = false;
     cameraEnabledRef.current = true;
-    setCameraEnabled(true);
-    setMicrophoneEnabled(true);
-    setSegmentationState("loading");
-    setCurrentTime(0);
     personCanvasRef.current.width = 0;
     personCanvasRef.current.height = 0;
     personFrameRevisionRef.current = 0;
@@ -863,16 +726,13 @@ export default function App() {
       createSegmenter()
         .then((segmenter) => {
           segmenterRef.current = segmenter;
-          setSegmentationState("ready");
         })
-        .catch(() => setSegmentationState("fallback"));
+        .catch(() => {});
 
       film.currentTime = 0;
       film.volume = 1;
       film.muted = false;
       await film.play();
-      setDuration(film.duration || 0);
-
       const canvasStream = canvas.captureStream(30);
       const outputStream = new MediaStream([
         ...canvasStream.getVideoTracks(),
@@ -911,9 +771,8 @@ export default function App() {
       startDrawLoop();
     } catch (error) {
       releaseMedia();
-      filmVideoRef.current = createFilmVideoElement(setDuration);
+      filmVideoRef.current = createFilmVideoElement();
       stoppingRef.current = false;
-      setSegmentationState("idle");
       setPhase("error");
       if (error instanceof DOMException && error.name === "NotAllowedError") {
         setErrorMessage("请允许浏览器使用摄像头和麦克风，然后再试一次。");
@@ -924,24 +783,6 @@ export default function App() {
       }
     }
   }, [releaseMedia, startDrawLoop]);
-
-  const toggleCamera = useCallback(() => {
-    const nextValue = !cameraEnabledRef.current;
-    cameraEnabledRef.current = nextValue;
-    setCameraEnabled(nextValue);
-    userStreamRef.current?.getVideoTracks().forEach((track) => {
-      track.enabled = nextValue;
-    });
-  }, []);
-
-  const toggleMicrophone = useCallback(() => {
-    setMicrophoneEnabled((previous) => {
-      const nextValue = !previous;
-      if (microphoneGainRef.current)
-        microphoneGainRef.current.gain.value = nextValue ? 1 : 0;
-      return nextValue;
-    });
-  }, []);
 
   const cycleOutlineAtPoint = useCallback(
     (clientX, clientY, stageElement) => {
@@ -964,7 +805,6 @@ export default function App() {
       const nextIndex =
         (outlineStyleIndexRef.current + 1) % OUTLINE_STYLES.length;
       outlineStyleIndexRef.current = nextIndex;
-      setOutlineStyleIndex(nextIndex);
       return true;
     },
     [phase],
@@ -1019,14 +859,12 @@ export default function App() {
       resultUrlRef.current = "";
     }
     setVideoUrl("");
-    setCurrentTime(0);
-    setSegmentationState("idle");
-    filmVideoRef.current = createFilmVideoElement(setDuration);
+    filmVideoRef.current = createFilmVideoElement();
     setPhase("idle");
   }, []);
 
   useEffect(() => {
-    const film = createFilmVideoElement(setDuration);
+    const film = createFilmVideoElement();
     filmVideoRef.current = film;
     const camera = document.createElement("video");
     camera.playsInline = true;
@@ -1055,18 +893,9 @@ export default function App() {
     <RecorderStage
       phase={phase}
       canvasRef={canvasRef}
-      progress={duration > 0 ? clamp(currentTime / duration, 0, 1) : 0}
-      currentTime={currentTime}
-      duration={duration}
-      cameraEnabled={cameraEnabled}
-      microphoneEnabled={microphoneEnabled}
-      segmentationState={segmentationState}
       errorMessage={errorMessage}
       onStart={startRecording}
       onStop={stopRecording}
-      onToggleCamera={toggleCamera}
-      onToggleMicrophone={toggleMicrophone}
-      outlineStyle={OUTLINE_STYLES[outlineStyleIndex]}
       onStageDoubleClick={handleStageDoubleClick}
       onStagePointerUp={handleStagePointerUp}
     />
