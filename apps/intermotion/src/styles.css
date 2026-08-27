@@ -197,6 +197,9 @@ a:focus-visible {
   background: var(--stage);
   box-shadow: var(--soft-shadow);
   isolation: isolate;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .video-stage canvas,
@@ -364,6 +367,73 @@ a:focus-visible {
   background: rgba(217, 70, 63, 0.82);
 }
 
+.outline-style-chip {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 11px 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(18, 20, 18, 0.52);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.outline-style-chip > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.outline-style-chip strong {
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.outline-style-chip small {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 9px;
+  line-height: 1.15;
+}
+
+.outline-style-dot {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border: 4px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(17, 20, 18, 0.34);
+}
+
+.outline-style-chip.is-rainbow .outline-style-dot {
+  border: 0;
+  background: conic-gradient(
+    #ff4d6d,
+    #ffb703,
+    #7bdc55,
+    #20c8df,
+    #6c63ff,
+    #e75bdb,
+    #ff4d6d
+  );
+  box-shadow:
+    0 0 9px rgba(69, 222, 255, 0.92),
+    0 0 15px rgba(255, 87, 213, 0.72);
+  animation: outline-orbit 1.4s linear infinite;
+}
+
+.outline-style-chip.is-orange .outline-style-dot {
+  border-color: #ff9a3d;
+  box-shadow:
+    0 0 8px rgba(255, 147, 51, 0.96),
+    0 0 15px rgba(255, 98, 28, 0.8);
+}
+
 .progress-track {
   position: absolute;
   z-index: 5;
@@ -392,11 +462,6 @@ a:focus-visible {
   gap: 18px;
   color: var(--muted);
   font-size: 11px;
-}
-
-.stage-meta a {
-  color: inherit;
-  text-underline-offset: 3px;
 }
 
 .result-shell {
@@ -444,7 +509,7 @@ a:focus-visible {
   letter-spacing: -0.05em;
 }
 
-.result-copy > p:not(.license-note) {
+.result-copy > p {
   max-width: 30ch;
   color: var(--muted);
   font-size: 15px;
@@ -467,13 +532,13 @@ a:focus-visible {
   background: color-mix(in srgb, var(--surface) 62%, transparent);
 }
 
-.license-note {
-  color: var(--muted);
-  font-size: 10px;
-  line-height: 1.55;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@keyframes spin {
+@keyframes outline-orbit {
   to {
     transform: rotate(360deg);
   }
@@ -556,6 +621,11 @@ a:focus-visible {
     right: 10px;
   }
 
+  .outline-style-chip {
+    top: 10px;
+    left: 10px;
+  }
+
   .stage-controls button {
     width: 38px;
     height: 38px;
@@ -565,10 +635,6 @@ a:focus-visible {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 5px 12px;
-  }
-
-  .stage-meta a {
-    grid-column: 1 / -1;
   }
 
   .result-card {
@@ -622,7 +688,8 @@ a:focus-visible {
 
 @media (prefers-reduced-transparency: reduce) {
   .start-panel,
-  .stage-controls button {
+  .stage-controls button,
+  .outline-style-chip {
     background: rgba(20, 23, 20, 0.96);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

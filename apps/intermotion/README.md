@@ -23,6 +23,7 @@ npm run build
 - 羽化范围上限：`3px`
 - 抠图刷新间隔：`90ms`
 - 录制画布：`1280 × 720`
+- 人物描边：白色贴纸 / 彩虹跑马灯 / 橙色霓虹，双击或双击轻触人物切换
 
 ## 图标
 
@@ -30,9 +31,6 @@ npm run build
 - 浏览器和主屏图标：`intermotion/icons/`
 - Web App 清单：`intermotion/site.webmanifest`
 
-## 动画授权
+## 视频素材
 
-动画使用 Blender Foundation 的《Caminandes 3: Llamigos》，来源为 Wikimedia Commons，许可为 Creative Commons Attribution 3.0 Unported。页面和导出画面中均保留了署名。
-
-- 来源：https://commons.wikimedia.org/wiki/File:Caminandes_3_-_Llamigos_-_Blender_Animated_Short.webm
-- 许可：https://creativecommons.org/licenses/by/3.0/
+使用用户提供的录屏素材，已精确裁掉前 `24.000s`，并转换为浏览器兼容的 H.264/AAC MP4。输出保留完整画面比例，补齐为 `1280 × 720`，同时清除源文件元数据。

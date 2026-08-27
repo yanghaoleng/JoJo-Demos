@@ -15,14 +15,19 @@ import {
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 
 const BASE_URL = import.meta.env.BASE_URL;
-const FILM_URL = `${BASE_URL}media/caminandes-llamigos-720p.mp4`;
-const FILM_POSTER_URL = `${BASE_URL}media/caminandes-llamigos-poster.jpg`;
+const FILM_URL = `${BASE_URL}media/reaction-screen-recording.mp4`;
+const FILM_POSTER_URL = `${BASE_URL}media/reaction-screen-recording-poster.jpg`;
 const MODEL_URL = `${BASE_URL}models/selfie_segmenter.tflite`;
 const WASM_URL = `${BASE_URL}wasm`;
 const OUTPUT_SIZE = { width: 1280, height: 720 };
 const MASK_THRESHOLD = 0.55;
 const MASK_FEATHER_PX = 3;
 const SEGMENT_INTERVAL_MS = 90;
+const OUTLINE_STYLES = [
+  { id: "white", label: "白色贴纸" },
+  { id: "rainbow", label: "彩虹跑马灯" },
+  { id: "orange", label: "橙色霓虹" },
+];
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -98,19 +103,53 @@ function drawFilmFrame(context, film) {
   context.drawImage(film, rect.x, rect.y, rect.width, rect.height);
 }
 
-function drawAttribution(context) {
-  context.save();
-  context.font = "500 14px system-ui, sans-serif";
-  context.textBaseline = "middle";
-  const label = "Caminandes 3: Llamigos - Blender - CC BY 3.0";
-  const width = context.measureText(label).width + 28;
-  context.fillStyle = "rgba(18, 20, 18, 0.58)";
-  context.beginPath();
-  context.roundRect(18, OUTPUT_SIZE.height - 42, width, 28, 10);
-  context.fill();
-  context.fillStyle = "rgba(255, 255, 255, 0.92)";
-  context.fillText(label, 32, OUTPUT_SIZE.height - 28);
-  context.restore();
+function getOutlineFilter(styleId, timestamp, hasPersonMask) {
+  const floorShadow = "drop-shadow(0 12px 18px rgba(18,20,18,.28))";
+  if (!hasPersonMask) return floorShadow;
+
+  if (styleId === "rainbow") {
+    const baseHue = (timestamp * 0.16) % 360;
+    const colors = Array.from(
+      { length: 8 },
+      (_, index) => `hsl(${(baseHue + index * 45) % 360} 96% 62%)`,
+    );
+    return [
+      `drop-shadow(4px 0 0 ${colors[0]})`,
+      `drop-shadow(3px 3px 0 ${colors[1]})`,
+      `drop-shadow(0 4px 0 ${colors[2]})`,
+      `drop-shadow(-3px 3px 0 ${colors[3]})`,
+      `drop-shadow(-4px 0 0 ${colors[4]})`,
+      `drop-shadow(-3px -3px 0 ${colors[5]})`,
+      `drop-shadow(0 -4px 0 ${colors[6]})`,
+      `drop-shadow(3px -3px 0 ${colors[7]})`,
+      `drop-shadow(0 0 11px hsl(${baseHue} 98% 66% / .8))`,
+      floorShadow,
+    ].join(" ");
+  }
+
+  if (styleId === "orange") {
+    return [
+      "drop-shadow(3px 0 0 rgba(255,139,49,.98))",
+      "drop-shadow(-3px 0 0 rgba(255,139,49,.98))",
+      "drop-shadow(0 3px 0 rgba(255,196,89,.98))",
+      "drop-shadow(0 -3px 0 rgba(255,196,89,.98))",
+      "drop-shadow(0 0 9px rgba(255,126,38,.95))",
+      "drop-shadow(0 0 18px rgba(255,103,31,.72))",
+      floorShadow,
+    ].join(" ");
+  }
+
+  return [
+    "drop-shadow(3px 0 0 rgba(255,255,255,.96))",
+    "drop-shadow(-3px 0 0 rgba(255,255,255,.96))",
+    "drop-shadow(0 3px 0 rgba(255,255,255,.96))",
+    "drop-shadow(0 -3px 0 rgba(255,255,255,.96))",
+    "drop-shadow(2px 2px 0 rgba(255,255,255,.94))",
+    "drop-shadow(-2px 2px 0 rgba(255,255,255,.94))",
+    "drop-shadow(2px -2px 0 rgba(255,255,255,.94))",
+    "drop-shadow(-2px -2px 0 rgba(255,255,255,.94))",
+    floorShadow,
+  ].join(" ");
 }
 
 function drawReactionOverlay(
@@ -119,17 +158,21 @@ function drawReactionOverlay(
   cameraVideo,
   personBounds,
   cameraEnabled,
+  outlineStyleId,
+  timestamp,
 ) {
-  if (!cameraEnabled) return;
+  if (!cameraEnabled) return null;
   const source = personCanvas?.width ? personCanvas : cameraVideo;
-  if (!source || (source === cameraVideo && cameraVideo.readyState < 2)) return;
+  if (!source || (source === cameraVideo && cameraVideo.readyState < 2)) {
+    return null;
+  }
 
   const bounds = personCanvas?.width
     ? personBounds
     : { left: 0.18, right: 0.82, top: 0.05, bottom: 1 };
   const sourceWidth = source.width || source.videoWidth;
   const sourceHeight = source.height || source.videoHeight;
-  if (!sourceWidth || !sourceHeight) return;
+  if (!sourceWidth || !sourceHeight) return null;
 
   const paddingX = 0.08;
   const paddingTop = 0.04;
@@ -153,11 +196,14 @@ function drawReactionOverlay(
   context.save();
   context.translate(x + targetWidth, y);
   context.scale(-1, 1);
-  context.filter = personCanvas?.width
-    ? "drop-shadow(3px 0 0 rgba(255,255,255,.92)) drop-shadow(-3px 0 0 rgba(255,255,255,.92)) drop-shadow(0 3px 0 rgba(255,255,255,.92)) drop-shadow(0 -3px 0 rgba(255,255,255,.92)) drop-shadow(0 12px 18px rgba(18,20,18,.28))"
-    : "drop-shadow(0 12px 18px rgba(18,20,18,.28))";
+  context.filter = getOutlineFilter(
+    outlineStyleId,
+    timestamp,
+    Boolean(personCanvas?.width),
+  );
   context.drawImage(source, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
   context.restore();
+  return { x, y, width: targetWidth, height: targetHeight };
 }
 
 function drawComposition(
@@ -167,16 +213,19 @@ function drawComposition(
   cameraVideo,
   personBounds,
   cameraEnabled,
+  outlineStyleId,
+  timestamp,
 ) {
   drawFilmFrame(context, film);
-  drawReactionOverlay(
+  return drawReactionOverlay(
     context,
     personCanvas,
     cameraVideo,
     personBounds,
     cameraEnabled,
+    outlineStyleId,
+    timestamp,
   );
-  drawAttribution(context);
 }
 
 async function createSegmenter() {
@@ -214,6 +263,9 @@ function RecorderStage({
   onStop,
   onToggleCamera,
   onToggleMicrophone,
+  outlineStyle,
+  onStageDoubleClick,
+  onStagePointerUp,
 }) {
   const isRecording = phase === "recording";
   const isBusy = phase === "starting" || phase === "processing";
@@ -224,7 +276,7 @@ function RecorderStage({
           <FilmSlate size={22} weight="duotone" aria-hidden="true" />
           <div>
             <strong>童趣反应视频</strong>
-            <span>《Caminandes 3: Llamigos》</span>
+            <span>叫叫互动片段</span>
           </div>
         </div>
 
@@ -247,12 +299,16 @@ function RecorderStage({
       </header>
 
       <section className="stage-column" aria-label="反应视频拍摄区">
-        <div className="video-stage">
+        <div
+          className="video-stage"
+          onDoubleClick={onStageDoubleClick}
+          onPointerUp={onStagePointerUp}
+        >
           {phase === "idle" || phase === "error" ? (
             <img
               className="stage-poster"
               src={FILM_POSTER_URL}
-              alt="Caminandes 动画中的羊驼和企鹅"
+              alt="叫叫互动片段画面"
             />
           ) : null}
           <canvas
@@ -325,6 +381,19 @@ function RecorderStage({
           )}
 
           {isRecording && (
+            <div
+              className={`outline-style-chip is-${outlineStyle.id}`}
+              aria-live="polite"
+            >
+              <span className="outline-style-dot" aria-hidden="true" />
+              <span>
+                <strong>{outlineStyle.label}</strong>
+                <small>双击人物切换</small>
+              </span>
+            </div>
+          )}
+
+          {isRecording && (
             <div className="progress-track" aria-hidden="true">
               <span style={{ transform: `scaleX(${progress})` }} />
             </div>
@@ -340,15 +409,9 @@ function RecorderStage({
                 : "暂时使用原始镜头画面"}
           </span>
           <span>
-            {duration > 0 ? `动画时长 ${formatTime(duration)}` : "正在读取动画"}
+            {duration > 0 ? `片段时长 ${formatTime(duration)}` : "正在读取片段"}
           </span>
-          <a
-            href="https://commons.wikimedia.org/wiki/File:Caminandes_3_-_Llamigos_-_Blender_Animated_Short.webm"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Blender，CC BY 3.0
-          </a>
+          <span>双击或双击轻触人物可换描边</span>
         </div>
       </section>
     </main>
@@ -385,9 +448,6 @@ function ResultView({ videoUrl, mimeType, onAgain }) {
               再拍一次
             </button>
           </div>
-          <p className="license-note">
-            动画：Blender《Caminandes 3: Llamigos》，使用 CC BY 3.0 授权。
-          </p>
         </div>
       </section>
     </main>
@@ -420,6 +480,10 @@ export default function App() {
   const resultUrlRef = useRef("");
   const stoppingRef = useRef(false);
   const cameraEnabledRef = useRef(true);
+  const reactionDisplayBoundsRef = useRef(null);
+  const outlineStyleIndexRef = useRef(0);
+  const lastTouchTapRef = useRef(null);
+  const lastTouchCycleTimeRef = useRef(0);
 
   const [phase, setPhase] = useState("idle");
   const [cameraEnabled, setCameraEnabled] = useState(true);
@@ -430,6 +494,7 @@ export default function App() {
   const [videoUrl, setVideoUrl] = useState("");
   const [recordingMimeType, setRecordingMimeType] = useState("video/webm");
   const [errorMessage, setErrorMessage] = useState("");
+  const [outlineStyleIndex, setOutlineStyleIndex] = useState(0);
 
   const releaseMedia = useCallback(() => {
     cancelAnimationFrame(frameRequestRef.current);
@@ -567,13 +632,15 @@ export default function App() {
         }
       }
 
-      drawComposition(
+      reactionDisplayBoundsRef.current = drawComposition(
         context,
         film,
         personCanvasRef.current,
         camera,
         personBoundsRef.current,
         cameraEnabledRef.current,
+        OUTLINE_STYLES[outlineStyleIndexRef.current].id,
+        timestamp,
       );
       setCurrentTime((previous) =>
         Math.abs(previous - film.currentTime) > 0.12
@@ -607,6 +674,9 @@ export default function App() {
     setMicrophoneEnabled(true);
     setSegmentationState("loading");
     setCurrentTime(0);
+    personCanvasRef.current.width = 0;
+    personCanvasRef.current.height = 0;
+    reactionDisplayBoundsRef.current = null;
 
     try {
       const film = filmVideoRef.current;
@@ -732,6 +802,76 @@ export default function App() {
     });
   }, []);
 
+  const cycleOutlineAtPoint = useCallback(
+    (clientX, clientY, stageElement) => {
+      if (phase !== "recording") return false;
+      const bounds = reactionDisplayBoundsRef.current;
+      if (!bounds || !stageElement) return false;
+      const stageRect = stageElement.getBoundingClientRect();
+      const canvasX =
+        ((clientX - stageRect.left) / stageRect.width) * OUTPUT_SIZE.width;
+      const canvasY =
+        ((clientY - stageRect.top) / stageRect.height) * OUTPUT_SIZE.height;
+      const hitPadding = 16;
+      const isInside =
+        canvasX >= bounds.x - hitPadding &&
+        canvasX <= bounds.x + bounds.width + hitPadding &&
+        canvasY >= bounds.y - hitPadding &&
+        canvasY <= bounds.y + bounds.height + hitPadding;
+      if (!isInside) return false;
+
+      const nextIndex =
+        (outlineStyleIndexRef.current + 1) % OUTLINE_STYLES.length;
+      outlineStyleIndexRef.current = nextIndex;
+      setOutlineStyleIndex(nextIndex);
+      return true;
+    },
+    [phase],
+  );
+
+  const handleStageDoubleClick = useCallback(
+    (event) => {
+      if (event.target instanceof Element && event.target.closest("button, a")) {
+        return;
+      }
+      if (performance.now() - lastTouchCycleTimeRef.current < 700) return;
+      cycleOutlineAtPoint(event.clientX, event.clientY, event.currentTarget);
+    },
+    [cycleOutlineAtPoint],
+  );
+
+  const handleStagePointerUp = useCallback(
+    (event) => {
+      if (event.pointerType === "mouse") return;
+      if (event.target instanceof Element && event.target.closest("button, a")) {
+        return;
+      }
+      const now = performance.now();
+      const previousTap = lastTouchTapRef.current;
+      lastTouchTapRef.current = {
+        time: now,
+        x: event.clientX,
+        y: event.clientY,
+      };
+      if (
+        !previousTap ||
+        now - previousTap.time > 360 ||
+        Math.hypot(event.clientX - previousTap.x, event.clientY - previousTap.y) >
+          34
+      ) {
+        return;
+      }
+      if (
+        cycleOutlineAtPoint(event.clientX, event.clientY, event.currentTarget)
+      ) {
+        lastTouchCycleTimeRef.current = now;
+        lastTouchTapRef.current = null;
+        event.preventDefault();
+      }
+    },
+    [cycleOutlineAtPoint],
+  );
+
   const recordAgain = useCallback(() => {
     if (resultUrlRef.current) {
       URL.revokeObjectURL(resultUrlRef.current);
@@ -785,6 +925,9 @@ export default function App() {
       onStop={stopRecording}
       onToggleCamera={toggleCamera}
       onToggleMicrophone={toggleMicrophone}
+      outlineStyle={OUTLINE_STYLES[outlineStyleIndex]}
+      onStageDoubleClick={handleStageDoubleClick}
+      onStagePointerUp={handleStagePointerUp}
     />
   );
 }
