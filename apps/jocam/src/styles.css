@@ -984,11 +984,11 @@ button {
   flex-direction: column;
   min-width: 0;
   padding:
-    max(16px, env(safe-area-inset-top))
+    max(38px, calc(env(safe-area-inset-top) + 22px))
     max(14px, env(safe-area-inset-right))
     max(16px, env(safe-area-inset-bottom))
     max(14px, env(safe-area-inset-left));
-  background: linear-gradient(180deg, #211b0f 0%, #14120c 100%);
+  background: #17140d;
   transform: translateY(var(--library-drag-y, 0px));
   transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
   animation: media-library-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -1103,12 +1103,32 @@ button {
 }
 
 .media-library-meta {
-  display: block;
-  padding: 9px 10px 10px;
+  display: none;
 }
 
-.media-library-meta strong {
-  font-size: 11px;
+.media-video-badge {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 22px;
+  padding: 3px 6px 3px 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.media-video-badge svg {
+  flex: 0 0 auto;
 }
 
 .media-library-empty {
@@ -1181,9 +1201,12 @@ button {
 }
 
 .media-preview.is-photo .preview-media-clip {
-  border: 3px solid #fff;
-  background: #050505;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28), 0 18px 44px rgba(0, 0, 0, 0.42);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .preview-neighbor {
@@ -1226,6 +1249,10 @@ button {
   object-fit: contain;
 }
 
+.media-preview.is-photo .preview-neighbor {
+  display: none;
+}
+
 .preview-media-clip.is-next {
   animation: preview-slide-next 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1243,9 +1270,19 @@ button {
 }
 
 .media-preview.is-photo .preview-media-wrap {
-  width: 80%;
-  height: 80%;
-  place-self: center;
+  width: 100%;
+  height: 100%;
+}
+
+.media-preview.is-photo .preview-media-clip img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  border: 3px solid #fff;
+  border-radius: 0;
+  object-fit: contain;
 }
 
 ::view-transition-old(root),

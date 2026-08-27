@@ -32,6 +32,7 @@ import {
 import { FaceLandmarker, FilesetResolver, GestureRecognizer, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
 import QRCode from "qrcode";
+import { createUISFX } from "uisfx";
 import {
   CAMERA_GESTURES,
   advanceGestureTracker,
@@ -594,19 +595,18 @@ function drawSpeechTriangle(context, {
   centerX,
   edgeY,
   height,
-  width,
   tipOffset,
 }) {
-  const tipX = centerX + tipOffset;
+  const verticalX = centerX + tipOffset - height / 2;
   const tipY = edgeY + height;
-  const halfWidth = width / 2;
   const tipRadius = 2;
+  const diagonalStartX = verticalX + height;
 
   context.beginPath();
-  context.moveTo(centerX - halfWidth, edgeY);
-  context.lineTo(tipX - tipRadius, tipY - tipRadius);
-  context.quadraticCurveTo(tipX, tipY, tipX + tipRadius, tipY - tipRadius);
-  context.lineTo(centerX + halfWidth, edgeY);
+  context.moveTo(verticalX, edgeY);
+  context.lineTo(verticalX, tipY - tipRadius);
+  context.quadraticCurveTo(verticalX, tipY, verticalX + tipRadius, tipY - tipRadius);
+  context.lineTo(diagonalStartX, edgeY);
   context.closePath();
   context.fill();
 }
@@ -663,6 +663,13 @@ function formatCaptureDate(createdAt) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(createdAt));
+}
+
+function formatMediaDuration(durationMs) {
+  const totalSeconds = Math.max(0, Math.round(Number(durationMs || 0) / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
 
 async function fetchAsset(asset, onProgress) {
@@ -806,6 +813,7 @@ function App() {
   const mediaLibrarySwipeRef = useRef({ active: false, startX: 0, startY: 0, dragY: 0 });
   const mediaPreviewSwipeRef = useRef({ active: false, pointerId: null, startX: 0, startY: 0 });
   const shutterAudioContextRef = useRef(null);
+  const uiSfxRef = useRef(null);
   const flashTimerRef = useRef(null);
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
@@ -885,6 +893,7 @@ function App() {
   const [mediaLibraryDragY, setMediaLibraryDragY] = useState(0);
   const [mediaLibraryDragging, setMediaLibraryDragging] = useState(false);
   const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
+  const [videoDurations, setVideoDurations] = useState({});
   const frameSize = FRAME_SIZES[frameOrientation];
 
   useEffect(() => {
@@ -956,10 +965,34 @@ function App() {
     return shutterAudioContextRef.current;
   }, []);
 
+  const unlockInterfaceSounds = useCallback(async () => {
+    if (!uiSfxRef.current) {
+      uiSfxRef.current = createUISFX({
+        pack: "glass",
+        preferences: {},
+      });
+    }
+    try {
+      await uiSfxRef.current.unlock();
+    } catch {
+      // Safari can defer audio activation until a later trusted touch.
+    }
+    return uiSfxRef.current;
+  }, []);
+
+  const playInterfaceSound = useCallback((cue) => {
+    try {
+      uiSfxRef.current?.play(cue);
+    } catch {
+      // Interface sounds should never block camera controls.
+    }
+  }, []);
+
   const playShutterSound = useCallback(() => {
     const context = unlockShutterSound();
     if (!context) return;
-    try {
+    const play = () => {
+      try {
       const samples = createShutterSamples(context.sampleRate);
       const buffer = context.createBuffer(1, samples.length, context.sampleRate);
       buffer.getChannelData(0).set(samples);
@@ -974,9 +1007,16 @@ function App() {
       highPass.connect(gain);
       gain.connect(context.destination);
       source.start();
-    } catch (error) {
-      console.warn("Shutter sound unavailable", error);
+      } catch (error) {
+        console.warn("Shutter sound unavailable", error);
+      }
+    };
+
+    if (context.state === "suspended") {
+      context.resume().then(play).catch(() => {});
+      return;
     }
+    play();
   }, [unlockShutterSound]);
 
   const stopPipCamera = useCallback(() => {
@@ -2425,6 +2465,8 @@ function App() {
     guideAudioRef.current?.pause();
     shutterAudioContextRef.current?.close().catch(() => {});
     shutterAudioContextRef.current = null;
+    uiSfxRef.current?.destroy?.().catch(() => {});
+    uiSfxRef.current = null;
     for (const item of mediaLibraryRef.current) {
       if (item.url) URL.revokeObjectURL(item.url);
     }
@@ -2585,24 +2627,28 @@ function App() {
 
   const enterCamera = useCallback(() => {
     unlockShutterSound();
+    void unlockInterfaceSounds().then((sounds) => sounds?.play("open"));
     playGuideClip("enter", { force: true });
     openCamera("user");
-  }, [openCamera, playGuideClip, unlockShutterSound]);
+  }, [openCamera, playGuideClip, unlockInterfaceSounds, unlockShutterSound]);
 
   const switchCamera = useCallback(() => {
     if (recordingRef.current) return;
+    playInterfaceSound("toggle-on");
     openCamera(facingMode === "user" ? "environment" : "user");
-  }, [facingMode, openCamera]);
+  }, [facingMode, openCamera, playInterfaceSound]);
 
   const togglePipCamera = useCallback(async () => {
     if (recordingRef.current || facingMode !== "environment" || pipOpening) return;
     if (pipVisible) {
+      playInterfaceSound("toggle-off");
       stopPipCamera();
       showToast("前摄小窗已关闭");
       return;
     }
     const result = await startPipCamera(streamRef.current);
     if (result.ok) {
+      playInterfaceSound("toggle-on");
       showToast("前摄小窗已打开，拍照和录像都会保留");
       return;
     }
@@ -2610,15 +2656,17 @@ function App() {
       await openCamera("environment", { attemptPip: false });
     }
     showToast("当前设备暂不支持同时打开前后摄像头");
-  }, [facingMode, openCamera, pipOpening, pipVisible, showToast, startPipCamera, stopPipCamera]);
+  }, [facingMode, openCamera, pipOpening, pipVisible, playInterfaceSound, showToast, startPipCamera, stopPipCamera]);
 
   const switchRiveAnimation = useCallback(() => {
     if (!rivePlayPraiseRef.current?.()) return;
+    playInterfaceSound("reaction");
     showToast(`${CHARACTERS[activeCharacter].label}正在夸夸你`);
-  }, [activeCharacter, showToast]);
+  }, [activeCharacter, playInterfaceSound, showToast]);
 
   const switchCharacter = useCallback(async () => {
     if (characterSwitchingRef.current || recordingRef.current) return;
+    playInterfaceSound("select");
     const nextCharacter = activeCharacter === "jiaojiao" ? "lvdou" : "jiaojiao";
     let nextBuffer;
     try {
@@ -2661,7 +2709,7 @@ function App() {
       characterSwitchingRef.current = false;
       setCharacterSwitching(false);
     }
-  }, [activeCharacter, animateCharacterOffset, frameSize.width, preloadLvdou, showToast]);
+  }, [activeCharacter, animateCharacterOffset, frameSize.width, playInterfaceSound, preloadLvdou, showToast]);
 
   const handleCharacterTap = useCallback(() => {
     if (characterSwitchingRef.current) return;
@@ -2682,18 +2730,26 @@ function App() {
 
   const switchCaption = useCallback(() => {
     if (recordingRef.current) return;
+    playInterfaceSound("toggle-on");
     setCaptionMode((current) => (current === "together" ? "streak" : "together"));
     setDay((current) => getRandomValue(MAX_RANDOM_DAY, current));
     showToast("已切换字幕和阅读天数");
-  }, [showToast]);
+  }, [playInterfaceSound, showToast]);
 
   const togglePersonLayer = useCallback(() => {
     setPersonLayer((current) => {
       const next = current === "front" ? "behind" : "front";
+      playInterfaceSound(next === "front" ? "toggle-on" : "toggle-off");
       showToast(next === "front" ? "人像已切到叫叫前面" : "人像已切到叫叫后面");
       return next;
     });
-  }, [showToast]);
+  }, [playInterfaceSound, showToast]);
+
+  const toggleCameraMenu = useCallback(() => {
+    const next = !cameraMenuOpen;
+    setCameraMenuOpen(next);
+    playInterfaceSound(next ? "expand" : "collapse");
+  }, [cameraMenuOpen, playInterfaceSound]);
 
   const openMediaLibrary = useCallback(() => {
     if (mediaLibraryCloseTimerRef.current) {
@@ -2706,13 +2762,15 @@ function App() {
     setMediaLibraryDragY(0);
     mediaLibraryOpenRef.current = true;
     setMediaLibraryOpen(true);
-  }, []);
+    playInterfaceSound("open");
+  }, [playInterfaceSound]);
 
   const closeMediaLibrary = useCallback(() => {
     if (!mediaLibraryOpenRef.current || mediaLibraryClosing) return;
     setMediaLibraryDragging(false);
     setMediaLibraryDragY(0);
     setMediaLibraryClosing(true);
+    playInterfaceSound("close");
     if (mediaLibraryCloseTimerRef.current) window.clearTimeout(mediaLibraryCloseTimerRef.current);
     mediaLibraryCloseTimerRef.current = window.setTimeout(() => {
       mediaLibraryCloseTimerRef.current = null;
@@ -2720,10 +2778,11 @@ function App() {
       setMediaLibraryOpen(false);
       setMediaLibraryClosing(false);
     }, 280);
-  }, [mediaLibraryClosing]);
+  }, [mediaLibraryClosing, playInterfaceSound]);
 
   const openMediaPreview = useCallback((item, direction = "open") => {
     if (!item) return;
+    playInterfaceSound(direction === "next" ? "forward" : direction === "previous" ? "back" : "open");
     if (mediaPreviewCloseTimerRef.current) {
       window.clearTimeout(mediaPreviewCloseTimerRef.current);
       mediaPreviewCloseTimerRef.current = null;
@@ -2741,10 +2800,11 @@ function App() {
     } else {
       commit();
     }
-  }, []);
+  }, [playInterfaceSound]);
 
   const closePreview = useCallback(() => {
     if (!mediaPreviewRef.current || mediaPreviewClosing) return;
+    playInterfaceSound("close");
     if (mediaLibraryOpenRef.current && document.startViewTransition) {
       document.startViewTransition(() => {
         flushSync(() => {
@@ -2765,7 +2825,7 @@ function App() {
       setMediaPreviewClosing(false);
       setMediaPreviewDirection("open");
     }, 240);
-  }, [mediaPreviewClosing]);
+  }, [mediaPreviewClosing, playInterfaceSound]);
 
   const onMediaLibraryTouchStart = useCallback((event) => {
     if (event.touches.length !== 1 || (mediaLibraryGridRef.current?.scrollTop || 0) > 1) return;
@@ -2929,6 +2989,7 @@ function App() {
 
   const stopRecording = useCallback(() => {
     if (!recordingRef.current) return;
+    playInterfaceSound("stop");
     recordingRef.current = false;
     setRecording(false);
     if (recordingIntervalRef.current) {
@@ -2941,7 +3002,7 @@ function App() {
     }
     if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     setFrameOrientation(getViewportOrientation());
-  }, []);
+  }, [playInterfaceSound]);
 
   const startRecording = useCallback(() => {
     riveCaptureMomentRef.current = null;
@@ -2979,6 +3040,7 @@ function App() {
           day: recordingDayRef.current,
           captionMode: recordingCaptionModeRef.current,
           source: "manual",
+          durationMs: Math.max(0, performance.now() - recordingStartedAtRef.current),
         });
       };
 
@@ -2988,6 +3050,7 @@ function App() {
       recordingRef.current = true;
       setRecording(true);
       setRecordingTime(0);
+      playInterfaceSound("start");
       recorder.start(250);
       recordingIntervalRef.current = window.setInterval(() => {
         setRecordingTime(performance.now() - recordingStartedAtRef.current);
@@ -2997,7 +3060,7 @@ function App() {
       console.warn("Recording failed", error);
       showToast("录像启动失败，可以先拍照");
     }
-  }, [addMediaCapture, captionMode, paddedDay, showToast, stopRecording]);
+  }, [addMediaCapture, captionMode, paddedDay, playInterfaceSound, showToast, stopRecording]);
 
   const onShutterPointerDown = useCallback((event) => {
     if (cameraState !== "ready") return;
@@ -3044,16 +3107,10 @@ function App() {
       `我和叫叫-第${previewDay}天-${getTimestamp()}.${extension}`,
       getCaptionText(previewCaptionMode, previewDay),
     );
-  }, [captionMode, mediaPreview, paddedDay]);
+    playInterfaceSound("success");
+  }, [captionMode, mediaPreview, paddedDay, playInterfaceSound]);
 
   const latestMedia = mediaLibrary[0] || null;
-  const mediaPreviewIndex = mediaPreview
-    ? mediaLibrary.findIndex(({ id }) => id === mediaPreview.id)
-    : -1;
-  const previousPreview = mediaPreviewIndex > 0 ? mediaLibrary[mediaPreviewIndex - 1] : null;
-  const nextPreview = mediaPreviewIndex >= 0 && mediaPreviewIndex < mediaLibrary.length - 1
-    ? mediaLibrary[mediaPreviewIndex + 1]
-    : null;
   const formattedRecordingTime = `${String(Math.floor(recordingTime / 1000)).padStart(2, "0")}.${Math.floor((recordingTime % 1000) / 100)}`;
   const readyForCamera = engineState !== "error";
   const activeRivePlaybackRate = cameraState === "ready" ? CAMERA_RIVE_PLAYBACK_RATE : COVER_RIVE_PLAYBACK_RATE;
@@ -3229,7 +3286,7 @@ function App() {
                     aria-expanded={cameraMenuOpen}
                     aria-haspopup="menu"
                     aria-label={cameraMenuOpen ? "收起相机设置菜单" : "展开相机设置菜单"}
-                    onClick={() => setCameraMenuOpen((current) => !current)}
+                    onClick={toggleCameraMenu}
                   >
                     <CaretDown className="camera-menu-chevron" size={24} weight="bold" aria-hidden="true" />
                   </button>
@@ -3269,7 +3326,7 @@ function App() {
         {cameraState !== "ready" && (
           <div className="welcome-panel">
             <div className="welcome-copy">
-              <span className="welcome-icon"><img src="favicon-512.png" alt="JOJO Cam" /></span>
+              <span className="welcome-icon"><img src="favicon-512.webp" alt="JOJO Cam" /></span>
               <h1>和叫叫，拍一张<br />会动的阅读合照</h1>
               <p>相机在透明区域里，叫叫默认站在人像前面。</p>
             </div>
@@ -3350,12 +3407,27 @@ function App() {
                       {item.type === "photo" ? (
                         <img src={item.url} alt="" />
                       ) : (
-                        <video src={item.url} muted playsInline preload="metadata" aria-hidden="true" />
+                        <video
+                          src={item.url}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          aria-hidden="true"
+                          onLoadedMetadata={(event) => {
+                            const durationMs = Math.round((event.currentTarget.duration || 0) * 1_000);
+                            if (!durationMs) return;
+                            setVideoDurations((current) => current[item.id] === durationMs
+                              ? current
+                              : { ...current, [item.id]: durationMs });
+                          }}
+                        />
                       )}
-                      {item.type === "video" && <PlayCircle size={28} weight="fill" aria-hidden="true" />}
-                    </span>
-                    <span className="media-library-meta">
-                      <strong>{item.type === "photo" ? "照片" : "短视频"}</strong>
+                      {item.type === "video" && (
+                        <span className="media-video-badge" aria-hidden="true">
+                          <PlayCircle size={15} weight="fill" />
+                          <span>{formatMediaDuration(item.durationMs || videoDurations[item.id])}</span>
+                        </span>
+                      )}
                     </span>
                   </button>
                 ))}
@@ -3381,20 +3453,6 @@ function App() {
             onPointerCancel={onMediaPreviewPointerCancel}
           >
             <div className="preview-media-carousel">
-              {previousPreview && (
-                <button
-                  className="preview-neighbor is-previous"
-                  type="button"
-                  onClick={() => showAdjacentPreview(-1)}
-                  aria-label="查看上一张作品"
-                >
-                  {previousPreview.type === "photo" ? (
-                    <img src={previousPreview.url} alt="" />
-                  ) : (
-                    <video src={previousPreview.url} muted playsInline preload="metadata" aria-hidden="true" />
-                  )}
-                </button>
-              )}
               <div className="preview-media-wrap">
                 <div
                   className={`preview-media-clip is-${mediaPreviewDirection}`}
@@ -3418,20 +3476,6 @@ function App() {
                   <X size={28} weight="bold" />
                 </button>
               </div>
-              {nextPreview && (
-                <button
-                  className="preview-neighbor is-next"
-                  type="button"
-                  onClick={() => showAdjacentPreview(1)}
-                  aria-label="查看下一张作品"
-                >
-                  {nextPreview.type === "photo" ? (
-                    <img src={nextPreview.url} alt="" />
-                  ) : (
-                    <video src={nextPreview.url} muted playsInline preload="metadata" aria-hidden="true" />
-                  )}
-                </button>
-              )}
             </div>
             <div className="preview-actions">
               <div>
