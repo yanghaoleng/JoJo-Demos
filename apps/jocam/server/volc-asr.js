@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import WebSocket from "ws";
 
@@ -102,7 +103,7 @@ export class VolcAsrSession {
     this.onReady = onReady;
     this.onTranscript = onTranscript;
     this.onError = onError;
-    this.requestId = crypto.randomUUID();
+    this.requestId = randomUUID();
     this.socket = null;
     this.ready = false;
     this.closed = false;
