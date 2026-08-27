@@ -18,8 +18,6 @@ const quizzes = [
 const reader = document.querySelector("#reader");
 const readerViewport = document.querySelector("#readerViewport");
 const pageTrack = document.querySelector("#pageTrack");
-const prevPage = document.querySelector("#prevPage");
-const nextPage = document.querySelector("#nextPage");
 const pageStatus = document.querySelector("#pageStatus");
 const pageDots = [...document.querySelectorAll(".page-dots i")];
 const quizDock = document.querySelector("#quizDock");
@@ -38,6 +36,9 @@ let isQuizOpen = false;
 let dragState = null;
 let swipeStart = null;
 let revealTimer = null;
+let openOnNextFlip = false;
+
+const TRIGGER_REVEAL_DELAY = 2000;
 
 function setCorner(corner) {
   quizDock.classList.remove(...cornerClasses);
@@ -112,8 +113,22 @@ function revealQuizTrigger() {
   quizDock.classList.add("is-ready");
 }
 
+function resetQuizDock() {
+  window.clearTimeout(revealTimer);
+  isQuizOpen = false;
+  quizDock.classList.remove("is-ready", "is-open");
+  quizTrigger.setAttribute("aria-expanded", "false");
+  quizCard.setAttribute("aria-hidden", "true");
+}
+
+function scheduleQuizTrigger() {
+  resetQuizDock();
+  revealTimer = window.setTimeout(revealQuizTrigger, TRIGGER_REVEAL_DELAY);
+}
+
 function openQuiz() {
   revealQuizTrigger();
+  openOnNextFlip = false;
   isQuizOpen = true;
   quizDock.classList.add("is-open");
   quizTrigger.setAttribute("aria-expanded", "true");
@@ -133,8 +148,6 @@ function closeQuiz({ focusTrigger = true } = {}) {
 
 function updatePageControls() {
   pageTrack.style.setProperty("--page-index", currentPage);
-  prevPage.disabled = currentPage === 0;
-  nextPage.disabled = currentPage === quizzes.length - 1;
   pageStatus.textContent = `第 ${currentPage + 1} 页，共 ${quizzes.length} 页`;
   pageDots.forEach((dot, index) => dot.classList.toggle("is-active", index === currentPage));
 }
@@ -143,10 +156,17 @@ function goToPage(nextIndex) {
   const clampedIndex = Math.max(0, Math.min(quizzes.length - 1, nextIndex));
   if (clampedIndex === currentPage) return;
 
+  const shouldOpenAfterFlip = openOnNextFlip;
   currentPage = clampedIndex;
   updatePageControls();
   renderQuiz();
-  openQuiz();
+
+  if (shouldOpenAfterFlip) {
+    openQuiz();
+  } else {
+    openOnNextFlip = true;
+    scheduleQuizTrigger();
+  }
 }
 
 function speakQuestion() {
@@ -226,8 +246,7 @@ function endSwipe(event) {
 restoreCorner();
 renderQuiz();
 updatePageControls();
-
-revealTimer = window.setTimeout(revealQuizTrigger, 2000);
+scheduleQuizTrigger();
 
 quizTrigger.addEventListener("pointerdown", beginDrag);
 quizTrigger.addEventListener("pointermove", moveDrag);
@@ -238,8 +257,6 @@ quizTrigger.addEventListener("click", (event) => {
 });
 collapseQuiz.addEventListener("click", () => closeQuiz());
 listenQuestion.addEventListener("click", speakQuestion);
-prevPage.addEventListener("click", () => goToPage(currentPage - 1));
-nextPage.addEventListener("click", () => goToPage(currentPage + 1));
 readerViewport.addEventListener("pointerdown", beginSwipe);
 readerViewport.addEventListener("pointerup", endSwipe);
 readerViewport.addEventListener("pointercancel", () => {
@@ -247,7 +264,5 @@ readerViewport.addEventListener("pointercancel", () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowLeft") goToPage(currentPage - 1);
-  if (event.key === "ArrowRight") goToPage(currentPage + 1);
   if (event.key === "Escape" && isQuizOpen) closeQuiz();
 });
