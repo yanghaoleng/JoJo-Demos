@@ -14,22 +14,71 @@ import { Calligraph } from "calligraph";
 import QRCode from "qrcode";
 
 const BASE_URL = import.meta.env.BASE_URL;
+const GUIDE_AUDIO = {
+  enter: {
+    path: `${BASE_URL}audio/guides/enter.mp3`,
+    text: "我来啦！看镜头，我们一起拍张照片吧！",
+    duration: 3.684,
+  },
+  smile: {
+    path: `${BASE_URL}audio/guides/smile.mp3`,
+    text: "看镜头，我们一起笑一个！",
+    duration: 1.594,
+  },
+  think: {
+    path: `${BASE_URL}audio/guides/think.mp3`,
+    text: "想一个最好玩的表情吧！",
+    duration: 2.064,
+  },
+  surprise: {
+    path: `${BASE_URL}audio/guides/surprise.mp3`,
+    text: "哇！张大嘴巴，惊讶一下！",
+    duration: 2.325,
+  },
+  encourage: {
+    path: `${BASE_URL}audio/guides/encourage.mp3`,
+    text: "别紧张，靠近我一点点！",
+    duration: 2.273,
+  },
+  praise: {
+    path: `${BASE_URL}audio/guides/praise.mp3`,
+    text: "你笑得真好看，再来一张！",
+    duration: 2.195,
+  },
+  frighten: {
+    path: `${BASE_URL}audio/guides/frighten.mp3`,
+    text: "哇！和我一起吓一跳！",
+    duration: 2.482,
+  },
+  curious: {
+    path: `${BASE_URL}audio/guides/curious.mp3`,
+    text: "你想摆什么姿势呀？",
+    duration: 1.777,
+  },
+};
+const GUIDE_SPEAK_PROBABILITY = 0.34;
+const GUIDE_MIN_INTERVAL_MS = 7_000;
+const GUIDE_PLAY_DELAY_MS = 180;
+const GUIDE_END_PADDING_SECONDS = 0.45;
 const FRAME_SIZES = {
   portrait: { width: 720, height: 1280 },
   landscape: { width: 1280, height: 720 },
 };
 const RIVE_SOURCE_SIZE = { width: 1200, height: 640 };
 const RIVE_VISIBLE_SOURCE = { y: 96, width: 950, height: 544 };
-const RIVE_DEFAULT_CROP_X = 64;
+const RIVE_DEFAULT_CROP_X = 72;
 const RIVE_EDGE_PADDING = 4;
 const RIVE_ANALYSIS_SIZE = { width: 600, height: 320 };
 const RIVE_SCALE = 0.512;
 const RIVE_DISPLAY_MULTIPLIER = 1.25;
 const RIVE_LANDSCAPE_MULTIPLIER = 1.35;
-const RIVE_LEFT_OVERFLOW_RATIO = 0.035;
+const RIVE_LEFT_OVERFLOW_RATIO = 0.045;
+const CAPTION_VERTICAL_OFFSET_RATIO = 0.02;
 const DEFAULT_RIVE_ANIMATION = "Start_Dial";
 const SECOND_RIVE_ANIMATION = "TalkingEmotion_Think";
 const CLICK_RIVE_ANIMATION = "TalkingEmotion_Praise";
+const RIVE_POSITION_ANIMATION = "Ipad";
+const RIVE_MOUTH_ANIMATION = "Talking_Normal";
 const COVER_RIVE_PLAYBACK_RATE = 0.25;
 const CAMERA_RIVE_PLAYBACK_RATE = 0.8;
 const RIVE_CAPTURE_ADVANCE_FRAMES = 4;
@@ -57,6 +106,7 @@ const LOAD_ASSETS = [
   { key: "visionWasm", path: "mediapipe/wasm/vision_wasm_internal.wasm", bytes: 11_756_954, retain: false },
   { key: "visionLoader", path: "mediapipe/wasm/vision_wasm_internal.js", bytes: 323_377, retain: false },
   { key: "segmentModel", path: "mediapipe/selfie_segmenter.tflite", bytes: 249_537, retain: true },
+  { key: "guideEnter", path: "audio/guides/enter.mp3", bytes: 58_931, retain: false },
 ];
 const LOAD_TOTAL_BYTES = LOAD_ASSETS.reduce((total, asset) => total + asset.bytes, 0);
 
@@ -71,6 +121,18 @@ function getRandomValue(max, excludedValue) {
 function getCaptionText(mode, value) {
   const caption = CAPTION_MODES[mode] || CAPTION_MODES.together;
   return `${caption.prefix}${caption.dayPrefix} ${value} ${caption.suffix}`;
+}
+
+function getGuideKeyForAnimation(animationName) {
+  if (!animationName?.startsWith("TalkingEmotion")) return null;
+  if (/Frighten/i.test(animationName)) return "frighten";
+  if (/Surprised|Amazed|Superexcited|Excited/i.test(animationName)) return "surprise";
+  if (/Think|Focused|Serious|Doubt|Entangled/i.test(animationName)) return "think";
+  if (/Nervous|Sad|Regret|Grievance|Concerned|Shake/i.test(animationName)) return "encourage";
+  if (/Praise|Proud|Encourage|Sure/i.test(animationName)) return "praise";
+  if (/Curious|Beckoning|Expectation|Envy/i.test(animationName)) return "curious";
+  if (/Smile|Happy/i.test(animationName)) return "smile";
+  return null;
 }
 
 function getViewportOrientation() {
@@ -216,6 +278,7 @@ function App() {
   const riveCaptureCanvasRef = useRef(null);
   const foregroundCanvasRef = useRef(null);
   const maskCanvasRef = useRef(null);
+  const guideAudioRef = useRef(null);
   const riveRef = useRef(null);
   const rivePlaybackRateRef = useRef(COVER_RIVE_PLAYBACK_RATE);
   const segmenterRef = useRef(null);
@@ -235,9 +298,17 @@ function App() {
   const longPressTriggeredRef = useRef(false);
   const autoStopTimerRef = useRef(null);
   const toastTimerRef = useRef(null);
+  const guideTimerRef = useRef(null);
+  const guideAudioUnlockedRef = useRef(false);
+  const lastGuideAtRef = useRef(0);
+  const lastGuideKeyRef = useRef(null);
+  const cameraReadyRef = useRef(false);
   const mediaPreviewRef = useRef(null);
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
+  const riveAnimationNameRef = useRef(DEFAULT_RIVE_ANIMATION);
+  const riveGuidePlaybackRef = useRef(null);
+  const riveMouthPlaybackRef = useRef(null);
   const rivePlayPraiseRef = useRef(null);
   const riveMarkCaptureRef = useRef(null);
   const rivePrepareCaptureRef = useRef(null);
@@ -308,6 +379,82 @@ function App() {
     toastTimerRef.current = window.setTimeout(() => setToast(""), 2_600);
   }, []);
 
+  const playGuideClip = useCallback((guideKey, { force = false } = {}) => {
+    const audio = guideAudioRef.current;
+    const guide = GUIDE_AUDIO[guideKey];
+    if (!audio || !guide) return false;
+    if (!force && (
+      !guideAudioUnlockedRef.current
+      || !cameraReadyRef.current
+      || recordingRef.current
+      || mediaPreviewRef.current
+    )) return false;
+    if (!force && !audio.paused) return false;
+
+    const desiredSource = new URL(guide.path, window.location.href).href;
+    if (audio.src !== desiredSource) audio.src = guide.path;
+    audio.pause();
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Metadata may not be ready yet; play() will start from the beginning.
+    }
+    audio.volume = 1;
+    audio.dataset.guideKey = guideKey;
+    audio.dataset.guideText = guide.text;
+
+    const stage = audio.closest(".camera-stage");
+    if (stage) {
+      stage.dataset.guideKey = guideKey;
+      stage.dataset.guideText = guide.text;
+    }
+
+    const playback = audio.play();
+    if (playback?.then) {
+      playback.then(() => {
+        guideAudioUnlockedRef.current = true;
+        lastGuideAtRef.current = performance.now();
+        lastGuideKeyRef.current = guideKey;
+      }).catch((error) => {
+        if (force) console.warn("Guide audio could not start", error);
+      });
+    } else {
+      guideAudioUnlockedRef.current = true;
+      lastGuideAtRef.current = performance.now();
+      lastGuideKeyRef.current = guideKey;
+    }
+    return true;
+  }, []);
+
+  const maybePlayGuideForAnimation = useCallback((animationName, animationDurationSeconds) => {
+    const guideKey = getGuideKeyForAnimation(animationName);
+    const guide = GUIDE_AUDIO[guideKey];
+    if (
+      !guide
+      || !guideAudioUnlockedRef.current
+      || !cameraReadyRef.current
+      || recordingRef.current
+      || mediaPreviewRef.current
+      || !guideAudioRef.current?.paused
+      || lastGuideKeyRef.current === guideKey
+      || performance.now() - lastGuideAtRef.current < GUIDE_MIN_INTERVAL_MS
+      || Math.random() >= GUIDE_SPEAK_PROBABILITY
+      || guide.duration + (GUIDE_PLAY_DELAY_MS / 1000) + GUIDE_END_PADDING_SECONDS > animationDurationSeconds
+    ) return;
+
+    if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
+    guideTimerRef.current = window.setTimeout(() => {
+      guideTimerRef.current = null;
+      if (
+        riveAnimationNameRef.current !== animationName
+        || performance.now() - lastGuideAtRef.current < GUIDE_MIN_INTERVAL_MS
+      ) return;
+      playGuideClip(guideKey);
+    }, GUIDE_PLAY_DELAY_MS);
+  }, [playGuideClip]);
+
+  riveGuidePlaybackRef.current = maybePlayGuideForAnimation;
+
   const updateMask = useCallback((result) => {
     const masks = result.confidenceMasks;
     if (!masks?.length) return;
@@ -344,8 +491,9 @@ function App() {
     const centerX = targetWidth / 2;
     const isLandscape = targetHeight < targetWidth;
     const portraitCaptionScale = isLandscape ? 1 : 1.25;
-    const firstLineY = isLandscape ? 48 : 104;
-    const dayLineY = isLandscape ? 108 : 172;
+    const verticalOffset = targetHeight * CAPTION_VERTICAL_OFFSET_RATIO;
+    const firstLineY = (isLandscape ? 48 : 104) + verticalOffset;
+    const dayLineY = (isLandscape ? 108 : 172) + verticalOffset;
     const labelFontSize = (isLandscape ? 35 : 33) * portraitCaptionScale;
     const dayLabelFontSize = labelFontSize * 1.25;
     const numberFontSize = (isLandscape ? 64 : 60) * 1.25 * portraitCaptionScale;
@@ -581,7 +729,8 @@ function App() {
                   const maxCropX = RIVE_SOURCE_SIZE.width - RIVE_VISIBLE_SOURCE.width;
                   const leftAlignedX = unionMinX - RIVE_EDGE_PADDING;
                   const rightSafeX = unionMaxX + RIVE_EDGE_PADDING - RIVE_VISIBLE_SOURCE.width;
-                  riveCropXRef.current = clamp(Math.max(leftAlignedX, rightSafeX), 0, maxCropX);
+                  const analyzedCropX = clamp(Math.max(leftAlignedX, rightSafeX), 0, maxCropX);
+                  riveCropXRef.current = Math.max(riveCropXRef.current, analyzedCropX);
                 };
 
                 riveCropTimeoutsRef.current = [32, 140, 280, 440, 620, 800, 940].map((delay) => (
@@ -602,17 +751,36 @@ function App() {
                 if (!availableAnimations.length) return;
                 const normalizedIndex = (index + availableAnimations.length) % availableAnimations.length;
                 const nextAnimation = availableAnimations[normalizedIndex];
+                const speaking = guideAudioRef.current && !guideAudioRef.current.paused;
+                const playbackAnimations = [RIVE_POSITION_ANIMATION, nextAnimation];
+                if (speaking) playbackAnimations.push(RIVE_MOUTH_ANIMATION);
                 switchingAnimation = true;
                 try {
                   instance.stop();
-                  instance.play(nextAnimation);
+                  instance.play(playbackAnimations);
                   activeAnimationName = nextAnimation;
+                  const positionAnimation = getActiveAnimation(RIVE_POSITION_ANIMATION);
+                  if (positionAnimation?.instance) {
+                    const positionFps = Math.max(positionAnimation.animation?.fps || 60, 1);
+                    positionAnimation.instance.time = (positionAnimation.animation?.duration || positionFps) / positionFps;
+                    positionAnimation.instance.apply(1);
+                    instance.artboard?.advance?.(0);
+                  }
                 } finally {
                   switchingAnimation = false;
                 }
                 riveAnimationIndexRef.current = normalizedIndex;
+                riveAnimationNameRef.current = nextAnimation;
                 setRiveAnimationName(nextAnimation);
                 scheduleCropAnalysis();
+                const activeAnimation = getActiveAnimation(nextAnimation);
+                const framesPerSecond = Math.max(activeAnimation?.animation?.fps || 60, 1);
+                const workStart = activeAnimation?.animation?.workStart || 0;
+                const workEnd = activeAnimation?.animation?.workEnd || activeAnimation?.animation?.duration || 0;
+                const animationDurationSeconds = Math.max(0, workEnd - workStart)
+                  / framesPerSecond
+                  / Math.max(rivePlaybackRateRef.current, 0.01);
+                riveGuidePlaybackRef.current?.(nextAnimation, animationDurationSeconds);
               };
 
               const playRandom = () => {
@@ -641,6 +809,18 @@ function App() {
 
               instance.on(EventType.Loop, queueNextAfterCompletion);
               instance.on(EventType.Stop, queueNextAfterCompletion);
+
+              riveMouthPlaybackRef.current = (speaking) => {
+                const mouthAnimation = getActiveAnimation(RIVE_MOUTH_ANIMATION);
+                if (speaking && !mouthAnimation) {
+                  instance.play(RIVE_MOUTH_ANIMATION);
+                } else if (!speaking && mouthAnimation) {
+                  instance.stop(RIVE_MOUTH_ANIMATION);
+                }
+              };
+              if (guideAudioRef.current && !guideAudioRef.current.paused) {
+                riveMouthPlaybackRef.current(true);
+              }
 
               riveMarkCaptureRef.current = () => {
                 const animation = getActiveAnimation();
@@ -785,6 +965,8 @@ function App() {
       riveRef.current?.cleanup();
       riveRef.current = null;
       rivePlayPraiseRef.current = null;
+      riveGuidePlaybackRef.current = null;
+      riveMouthPlaybackRef.current = null;
       riveMarkCaptureRef.current = null;
       rivePrepareCaptureRef.current = null;
       riveCaptureMomentRef.current = null;
@@ -799,6 +981,14 @@ function App() {
       : COVER_RIVE_PLAYBACK_RATE;
     if (rivePlaybackRateRef.current === nextPlaybackRate) return;
     rivePlaybackRateRef.current = nextPlaybackRate;
+  }, [cameraState]);
+
+  useEffect(() => {
+    if (cameraState !== "ready") return;
+    Object.values(GUIDE_AUDIO).forEach((guide) => {
+      if (guide === GUIDE_AUDIO.enter) return;
+      fetch(guide.path, { cache: "force-cache" }).catch(() => {});
+    });
   }, [cameraState]);
 
   useEffect(() => {
@@ -825,15 +1015,19 @@ function App() {
   }, [cameraState, renderFrame, renderWelcomeFrame, riveReady, updateMask]);
 
   useEffect(() => () => {
+    cameraReadyRef.current = false;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingIntervalRef.current) window.clearInterval(recordingIntervalRef.current);
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
     if (autoStopTimerRef.current) window.clearTimeout(autoStopTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
+    guideAudioRef.current?.pause();
     if (mediaPreviewRef.current?.url) URL.revokeObjectURL(mediaPreviewRef.current.url);
   }, []);
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
+    cameraReadyRef.current = false;
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraState("error");
       setCameraError("当前浏览器不支持相机，请用最新版 Safari 或 Chrome 打开");
@@ -859,9 +1053,11 @@ function App() {
       video.srcObject = stream;
       await video.play();
       setFacingMode(nextFacingMode);
+      cameraReadyRef.current = true;
       setCameraState("ready");
       if (!segmenterReady) showToast("相机已打开，人像识别还在准备");
     } catch (error) {
+      cameraReadyRef.current = false;
       const denied = error instanceof DOMException && ["NotAllowedError", "SecurityError"].includes(error.name);
       const missing = error instanceof DOMException && ["NotFoundError", "OverconstrainedError"].includes(error.name);
       setCameraState("error");
@@ -874,6 +1070,11 @@ function App() {
       );
     }
   }, [facingMode, segmenterReady, showToast]);
+
+  const enterCamera = useCallback(() => {
+    playGuideClip("enter", { force: true });
+    openCamera("user");
+  }, [openCamera, playGuideClip]);
 
   const switchCamera = useCallback(() => {
     if (recordingRef.current) return;
@@ -1098,12 +1299,25 @@ function App() {
         data-rive-animation={riveAnimationName}
         data-rive-playback-rate={activeRivePlaybackRate}
         data-rive-switch-mode="on-complete"
+        data-rive-position-basis={RIVE_POSITION_ANIMATION}
+        data-rive-mouth-animation={RIVE_MOUTH_ANIMATION}
         data-rive-capture-offset-frames={RIVE_CAPTURE_ADVANCE_FRAMES}
         data-person-layer={personLayer}
         data-reading-day={day}
         data-caption-mode={captionMode}
         aria-label="和叫叫合拍相机"
       >
+        <audio
+          ref={guideAudioRef}
+          className="guide-audio"
+          src={GUIDE_AUDIO.enter.path}
+          preload="auto"
+          playsInline
+          onPlay={() => riveMouthPlaybackRef.current?.(true)}
+          onPause={() => riveMouthPlaybackRef.current?.(false)}
+          onEnded={() => riveMouthPlaybackRef.current?.(false)}
+          aria-hidden="true"
+        />
         <div className="viewfinder">
           <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
           <canvas ref={riveCanvasRef} className="rive-source" width={RIVE_SOURCE_SIZE.width} height={RIVE_SOURCE_SIZE.height} aria-hidden="true" />
@@ -1210,12 +1424,12 @@ function App() {
               className="open-camera-button"
               type="button"
               disabled={!readyForCamera || cameraState === "opening"}
-              onClick={() => openCamera("user")}
+              onClick={enterCamera}
             >
               {cameraState === "opening" ? (
                 <><span className="button-loader" />正在打开相机</>
               ) : (
-                <><Camera size={21} weight="fill" />{cameraState === "error" ? "重新打开相机" : "打开相机"}</>
+                <><Camera size={21} weight="fill" />{cameraState === "error" ? "重新进入相机" : "进入相机"}</>
               )}
             </button>
 
