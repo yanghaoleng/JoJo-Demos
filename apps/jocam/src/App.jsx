@@ -3,8 +3,8 @@ import {
   ArrowClockwise,
   ArrowsLeftRight,
   Camera,
+  CaretDown,
   Check,
-  DotsThreeVertical,
   DownloadSimple,
   ImagesSquare,
   LockSimple,
@@ -54,6 +54,7 @@ import {
   loadMediaCaptures,
   storeMediaCapture,
 } from "./media-library.js";
+import { createShutterSamples } from "./camera-feedback.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -602,6 +603,7 @@ function createCaptureId(type) {
 
 function formatCaptureDate(createdAt) {
   return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
@@ -735,6 +737,13 @@ function App() {
   const mediaPreviewRef = useRef(null);
   const mediaLibraryRef = useRef([]);
   const mediaLibraryOpenRef = useRef(false);
+  const mediaLibraryGridRef = useRef(null);
+  const mediaLibraryCloseTimerRef = useRef(null);
+  const mediaPreviewCloseTimerRef = useRef(null);
+  const mediaLibrarySwipeRef = useRef({ active: false, startX: 0, startY: 0, dragY: 0 });
+  const mediaPreviewSwipeRef = useRef({ active: false, pointerId: null, startX: 0, startY: 0 });
+  const shutterAudioContextRef = useRef(null);
+  const flashTimerRef = useRef(null);
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
   const riveAnimationNameRef = useRef(DEFAULT_RIVE_ANIMATION);
@@ -800,11 +809,16 @@ function App() {
   const [personLayer, setPersonLayer] = useState("behind");
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [flash, setFlash] = useState(false);
+  const [flashMode, setFlashMode] = useState("");
   const [toast, setToast] = useState("");
   const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaPreviewClosing, setMediaPreviewClosing] = useState(false);
+  const [mediaPreviewDirection, setMediaPreviewDirection] = useState("open");
   const [mediaLibrary, setMediaLibrary] = useState([]);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [mediaLibraryClosing, setMediaLibraryClosing] = useState(false);
+  const [mediaLibraryDragY, setMediaLibraryDragY] = useState(0);
+  const [mediaLibraryDragging, setMediaLibraryDragging] = useState(false);
   const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const frameSize = FRAME_SIZES[frameOrientation];
 
@@ -864,6 +878,41 @@ function App() {
     setToast(message);
     toastTimerRef.current = window.setTimeout(() => setToast(""), 2_600);
   }, []);
+
+  const unlockShutterSound = useCallback(() => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!shutterAudioContextRef.current || shutterAudioContextRef.current.state === "closed") {
+      shutterAudioContextRef.current = new AudioContextClass();
+    }
+    if (shutterAudioContextRef.current.state === "suspended") {
+      shutterAudioContextRef.current.resume().catch(() => {});
+    }
+    return shutterAudioContextRef.current;
+  }, []);
+
+  const playShutterSound = useCallback(() => {
+    const context = unlockShutterSound();
+    if (!context) return;
+    try {
+      const samples = createShutterSamples(context.sampleRate);
+      const buffer = context.createBuffer(1, samples.length, context.sampleRate);
+      buffer.getChannelData(0).set(samples);
+      const source = context.createBufferSource();
+      const highPass = context.createBiquadFilter();
+      const gain = context.createGain();
+      highPass.type = "highpass";
+      highPass.frequency.value = 620;
+      gain.gain.value = 0.28;
+      source.buffer = buffer;
+      source.connect(highPass);
+      highPass.connect(gain);
+      gain.connect(context.destination);
+      source.start();
+    } catch (error) {
+      console.warn("Shutter sound unavailable", error);
+    }
+  }, [unlockShutterSound]);
 
   const addMediaCapture = useCallback((capture, { automatic = false } = {}) => {
     const item = {
@@ -1268,14 +1317,14 @@ function App() {
     const mouthY = anchor.y * targetHeight;
     const eyeY = anchor.eyeY * targetHeight;
     const direction = anchor.x < 0.5 ? 1 : -1;
-    const captionSafeY = isLandscape ? 120 : 240;
+    const captionSafeY = isLandscape ? 88 : 195;
     const bubbleX = clamp(
       mouthX + direction * targetWidth * (isLandscape ? 0.17 : 0.2),
       bubbleWidth / 2 + 18,
       targetWidth - bubbleWidth / 2 - 18,
     );
-    const desiredBubbleY = mouthY - targetHeight * (isLandscape ? 0.17 : 0.13);
-    const eyeSafeBubbleY = eyeY - bubbleHeight / 2 - tailHeight - fontSize * 0.42;
+    const desiredBubbleY = mouthY - targetHeight * (isLandscape ? 0.21 : 0.19);
+    const eyeSafeBubbleY = eyeY - bubbleHeight / 2 - tailHeight - fontSize * 0.82;
     const bubbleY = clamp(
       Math.min(desiredBubbleY, eyeSafeBubbleY),
       captionSafeY + bubbleHeight / 2,
@@ -2097,7 +2146,12 @@ function App() {
     if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
     if (gestureEffectTimerRef.current) window.clearTimeout(gestureEffectTimerRef.current);
     if (autoCaptureTimerRef.current) window.clearTimeout(autoCaptureTimerRef.current);
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    if (mediaLibraryCloseTimerRef.current) window.clearTimeout(mediaLibraryCloseTimerRef.current);
+    if (mediaPreviewCloseTimerRef.current) window.clearTimeout(mediaPreviewCloseTimerRef.current);
     guideAudioRef.current?.pause();
+    shutterAudioContextRef.current?.close().catch(() => {});
+    shutterAudioContextRef.current = null;
     for (const item of mediaLibraryRef.current) {
       if (item.url) URL.revokeObjectURL(item.url);
     }
@@ -2116,6 +2170,15 @@ function App() {
     setCameraLensMode("default");
     setCameraMenuOpen(false);
     setMediaLibraryOpen(false);
+    mediaLibraryOpenRef.current = false;
+    setMediaLibraryClosing(false);
+    setMediaLibraryDragging(false);
+    setMediaLibraryDragY(0);
+    setMediaPreview(null);
+    mediaPreviewRef.current = null;
+    setMediaPreviewClosing(false);
+    if (mediaLibraryCloseTimerRef.current) window.clearTimeout(mediaLibraryCloseTimerRef.current);
+    if (mediaPreviewCloseTimerRef.current) window.clearTimeout(mediaPreviewCloseTimerRef.current);
     maskReadyRef.current = false;
     personMaskRevisionRef.current = 0;
     gestureEffectUntilRef.current = 0;
@@ -2208,9 +2271,10 @@ function App() {
   }, [facingMode, preloadLvdou, segmenterReady, showToast, startVoiceSession, stopVoiceSession]);
 
   const enterCamera = useCallback(() => {
+    unlockShutterSound();
     playGuideClip("enter", { force: true });
     openCamera("user");
-  }, [openCamera, playGuideClip]);
+  }, [openCamera, playGuideClip, unlockShutterSound]);
 
   const switchCamera = useCallback(() => {
     if (recordingRef.current) return;
@@ -2300,8 +2364,142 @@ function App() {
     });
   }, [showToast]);
 
+  const openMediaLibrary = useCallback(() => {
+    if (mediaLibraryCloseTimerRef.current) {
+      window.clearTimeout(mediaLibraryCloseTimerRef.current);
+      mediaLibraryCloseTimerRef.current = null;
+    }
+    setCameraMenuOpen(false);
+    setMediaLibraryClosing(false);
+    setMediaLibraryDragging(false);
+    setMediaLibraryDragY(0);
+    mediaLibraryOpenRef.current = true;
+    setMediaLibraryOpen(true);
+  }, []);
+
+  const closeMediaLibrary = useCallback(() => {
+    if (!mediaLibraryOpenRef.current || mediaLibraryClosing) return;
+    setMediaLibraryDragging(false);
+    setMediaLibraryDragY(0);
+    setMediaLibraryClosing(true);
+    if (mediaLibraryCloseTimerRef.current) window.clearTimeout(mediaLibraryCloseTimerRef.current);
+    mediaLibraryCloseTimerRef.current = window.setTimeout(() => {
+      mediaLibraryCloseTimerRef.current = null;
+      mediaLibraryOpenRef.current = false;
+      setMediaLibraryOpen(false);
+      setMediaLibraryClosing(false);
+    }, 280);
+  }, [mediaLibraryClosing]);
+
+  const openMediaPreview = useCallback((item, direction = "open") => {
+    if (!item) return;
+    if (mediaPreviewCloseTimerRef.current) {
+      window.clearTimeout(mediaPreviewCloseTimerRef.current);
+      mediaPreviewCloseTimerRef.current = null;
+    }
+    setMediaPreviewClosing(false);
+    setMediaPreviewDirection(direction);
+    mediaPreviewRef.current = item;
+    setMediaPreview(item);
+  }, []);
+
   const closePreview = useCallback(() => {
-    setMediaPreview(null);
+    if (!mediaPreviewRef.current || mediaPreviewClosing) return;
+    setMediaPreviewClosing(true);
+    if (mediaPreviewCloseTimerRef.current) window.clearTimeout(mediaPreviewCloseTimerRef.current);
+    mediaPreviewCloseTimerRef.current = window.setTimeout(() => {
+      mediaPreviewCloseTimerRef.current = null;
+      mediaPreviewRef.current = null;
+      setMediaPreview(null);
+      setMediaPreviewClosing(false);
+      setMediaPreviewDirection("open");
+    }, 240);
+  }, [mediaPreviewClosing]);
+
+  const onMediaLibraryTouchStart = useCallback((event) => {
+    if (event.touches.length !== 1 || (mediaLibraryGridRef.current?.scrollTop || 0) > 1) return;
+    const touch = event.touches[0];
+    mediaLibrarySwipeRef.current = {
+      active: true,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      dragY: 0,
+    };
+  }, []);
+
+  const onMediaLibraryTouchMove = useCallback((event) => {
+    const swipe = mediaLibrarySwipeRef.current;
+    if (!swipe.active || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - swipe.startX;
+    const deltaY = touch.clientY - swipe.startY;
+    if (deltaY <= 0 || Math.abs(deltaX) > deltaY) return;
+    if (event.cancelable) event.preventDefault();
+    swipe.dragY = Math.min(148, deltaY * 0.58);
+    setMediaLibraryDragging(true);
+    setMediaLibraryDragY(swipe.dragY);
+  }, []);
+
+  const finishMediaLibraryTouch = useCallback(() => {
+    const swipe = mediaLibrarySwipeRef.current;
+    mediaLibrarySwipeRef.current = { active: false, startX: 0, startY: 0, dragY: 0 };
+    setMediaLibraryDragging(false);
+    if (swipe.dragY >= 72) {
+      closeMediaLibrary();
+      return;
+    }
+    setMediaLibraryDragY(0);
+  }, [closeMediaLibrary]);
+
+  const showAdjacentPreview = useCallback((step) => {
+    const current = mediaPreviewRef.current;
+    if (!current) return;
+    const items = mediaLibraryRef.current;
+    const currentIndex = items.findIndex(({ id }) => id === current.id);
+    const nextItem = items[currentIndex + step];
+    if (!nextItem) return;
+    openMediaPreview(nextItem, step > 0 ? "next" : "previous");
+  }, [openMediaPreview]);
+
+  const onMediaPreviewPointerDown = useCallback((event) => {
+    if (mediaPreviewRef.current?.type !== "photo" || event.target.closest?.("button, video")) return;
+    mediaPreviewSwipeRef.current = {
+      active: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+    try {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Synthetic events used in previews do not always own an active pointer.
+    }
+  }, []);
+
+  const onMediaPreviewPointerUp = useCallback((event) => {
+    const swipe = mediaPreviewSwipeRef.current;
+    if (!swipe.active || swipe.pointerId !== event.pointerId) return;
+    try {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    } catch {
+      // The pointer may already have been released by the browser.
+    }
+    mediaPreviewSwipeRef.current = { active: false, pointerId: null, startX: 0, startY: 0 };
+    const deltaX = event.clientX - swipe.startX;
+    const deltaY = event.clientY - swipe.startY;
+    const horizontal = Math.abs(deltaX);
+    const vertical = Math.abs(deltaY);
+    if (vertical >= 58 && vertical > horizontal) {
+      closePreview();
+      return;
+    }
+    if (horizontal >= 58 && horizontal > vertical) {
+      showAdjacentPreview(deltaX < 0 ? 1 : -1);
+    }
+  }, [closePreview, showAdjacentPreview]);
+
+  const onMediaPreviewPointerCancel = useCallback(() => {
+    mediaPreviewSwipeRef.current = { active: false, pointerId: null, startX: 0, startY: 0 };
   }, []);
 
   const takePhoto = useCallback(({ automatic = false, reason = "manual" } = {}) => {
@@ -2324,8 +2522,13 @@ function App() {
       return;
     }
     photoContext.drawImage(canvas, 0, 0);
-    setFlash(true);
-    window.setTimeout(() => setFlash(false), 170);
+    playShutterSound();
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    setFlashMode(automatic ? "automatic" : "manual");
+    flashTimerRef.current = window.setTimeout(() => {
+      flashTimerRef.current = null;
+      setFlashMode("");
+    }, automatic ? 280 : 170);
 
     photoCanvas.toBlob((blob) => {
       if (!blob) {
@@ -2342,7 +2545,7 @@ function App() {
         automatic,
       });
     }, "image/jpeg", 0.94);
-  }, [addMediaCapture, cameraState, captionMode, paddedDay, renderFrame, showToast]);
+  }, [addMediaCapture, cameraState, captionMode, paddedDay, playShutterSound, renderFrame, showToast]);
 
   useEffect(() => {
     takePhotoRef.current = takePhoto;
@@ -2614,7 +2817,7 @@ function App() {
             </div>
           )}
 
-          {flash && <div className="camera-flash" aria-hidden="true" />}
+          {flashMode && <div className={`camera-flash is-${flashMode}`} aria-hidden="true" />}
         </div>
 
         {cameraState === "ready" && (
@@ -2624,10 +2827,7 @@ function App() {
                 className={`media-library-entry ${latestMedia ? "has-media" : ""}`}
                 type="button"
                 disabled={recording}
-                onClick={() => {
-                  setCameraMenuOpen(false);
-                  setMediaLibraryOpen(true);
-                }}
+                onClick={openMediaLibrary}
                 aria-label={mediaLibrary.length ? `打开作品列表，共 ${mediaLibrary.length} 个作品` : "打开作品列表"}
               >
                 {latestMedia ? (
@@ -2669,10 +2869,10 @@ function App() {
                   disabled={recording}
                   aria-expanded={cameraMenuOpen}
                   aria-haspopup="menu"
-                  aria-label="打开相机设置菜单"
+                  aria-label={cameraMenuOpen ? "收起相机设置菜单" : "展开相机设置菜单"}
                   onClick={() => setCameraMenuOpen((current) => !current)}
                 >
-                  <DotsThreeVertical size={24} weight="bold" aria-hidden="true" />
+                  <CaretDown className="camera-menu-chevron" size={24} weight="bold" aria-hidden="true" />
                 </button>
                 {cameraMenuOpen && (
                   <div className="camera-menu-popover" role="menu" aria-label="相机设置">
@@ -2749,24 +2949,34 @@ function App() {
         {toast && <div className="camera-toast" role="status">{toast}</div>}
 
         {mediaLibraryOpen && (
-          <div className="media-library-panel" role="dialog" aria-modal="true" aria-label="我的合拍作品">
+          <div
+            className={`media-library-panel ${mediaLibraryClosing ? "is-closing" : ""} ${mediaLibraryDragging ? "is-dragging" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="我的合拍作品"
+            style={{ "--library-drag-y": `${mediaLibraryDragY}px` }}
+            onTouchStart={onMediaLibraryTouchStart}
+            onTouchMove={onMediaLibraryTouchMove}
+            onTouchEnd={finishMediaLibraryTouch}
+            onTouchCancel={finishMediaLibraryTouch}
+          >
             <header className="media-library-header">
               <div>
                 <strong>我的合拍</strong>
                 <span>{mediaLibrary.length ? `${mediaLibrary.length} 个作品 · 仅保存在本机` : "作品仅保存在本机"}</span>
               </div>
-              <button type="button" onClick={() => setMediaLibraryOpen(false)} aria-label="关闭作品列表">
+              <button type="button" onClick={closeMediaLibrary} aria-label="关闭作品列表">
                 <X size={25} weight="bold" aria-hidden="true" />
               </button>
             </header>
             {mediaLibrary.length ? (
-              <div className="media-library-grid">
+              <div className="media-library-grid" ref={mediaLibraryGridRef}>
                 {mediaLibrary.map((item) => (
                   <button
                     className={`media-library-card is-${item.type}`}
                     type="button"
                     key={item.id}
-                    onClick={() => setMediaPreview(item)}
+                    onClick={() => openMediaPreview(item)}
                     aria-label={`打开${item.type === "photo" ? "照片" : "短视频"}，${formatCaptureDate(item.createdAt)}`}
                   >
                     <span className="media-library-visual">
@@ -2779,7 +2989,6 @@ function App() {
                     </span>
                     <span className="media-library-meta">
                       <strong>{item.type === "photo" ? "照片" : "短视频"}</strong>
-                      <small>{formatCaptureDate(item.createdAt)}</small>
                     </span>
                   </button>
                 ))}
@@ -2795,9 +3004,20 @@ function App() {
         )}
 
         {mediaPreview && (
-          <div className={`media-preview is-${mediaPreview.type}`} role="dialog" aria-modal="true" aria-label={mediaPreview.type === "photo" ? "照片预览" : "录像预览"}>
+          <div
+            className={`media-preview is-${mediaPreview.type} ${mediaPreviewClosing ? "is-closing" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={mediaPreview.type === "photo" ? "照片预览" : "录像预览"}
+            onPointerDown={onMediaPreviewPointerDown}
+            onPointerUp={onMediaPreviewPointerUp}
+            onPointerCancel={onMediaPreviewPointerCancel}
+          >
             <div className="preview-media-wrap">
-              <div className="preview-media-clip">
+              <div
+                className={`preview-media-clip is-${mediaPreviewDirection}`}
+                key={mediaPreview.id}
+              >
                 {mediaPreview.type === "photo" ? (
                   <img
                     src={mediaPreview.url}
@@ -2815,6 +3035,7 @@ function App() {
               <div>
                 <strong>{mediaPreview.type === "photo" ? "这一刻拍好了" : "这一段录好了"}</strong>
                 <span>{getCaptionText(mediaPreview.captionMode || captionMode, mediaPreview.day || paddedDay)}</span>
+                <small>{formatCaptureDate(mediaPreview.createdAt)}{mediaPreview.type === "photo" ? " · 左右滑切换，上下滑返回" : ""}</small>
               </div>
               <button type="button" onClick={savePreview}>
                 <DownloadSimple size={20} weight="bold" />

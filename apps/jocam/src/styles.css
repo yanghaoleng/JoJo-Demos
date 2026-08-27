@@ -438,6 +438,15 @@ button {
   pointer-events: auto;
 }
 
+.camera-menu-chevron {
+  transform: rotate(0deg);
+  transition: transform 300ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.camera-menu-trigger.is-active .camera-menu-chevron {
+  transform: rotate(180deg);
+}
+
 .camera-menu-popover {
   position: absolute;
   z-index: 7;
@@ -881,7 +890,14 @@ button {
   inset: 0;
   background: #f9faf4;
   pointer-events: none;
+}
+
+.camera-flash.is-manual {
   animation: flash 170ms ease-out forwards;
+}
+
+.camera-flash.is-automatic {
+  animation: auto-flash 280ms ease-out forwards;
 }
 
 .camera-toast {
@@ -918,6 +934,16 @@ button {
     max(14px, env(safe-area-inset-left));
   background: #17140d;
   animation: preview-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.media-preview.is-closing {
+  pointer-events: none;
+  animation: preview-out 240ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+
+.media-preview.is-photo {
+  touch-action: none;
 }
 
 .media-library-panel {
@@ -933,7 +959,20 @@ button {
     max(16px, env(safe-area-inset-bottom))
     max(14px, env(safe-area-inset-left));
   background: linear-gradient(180deg, #211b0f 0%, #14120c 100%);
-  animation: preview-in 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(var(--library-drag-y, 0px));
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: media-library-in 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  overscroll-behavior: none;
+  will-change: opacity, transform;
+}
+
+.media-library-panel.is-dragging {
+  transition: none;
+}
+
+.media-library-panel.is-closing {
+  pointer-events: none;
+  animation: media-library-out 280ms cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
 
 .media-library-header {
@@ -982,7 +1021,8 @@ button {
   gap: 11px;
   overflow: auto;
   padding: 0 2px 10px;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   scrollbar-width: none;
 }
 
@@ -1033,21 +1073,12 @@ button {
 }
 
 .media-library-meta {
-  display: grid;
-  gap: 3px;
+  display: block;
   padding: 9px 10px 10px;
 }
 
 .media-library-meta strong {
   font-size: 11px;
-}
-
-.media-library-meta small {
-  overflow: hidden;
-  color: rgba(247, 248, 241, 0.46);
-  font-size: 9px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .media-library-empty {
@@ -1108,6 +1139,14 @@ button {
   background: #241e11;
 }
 
+.preview-media-clip.is-next {
+  animation: preview-slide-next 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.preview-media-clip.is-previous {
+  animation: preview-slide-previous 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .preview-media-clip img,
 .preview-media-clip video {
   width: 100%;
@@ -1146,6 +1185,12 @@ button {
 .preview-actions span {
   color: rgba(247, 248, 241, 0.52);
   font-size: 11px;
+}
+
+.preview-actions small {
+  color: rgba(247, 248, 241, 0.42);
+  font-size: 9px;
+  line-height: 1.35;
 }
 
 .preview-actions button {
@@ -1303,12 +1348,44 @@ button {
   100% { opacity: 0; }
 }
 
+@keyframes auto-flash {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  38% { opacity: 0.86; }
+  100% { opacity: 0; }
+}
+
 @keyframes toast-in {
   from { opacity: 0; transform: translate(-50%, 10px) scale(0.96); }
 }
 
 @keyframes preview-in {
   from { opacity: 0; transform: scale(0.98); }
+}
+
+@keyframes preview-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.975); }
+}
+
+@keyframes media-library-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(var(--library-drag-y, 0px)); }
+}
+
+@keyframes media-library-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(100%); }
+}
+
+@keyframes preview-slide-next {
+  from { opacity: 0.58; transform: translateX(11%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes preview-slide-previous {
+  from { opacity: 0.58; transform: translateX(-11%); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .app-shell.is-mobile-device {
