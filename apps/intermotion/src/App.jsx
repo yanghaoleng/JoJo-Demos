@@ -57,19 +57,18 @@ function stabilizeValue(
   return previous + clamp(delta * alpha, -maxStep, maxStep);
 }
 
-function stabilizePosition(previous, next, timestamp) {
-  if (!previous) return { ...next, timestamp };
+function stabilizeBottomAnchoredPosition(previous, nextX, bottomY, timestamp) {
+  if (!previous) return { x: nextX, y: bottomY, timestamp };
   const elapsed = clamp(timestamp - previous.timestamp, 8, 80);
   const alpha = 1 - Math.exp(-elapsed / 240);
   const maxStep = 6 * (elapsed / 16);
-  const move = (current, target) => {
-    const delta = target - current;
-    if (Math.abs(delta) < 1.5) return current;
-    return current + clamp(delta * alpha, -maxStep, maxStep);
-  };
+  const deltaX = nextX - previous.x;
   return {
-    x: move(previous.x, next.x),
-    y: move(previous.y, next.y),
+    x:
+      Math.abs(deltaX) < 1.5
+        ? previous.x
+        : previous.x + clamp(deltaX * alpha, -maxStep, maxStep),
+    y: bottomY,
     timestamp,
   };
 }
@@ -424,36 +423,24 @@ function drawReactionOverlay(
   const baseX = OUTPUT_SIZE.width - targetWidth - 18;
   const baseY = OUTPUT_SIZE.height - targetHeight;
   let desiredX = baseX;
-  let desiredY = baseY;
   if (faceBounds && timestamp - faceBounds.lastSeen <= FACE_HOLD_MS) {
     const faceCenterX = (faceBounds.left + faceBounds.right) / 2;
-    const faceCenterY = (faceBounds.top + faceBounds.bottom) / 2;
     const relativeFaceX = clamp(
       (faceCenterX - cropLeft) / Math.max(0.001, cropRight - cropLeft),
       0,
       1,
     );
-    const relativeFaceY = clamp(
-      (faceCenterY - cropTop) / Math.max(0.001, cropBottom - cropTop),
-      0,
-      1,
-    );
     const mirroredFaceX = (1 - relativeFaceX) * targetWidth;
-    const faceY = relativeFaceY * targetHeight;
     desiredX = clamp(
       OUTPUT_SIZE.width * 0.86 - mirroredFaceX,
       baseX - 54,
       baseX + 22,
     );
-    desiredY = clamp(
-      OUTPUT_SIZE.height * 0.3 - faceY,
-      baseY - 72,
-      baseY + 18,
-    );
   }
-  const placement = stabilizePosition(
+  const placement = stabilizeBottomAnchoredPosition(
     overlayPlacement.current,
-    { x: desiredX, y: desiredY },
+    desiredX,
+    baseY,
     timestamp,
   );
   overlayPlacement.current = placement;
