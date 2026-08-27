@@ -144,6 +144,13 @@ const LOAD_ASSETS = [
   { key: "guideEnter", path: "audio/guides/enter.mp3", bytes: 58_931, retain: false },
 ];
 const LOAD_TOTAL_BYTES = LOAD_ASSETS.reduce((total, asset) => total + asset.bytes, 0);
+const CHARACTERS = {
+  jiaojiao: { label: "叫叫", path: "media/jiaojiao.riv" },
+  lvdou: { label: "绿豆", path: "media/lvdou.riv" },
+};
+const CHARACTER_TAP_WINDOW_MS = 720;
+const CHARACTER_EXIT_DURATION_MS = 300;
+const CHARACTER_ENTER_DURATION_MS = 430;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -389,6 +396,7 @@ function App() {
   const streamRef = useRef(null);
   const voiceSocketRef = useRef(null);
   const voiceAudioGraphRef = useRef(null);
+  const speechBubbleOverlayRef = useRef(null);
   const voicePcmMutedRef = useRef(false);
   const voiceIntentionalCloseRef = useRef(false);
   const speechClearTimerRef = useRef(null);
@@ -429,6 +437,16 @@ function App() {
   const riveCaptureMomentRef = useRef(null);
   const riveCropXRef = useRef(RIVE_DEFAULT_CROP_X);
   const riveCropTimeoutsRef = useRef([]);
+  const riveLoadCharacterRef = useRef(null);
+  const jiaojiaoBufferRef = useRef(null);
+  const lvdouBufferRef = useRef(null);
+  const lvdouLoadPromiseRef = useRef(null);
+  const lvdouIdleHandleRef = useRef(null);
+  const characterOffsetXRef = useRef(0);
+  const characterTransitionFrameRef = useRef(0);
+  const characterSwitchingRef = useRef(false);
+  const characterTapCountRef = useRef(0);
+  const characterLastTapAtRef = useRef(0);
 
   const [engineState, setEngineState] = useState("loading");
   const [engineMessage, setEngineMessage] = useState("正在准备叫叫");
@@ -461,6 +479,8 @@ function App() {
   const [facingMode, setFacingMode] = useState("user");
   const [frameOrientation, setFrameOrientation] = useState(getViewportOrientation);
   const [riveAnimationName, setRiveAnimationName] = useState(DEFAULT_RIVE_ANIMATION);
+  const [activeCharacter, setActiveCharacter] = useState("jiaojiao");
+  const [characterSwitching, setCharacterSwitching] = useState(false);
   const [personLayer, setPersonLayer] = useState("behind");
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -495,6 +515,58 @@ function App() {
     setToast(message);
     toastTimerRef.current = window.setTimeout(() => setToast(""), 2_600);
   }, []);
+
+  const preloadLvdou = useCallback(() => {
+    if (lvdouBufferRef.current) return Promise.resolve(lvdouBufferRef.current);
+    if (lvdouLoadPromiseRef.current) return lvdouLoadPromiseRef.current;
+
+    lvdouLoadPromiseRef.current = fetch(`${BASE_URL}${CHARACTERS.lvdou.path}`, {
+      cache: "force-cache",
+      priority: "low",
+    }).then((response) => {
+      if (!response.ok) throw new Error(`绿豆文件加载失败 (${response.status})`);
+      return response.arrayBuffer();
+    }).then((buffer) => {
+      lvdouBufferRef.current = buffer;
+      return buffer;
+    }).catch((error) => {
+      lvdouLoadPromiseRef.current = null;
+      console.warn("绿豆后台加载失败", error);
+      throw error;
+    });
+
+    return lvdouLoadPromiseRef.current;
+  }, []);
+
+  const animateCharacterOffset = useCallback((targetOffset, duration, easing = "enter") => (
+    new Promise((resolve) => {
+      if (characterTransitionFrameRef.current) {
+        window.cancelAnimationFrame(characterTransitionFrameRef.current);
+      }
+      const startOffset = characterOffsetXRef.current;
+      const startedAt = performance.now();
+      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      const activeDuration = reducedMotion ? 1 : duration;
+
+      const tick = (timestamp) => {
+        const progress = clamp((timestamp - startedAt) / activeDuration, 0, 1);
+        const easedProgress = easing === "exit"
+          ? progress ** 3
+          : 1 - ((1 - progress) ** 4);
+        characterOffsetXRef.current = startOffset
+          + (targetOffset - startOffset) * easedProgress;
+        if (progress < 1) {
+          characterTransitionFrameRef.current = window.requestAnimationFrame(tick);
+          return;
+        }
+        characterTransitionFrameRef.current = 0;
+        characterOffsetXRef.current = targetOffset;
+        resolve();
+      };
+
+      characterTransitionFrameRef.current = window.requestAnimationFrame(tick);
+    })
+  ), []);
 
   const playGuideClip = useCallback((guideKey, { force = false } = {}) => {
     const audio = guideAudioRef.current;
@@ -618,7 +690,7 @@ function App() {
           return;
         }
         if (message.type === "transcript") {
-          const text = String(message.text || "").trim().slice(0, 80);
+          const text = String(message.text || "").trim().slice(0, 42);
           if (!text) return;
           speechTextRef.current = text;
           setSpeechText(text);
@@ -723,9 +795,11 @@ function App() {
     }
 
     const mouthPoints = [13, 14, 61, 291].map((index) => landmarks[index]).filter(Boolean);
-    if (!mouthPoints.length) return;
+    const eyePoints = [33, 133, 362, 263].map((index) => landmarks[index]).filter(Boolean);
+    if (!mouthPoints.length || !eyePoints.length) return;
     const normalizedX = mouthPoints.reduce((sum, point) => sum + point.x, 0) / mouthPoints.length;
     const normalizedY = mouthPoints.reduce((sum, point) => sum + point.y, 0) / mouthPoints.length;
+    const normalizedEyeY = eyePoints.reduce((sum, point) => sum + point.y, 0) / eyePoints.length;
     const targetWidth = outputCanvas.width;
     const targetHeight = outputCanvas.height;
     const rect = getCoverRect(video.videoWidth, video.videoHeight, targetWidth, targetHeight);
@@ -733,15 +807,20 @@ function App() {
     const next = {
       x: clamp((targetWidth - unmirroredX) / targetWidth, 0.02, 0.98),
       y: clamp((rect.y + normalizedY * rect.height) / targetHeight, 0.02, 0.98),
+      eyeY: clamp((rect.y + normalizedEyeY * rect.height) / targetHeight, 0.02, 0.98),
     };
     const current = mouthAnchorRef.current;
     mouthAnchorRef.current = current
-      ? { x: current.x * 0.68 + next.x * 0.32, y: current.y * 0.68 + next.y * 0.32 }
+      ? {
+          x: current.x * 0.68 + next.x * 0.32,
+          y: current.y * 0.68 + next.y * 0.32,
+          eyeY: current.eyeY * 0.68 + next.eyeY * 0.32,
+        }
       : next;
     lastFaceSeenAtRef.current = performance.now();
   }, []);
 
-  const drawSpeechBubble = useCallback((context, targetWidth, targetHeight) => {
+  const drawSpeechBubble = useCallback((context, targetWidth, targetHeight, includeCanvasText = true) => {
     const text = speechTextRef.current;
     const anchor = mouthAnchorRef.current;
     if (!text || !anchor) return;
@@ -755,8 +834,10 @@ function App() {
     const lines = splitBubbleText(context, text, textWidth);
     const lineHeight = fontSize * 1.12;
     const bubbleHeight = Math.max(fontSize * 2.15, lines.length * lineHeight + fontSize * 0.92);
+    const tailHeight = fontSize * 0.52;
     const mouthX = anchor.x * targetWidth;
     const mouthY = anchor.y * targetHeight;
+    const eyeY = anchor.eyeY * targetHeight;
     const direction = anchor.x < 0.5 ? 1 : -1;
     const captionSafeY = isLandscape ? 120 : 240;
     const bubbleX = clamp(
@@ -764,30 +845,29 @@ function App() {
       bubbleWidth / 2 + 18,
       targetWidth - bubbleWidth / 2 - 18,
     );
+    const desiredBubbleY = mouthY - targetHeight * (isLandscape ? 0.17 : 0.13);
+    const eyeSafeBubbleY = eyeY - bubbleHeight / 2 - tailHeight - fontSize * 0.42;
     const bubbleY = clamp(
-      mouthY - targetHeight * (isLandscape ? 0.17 : 0.13),
+      Math.min(desiredBubbleY, eyeSafeBubbleY),
       captionSafeY + bubbleHeight / 2,
-      targetHeight - bubbleHeight / 2 - 30,
+      targetHeight - bubbleHeight / 2 - tailHeight - 30,
     );
     const left = bubbleX - bubbleWidth / 2;
     const top = bubbleY - bubbleHeight / 2;
-    const lineEndX = bubbleX + (mouthX < bubbleX ? -bubbleWidth * 0.34 : bubbleWidth * 0.34);
-    const lineEndY = bubbleY + bubbleHeight * 0.32;
+    const bottom = top + bubbleHeight;
+    const tailBaseX = clamp(mouthX, left + bubbleWidth * 0.28, left + bubbleWidth * 0.72);
+    const tailTipX = clamp(mouthX, tailBaseX - fontSize * 0.72, tailBaseX + fontSize * 0.72);
+    const tailHalfWidth = fontSize * 0.42;
 
     context.beginPath();
-    context.moveTo(mouthX, mouthY);
-    context.quadraticCurveTo(
-      mouthX + (lineEndX - mouthX) * 0.48,
-      Math.min(mouthY, lineEndY) - fontSize * 1.2,
-      lineEndX,
-      lineEndY,
-    );
-    context.lineWidth = Math.max(5, targetWidth / 180);
-    context.lineCap = "round";
-    context.strokeStyle = "rgba(255, 255, 255, 0.98)";
-    context.shadowColor = "rgba(0, 0, 0, 0.28)";
-    context.shadowBlur = 8;
-    context.stroke();
+    context.moveTo(tailBaseX - tailHalfWidth, bottom - 2);
+    context.lineTo(tailTipX, bottom + tailHeight);
+    context.lineTo(tailBaseX + tailHalfWidth, bottom - 2);
+    context.closePath();
+    context.fillStyle = "#ffffff";
+    context.shadowColor = "rgba(0, 0, 0, 0.2)";
+    context.shadowBlur = 14;
+    context.fill();
 
     roundedRectPath(context, left, top, bubbleWidth, bubbleHeight, bubbleHeight / 2);
     context.fillStyle = "#ffffff";
@@ -795,13 +875,24 @@ function App() {
     context.shadowBlur = 14;
     context.fill();
     context.shadowColor = "transparent";
-    context.fillStyle = "#111111";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    lines.forEach((line, index) => {
-      const y = bubbleY + (index - (lines.length - 1) / 2) * lineHeight;
-      context.fillText(line, bubbleX, y, textWidth);
-    });
+    if (includeCanvasText) {
+      context.fillStyle = "#111111";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      lines.forEach((line, index) => {
+        const y = bubbleY + (index - (lines.length - 1) / 2) * lineHeight;
+        context.fillText(line, bubbleX, y, textWidth);
+      });
+    }
+
+    const overlay = speechBubbleOverlayRef.current;
+    if (overlay) {
+      overlay.style.left = `${(bubbleX / targetWidth) * 100}%`;
+      overlay.style.top = `${(bubbleY / targetHeight) * 100}%`;
+      overlay.style.width = `${(textWidth / targetWidth) * 100}%`;
+      overlay.style.height = `${(lines.length * lineHeight / targetHeight) * 100}%`;
+      overlay.style.setProperty("--speech-font-cqw", String((fontSize / targetWidth) * 100));
+    }
     context.restore();
   }, []);
 
@@ -891,7 +982,7 @@ function App() {
         : preferredScale;
       const riveWidth = RIVE_VISIBLE_SOURCE.width * scale;
       const riveHeight = RIVE_VISIBLE_SOURCE.height * scale;
-      const riveX = -visibleTargetWidth * RIVE_LEFT_OVERFLOW_RATIO;
+      const riveX = -visibleTargetWidth * RIVE_LEFT_OVERFLOW_RATIO + characterOffsetXRef.current;
       const riveY = targetHeight - riveHeight - (isPortraitWelcome ? targetHeight * 0.12 : 0);
       outputContext.drawImage(
         riveCanvas,
@@ -916,7 +1007,11 @@ function App() {
     drawRiveLayer(outputContext, outputCanvas, true);
   }, [drawRiveLayer]);
 
-  const renderFrame = useCallback((includeCaption = recordingRef.current, riveCanvasOverride = null) => {
+  const renderFrame = useCallback((
+    includeCaption = recordingRef.current,
+    riveCanvasOverride = null,
+    includeSpeechText = recordingRef.current,
+  ) => {
     const video = videoRef.current;
     const outputCanvas = outputCanvasRef.current;
     const foregroundCanvas = foregroundCanvasRef.current;
@@ -963,7 +1058,7 @@ function App() {
     if (personLayer === "front") drawPerson();
 
     if (includeCaption) drawCaption(outputContext, targetWidth, targetHeight);
-    drawSpeechBubble(outputContext, targetWidth, targetHeight);
+    drawSpeechBubble(outputContext, targetWidth, targetHeight, includeSpeechText);
   }, [drawCaption, drawRiveLayer, drawSpeechBubble, personLayer]);
 
   useEffect(() => {
@@ -993,15 +1088,25 @@ function App() {
         setLoadProgress(84);
         setEngineMessage("正在唤醒叫叫");
 
-        const prepareRive = new Promise((resolve) => {
+        const loadRiveCharacter = (characterBuffer) => new Promise((resolve) => {
+          riveCropTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
+          riveCropTimeoutsRef.current = [];
+          const previousInstance = riveRef.current;
+          riveRef.current = null;
+          previousInstance?.cleanup();
+          riveCropXRef.current = RIVE_DEFAULT_CROP_X;
+          setRiveReady(false);
           const instance = new Rive({
-            buffer: riveBuffer,
+            buffer: characterBuffer,
             canvas: riveCanvasRef.current,
             autoplay: false,
-            autoBind: true,
             layout: new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter }),
             onLoad: () => {
-              if (cancelled) return;
+              if (cancelled) {
+                instance.cleanup();
+                resolve(false);
+                return;
+              }
               const animations = instance.animationNames || [];
               const talkingAnimations = animations.filter((name) => (
                 name.startsWith("TalkingEmotion") && !name.endsWith("表情")
@@ -1068,6 +1173,7 @@ function App() {
               );
 
               const playAtIndex = (index) => {
+                if (riveRef.current !== instance) return;
                 const availableAnimations = riveAnimationsRef.current;
                 if (!availableAnimations.length) return;
                 const normalizedIndex = (index + availableAnimations.length) % availableAnimations.length;
@@ -1114,7 +1220,13 @@ function App() {
               };
 
               const queueNextAfterCompletion = (event) => {
-                if (cancelled || switchingAnimation || completionQueued || !activeAnimationName) return;
+                if (
+                  cancelled
+                  || riveRef.current !== instance
+                  || switchingAnimation
+                  || completionQueued
+                  || !activeAnimationName
+                ) return;
                 const completedAnimation = event.type === EventType.Loop
                   ? event.data?.animation
                   : Array.isArray(event.data) && event.data.includes(activeAnimationName)
@@ -1124,7 +1236,7 @@ function App() {
                 completionQueued = true;
                 queueMicrotask(() => {
                   completionQueued = false;
-                  if (!cancelled) playRandom();
+                  if (!cancelled && riveRef.current === instance) playRandom();
                 });
               };
 
@@ -1236,11 +1348,18 @@ function App() {
               setLoadProgress((value) => Math.max(value, 92));
               resolve(true);
             },
-            onLoadError: () => resolve(false),
+            onLoadError: () => {
+              instance.cleanup();
+              if (riveRef.current === instance) riveRef.current = null;
+              resolve(false);
+            },
           });
           applyRivePlaybackRate(instance, rivePlaybackRateRef);
           riveRef.current = instance;
         });
+        riveLoadCharacterRef.current = loadRiveCharacter;
+        jiaojiaoBufferRef.current = riveBuffer;
+        const prepareRive = loadRiveCharacter(riveBuffer);
 
         const prepareVision = (async () => {
           let segmenterLoaded = false;
@@ -1325,6 +1444,7 @@ function App() {
       riveCropTimeoutsRef.current = [];
       riveRef.current?.cleanup();
       riveRef.current = null;
+      riveLoadCharacterRef.current = null;
       rivePlayPraiseRef.current = null;
       rivePlayAnimationRef.current = null;
       riveGuidePlaybackRef.current = null;
@@ -1332,6 +1452,19 @@ function App() {
       riveMarkCaptureRef.current = null;
       rivePrepareCaptureRef.current = null;
       riveCaptureMomentRef.current = null;
+      jiaojiaoBufferRef.current = null;
+      lvdouBufferRef.current = null;
+      lvdouLoadPromiseRef.current = null;
+      if (characterTransitionFrameRef.current) {
+        window.cancelAnimationFrame(characterTransitionFrameRef.current);
+        characterTransitionFrameRef.current = 0;
+      }
+      if (lvdouIdleHandleRef.current) {
+        const { id, type } = lvdouIdleHandleRef.current;
+        if (type === "idle") window.cancelIdleCallback?.(id);
+        else window.clearTimeout(id);
+        lvdouIdleHandleRef.current = null;
+      }
       segmenterRef.current?.close();
       segmenterRef.current = null;
       faceLandmarkerRef.current?.close();
@@ -1443,6 +1576,23 @@ function App() {
       setFacingMode(nextFacingMode);
       cameraReadyRef.current = true;
       setCameraState("ready");
+      if (!lvdouBufferRef.current && !lvdouLoadPromiseRef.current && !lvdouIdleHandleRef.current) {
+        const loadInBackground = () => {
+          lvdouIdleHandleRef.current = null;
+          preloadLvdou().catch(() => {});
+        };
+        if ("requestIdleCallback" in window) {
+          lvdouIdleHandleRef.current = {
+            id: window.requestIdleCallback(loadInBackground, { timeout: 2_200 }),
+            type: "idle",
+          };
+        } else {
+          lvdouIdleHandleRef.current = {
+            id: window.setTimeout(loadInBackground, 900),
+            type: "timeout",
+          };
+        }
+      }
       if (!microphoneUnavailable) startVoiceSession(stream);
       else {
         setVoiceState("unavailable");
@@ -1462,7 +1612,7 @@ function App() {
             : "相机暂时打不开，请稍后再试",
       );
     }
-  }, [facingMode, segmenterReady, showToast, startVoiceSession, stopVoiceSession]);
+  }, [facingMode, preloadLvdou, segmenterReady, showToast, startVoiceSession, stopVoiceSession]);
 
   const enterCamera = useCallback(() => {
     playGuideClip("enter", { force: true });
@@ -1476,8 +1626,71 @@ function App() {
 
   const switchRiveAnimation = useCallback(() => {
     if (!rivePlayPraiseRef.current?.()) return;
-    showToast("叫叫正在夸夸你");
-  }, [showToast]);
+    showToast(`${CHARACTERS[activeCharacter].label}正在夸夸你`);
+  }, [activeCharacter, showToast]);
+
+  const switchCharacter = useCallback(async () => {
+    if (characterSwitchingRef.current || recordingRef.current) return;
+    const nextCharacter = activeCharacter === "jiaojiao" ? "lvdou" : "jiaojiao";
+    let nextBuffer;
+    try {
+      if (nextCharacter === "lvdou" && !lvdouBufferRef.current) {
+        showToast("绿豆正在悄悄赶来");
+      }
+      nextBuffer = nextCharacter === "lvdou"
+        ? await preloadLvdou()
+        : jiaojiaoBufferRef.current;
+    } catch {
+      showToast("绿豆暂时没有加载好，请再试一次");
+      return;
+    }
+    if (!nextBuffer || !riveLoadCharacterRef.current) return;
+
+    characterSwitchingRef.current = true;
+    setCharacterSwitching(true);
+    const outputWidth = outputCanvasRef.current?.width || frameSize.width;
+    const offscreenLeft = -outputWidth * 1.18;
+    const previousBuffer = activeCharacter === "jiaojiao"
+      ? jiaojiaoBufferRef.current
+      : lvdouBufferRef.current;
+
+    try {
+      await animateCharacterOffset(offscreenLeft, CHARACTER_EXIT_DURATION_MS, "exit");
+      const loaded = await riveLoadCharacterRef.current(nextBuffer);
+      if (!loaded) throw new Error("Rive character failed to initialize");
+      setActiveCharacter(nextCharacter);
+      characterOffsetXRef.current = offscreenLeft;
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      await animateCharacterOffset(0, CHARACTER_ENTER_DURATION_MS, "enter");
+      showToast(nextCharacter === "lvdou" ? "绿豆来啦" : "叫叫回来啦");
+    } catch (error) {
+      console.warn("角色切换失败", error);
+      if (previousBuffer) await riveLoadCharacterRef.current(previousBuffer);
+      characterOffsetXRef.current = offscreenLeft;
+      await animateCharacterOffset(0, CHARACTER_ENTER_DURATION_MS, "enter");
+      showToast("角色切换没有成功，请再试一次");
+    } finally {
+      characterSwitchingRef.current = false;
+      setCharacterSwitching(false);
+    }
+  }, [activeCharacter, animateCharacterOffset, frameSize.width, preloadLvdou, showToast]);
+
+  const handleCharacterTap = useCallback(() => {
+    if (characterSwitchingRef.current) return;
+    const now = performance.now();
+    if (now - characterLastTapAtRef.current > CHARACTER_TAP_WINDOW_MS) {
+      characterTapCountRef.current = 0;
+    }
+    characterLastTapAtRef.current = now;
+    characterTapCountRef.current += 1;
+
+    if (characterTapCountRef.current >= 3) {
+      characterTapCountRef.current = 0;
+      switchCharacter();
+      return;
+    }
+    if (characterTapCountRef.current === 1) switchRiveAnimation();
+  }, [switchCharacter, switchRiveAnimation]);
 
   const switchCaption = useCallback(() => {
     if (recordingRef.current) return;
@@ -1507,7 +1720,7 @@ function App() {
     const captureMoment = riveCaptureMomentRef.current || riveMarkCaptureRef.current?.();
     riveCaptureMomentRef.current = null;
     const captureRiveCanvas = rivePrepareCaptureRef.current?.(captureMoment) || riveCanvasRef.current;
-    renderFrame(true, captureRiveCanvas);
+    renderFrame(true, captureRiveCanvas, true);
 
     const photoCanvas = photoCanvasRef.current || document.createElement("canvas");
     photoCanvasRef.current = photoCanvas;
@@ -1688,7 +1901,7 @@ function App() {
   return (
     <main className={`app-shell is-${frameOrientation} ${isMobileDevice ? "is-mobile-device" : "is-desktop-device"}`}>
       <section
-        className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""} ${riveReady ? "is-rive-ready" : ""}`}
+        className={`camera-stage is-${frameOrientation} ${cameraState === "ready" ? "is-live" : ""} ${riveReady ? "is-rive-ready" : ""} ${characterSwitching ? "is-character-switching" : ""}`}
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
         data-rive-playback-rate={activeRivePlaybackRate}
@@ -1696,6 +1909,8 @@ function App() {
         data-rive-position-basis={RIVE_POSITION_ANIMATION}
         data-rive-mouth-animation={RIVE_MOUTH_ANIMATION}
         data-rive-capture-offset-frames={RIVE_CAPTURE_ADVANCE_FRAMES}
+        data-character={activeCharacter}
+        data-character-switching={characterSwitching ? "true" : "false"}
         data-person-layer={personLayer}
         data-face-tracking={faceLandmarkerReady ? "ready" : "unavailable"}
         data-voice-state={voiceState}
@@ -1731,12 +1946,30 @@ function App() {
           <canvas ref={maskCanvasRef} className="render-source" width="256" height="256" aria-hidden="true" />
           <canvas ref={outputCanvasRef} className="camera-output" width={frameSize.width} height={frameSize.height} aria-label="实时合拍画面" />
 
+          {cameraState === "ready" && speechText && !recording && (
+            <div ref={speechBubbleOverlayRef} className="speech-bubble-text" aria-hidden="true">
+              <Calligraph
+                as="span"
+                variant="text"
+                animation="smooth"
+                initial
+                autoSize={false}
+                drift={{ x: 6, y: 0 }}
+                trend={1}
+                stagger={0.015}
+              >
+                {speechText}
+              </Calligraph>
+            </div>
+          )}
+
           {cameraState === "ready" && riveReady && (
             <button
               className="jiaojiao-hit-area"
               type="button"
-              onClick={switchRiveAnimation}
-              aria-label={`播放叫叫夸夸动作，当前 ${riveAnimationName}`}
+              disabled={characterSwitching}
+              onClick={handleCharacterTap}
+              aria-label={`当前角色${CHARACTERS[activeCharacter].label}，单击播放夸夸动作，连续点击三次切换角色；当前动作 ${riveAnimationName}`}
             />
           )}
 
