@@ -33,8 +33,61 @@ import {
   classifyCameraGesture,
   createGestureTracker,
 } from "./gesture-recognition.js";
+import {
+  getFrontCameraLensKind,
+  getMinimumCameraZoom,
+  selectWidestFrontCamera,
+} from "./camera-selection.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
+
+async function preferWidestFrontCamera(mediaDevices, stream, videoConstraints) {
+  let activeTrack = stream.getVideoTracks()[0];
+  let lensMode = getFrontCameraLensKind(activeTrack?.label);
+
+  try {
+    const currentDeviceId = activeTrack?.getSettings?.().deviceId || "";
+    const devices = await mediaDevices.enumerateDevices();
+    const preferredCamera = selectWidestFrontCamera(devices, currentDeviceId);
+
+    if (preferredCamera && preferredCamera.device.deviceId !== currentDeviceId) {
+      try {
+        const preferredStream = await mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            deviceId: { exact: preferredCamera.device.deviceId },
+            width: videoConstraints.width,
+            height: videoConstraints.height,
+          },
+        });
+        const preferredTrack = preferredStream.getVideoTracks()[0];
+        if (!preferredTrack) throw new Error("The selected front camera returned no video track");
+        activeTrack?.stop();
+        if (activeTrack) stream.removeTrack(activeTrack);
+        activeTrack = preferredTrack;
+        stream.addTrack(preferredTrack);
+        lensMode = preferredCamera.lensKind;
+      } catch (preferredCameraError) {
+        console.warn("Preferred front wide camera unavailable; using the system default front camera", preferredCameraError);
+      }
+    }
+  } catch (cameraDiscoveryError) {
+    console.warn("Front camera lens details are unavailable; using the system-selected camera", cameraDiscoveryError);
+  }
+
+  try {
+    const minimumZoom = getMinimumCameraZoom(activeTrack?.getCapabilities?.());
+    if (minimumZoom !== null && activeTrack?.applyConstraints) {
+      await activeTrack.applyConstraints({ advanced: [{ zoom: minimumZoom }] });
+      if (lensMode === "default") lensMode = "minimum-zoom";
+    }
+  } catch (zoomError) {
+    console.warn("The active camera did not accept its minimum zoom constraint", zoomError);
+  }
+
+  return { stream, lensMode };
+}
+
 const GUIDE_AUDIO = {
   enter: {
     path: `${BASE_URL}audio/guides/enter.mp3`,
@@ -557,6 +610,7 @@ function App() {
   const [lastRecognizedGesture, setLastRecognizedGesture] = useState("");
   const [cameraState, setCameraState] = useState("idle");
   const [cameraError, setCameraError] = useState("");
+  const [cameraLensMode, setCameraLensMode] = useState("default");
   const [voiceState, setVoiceState] = useState("idle");
   const [speechText, setSpeechText] = useState("");
 
@@ -1794,19 +1848,21 @@ function App() {
 
     setCameraState("opening");
     setCameraError("");
+    setCameraLensMode("default");
     maskReadyRef.current = false;
     gestureTrackerRef.current = createGestureTracker();
     setLastRecognizedGesture("");
     stopVoiceSession();
     streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
 
+    let stream;
     try {
       const videoConstraints = {
         facingMode: { ideal: nextFacingMode },
         width: { ideal: 1280 },
         height: { ideal: 720 },
       };
-      let stream;
       let microphoneUnavailable = false;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -1822,6 +1878,12 @@ function App() {
         microphoneUnavailable = true;
         stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
         console.warn("Microphone permission unavailable; continuing with camera only", mediaError);
+      }
+
+      if (nextFacingMode === "user") {
+        const preferredCamera = await preferWidestFrontCamera(navigator.mediaDevices, stream, videoConstraints);
+        stream = preferredCamera.stream;
+        setCameraLensMode(preferredCamera.lensMode);
       }
       streamRef.current = stream;
       const video = videoRef.current;
@@ -1855,6 +1917,8 @@ function App() {
       if (!segmenterReady) showToast("相机已打开，人像识别还在准备");
     } catch (error) {
       cameraReadyRef.current = false;
+      stream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
       const denied = error instanceof DOMException && ["NotAllowedError", "SecurityError"].includes(error.name);
       const missing = error instanceof DOMException && ["NotFoundError", "OverconstrainedError"].includes(error.name);
       setCameraState("error");
@@ -2170,6 +2234,7 @@ function App() {
         data-face-tracking={faceLandmarkerReady ? "ready" : "unavailable"}
         data-gesture-tracking={gestureRecognizerReady ? "ready" : "unavailable"}
         data-last-gesture={lastRecognizedGesture || "none"}
+        data-camera-lens={cameraLensMode}
         data-voice-state={voiceState}
         data-reading-day={day}
         data-caption-mode={captionMode}

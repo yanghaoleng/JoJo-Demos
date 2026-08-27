@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:voice": "node --test server/*.test.js",
-    "test:gesture": "node --test src/gesture-recognition.test.js"
+    "test:gesture": "node --test src/gesture-recognition.test.js",
+    "test:camera": "node --test src/camera-selection.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
