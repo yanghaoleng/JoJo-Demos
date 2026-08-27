@@ -32,6 +32,13 @@ test("uses MediaPipe canned confidence for thumbs up", () => {
   }), CAMERA_GESTURES.THUMBS_UP);
 });
 
+test("uses MediaPipe canned confidence for a victory sign", () => {
+  assert.equal(classifyCameraGesture({
+    gestures: [[{ categoryName: "Victory", score: 0.88 }]],
+    landmarks: [],
+  }), CAMERA_GESTURES.VICTORY);
+});
+
 test("distinguishes OK from a finger heart by the other three fingers", () => {
   assert.equal(classifyCameraGesture({
     gestures: [[{ categoryName: "None", score: 0.8 }]],

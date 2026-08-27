@@ -4,8 +4,11 @@ import {
   ArrowsLeftRight,
   Camera,
   Check,
+  DotsThreeVertical,
   DownloadSimple,
+  ImagesSquare,
   LockSimple,
+  PlayCircle,
   X,
 } from "@phosphor-icons/react";
 import {
@@ -38,6 +41,19 @@ import {
   getMinimumCameraZoom,
   selectWidestFrontCamera,
 } from "./camera-selection.js";
+import {
+  GESTURE_OUTLINE_DURATION_MS,
+  GESTURE_OUTLINE_PADDING_PX,
+  GESTURE_OUTLINE_RADIUS_PX,
+  createOutlineOffsets,
+  getRainbowOutlineHue,
+  shouldOutlineGesture,
+} from "./reaction-outline.js";
+import {
+  MEDIA_LIBRARY_LIMIT,
+  loadMediaCaptures,
+  storeMediaCapture,
+} from "./media-library.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -86,6 +102,121 @@ async function preferWidestFrontCamera(mediaDevices, stream, videoConstraints) {
   }
 
   return { stream, lensMode };
+}
+
+const GESTURE_OUTLINE_OFFSETS = createOutlineOffsets(GESTURE_OUTLINE_RADIUS_PX);
+
+function createGestureOutlineBuffers() {
+  return {
+    silhouette: document.createElement("canvas"),
+    mask: document.createElement("canvas"),
+    paint: document.createElement("canvas"),
+    cacheKey: "",
+  };
+}
+
+function resizeRenderCanvas(canvas, width, height) {
+  if (canvas.width === width && canvas.height === height) return;
+  canvas.width = width;
+  canvas.height = height;
+}
+
+function prepareGestureOutlineMask(buffers, sourceMask, rect, targetWidth, targetHeight, revision) {
+  const paddedWidth = targetWidth + GESTURE_OUTLINE_PADDING_PX * 2;
+  const paddedHeight = targetHeight + GESTURE_OUTLINE_PADDING_PX * 2;
+  const cacheKey = [
+    revision,
+    targetWidth,
+    targetHeight,
+    Math.round(rect.x),
+    Math.round(rect.y),
+    Math.round(rect.width),
+    Math.round(rect.height),
+  ].join(":");
+  if (buffers.cacheKey === cacheKey) return;
+
+  resizeRenderCanvas(buffers.silhouette, paddedWidth, paddedHeight);
+  resizeRenderCanvas(buffers.mask, paddedWidth, paddedHeight);
+  resizeRenderCanvas(buffers.paint, paddedWidth, paddedHeight);
+  const silhouetteContext = buffers.silhouette.getContext("2d");
+  const maskContext = buffers.mask.getContext("2d");
+  if (!silhouetteContext || !maskContext) return;
+
+  silhouetteContext.clearRect(0, 0, paddedWidth, paddedHeight);
+  silhouetteContext.save();
+  silhouetteContext.translate(
+    GESTURE_OUTLINE_PADDING_PX + targetWidth,
+    GESTURE_OUTLINE_PADDING_PX,
+  );
+  silhouetteContext.scale(-1, 1);
+  silhouetteContext.imageSmoothingEnabled = true;
+  silhouetteContext.imageSmoothingQuality = "high";
+  silhouetteContext.drawImage(sourceMask, rect.x, rect.y, rect.width, rect.height);
+  silhouetteContext.restore();
+
+  maskContext.clearRect(0, 0, paddedWidth, paddedHeight);
+  maskContext.globalCompositeOperation = "source-over";
+  for (const offset of GESTURE_OUTLINE_OFFSETS) {
+    maskContext.drawImage(buffers.silhouette, offset.x, offset.y);
+  }
+  maskContext.globalCompositeOperation = "destination-out";
+  maskContext.drawImage(buffers.silhouette, 0, 0);
+  maskContext.globalCompositeOperation = "source-over";
+  buffers.cacheKey = cacheKey;
+}
+
+function paintGestureOutline(buffers, timestamp) {
+  const context = buffers.paint.getContext("2d");
+  if (!context) return buffers.paint;
+  context.clearRect(0, 0, buffers.paint.width, buffers.paint.height);
+  context.globalCompositeOperation = "source-over";
+  context.drawImage(buffers.mask, 0, 0);
+  context.globalCompositeOperation = "source-in";
+  const gradient = context.createLinearGradient(
+    0,
+    buffers.paint.height,
+    buffers.paint.width,
+    0,
+  );
+  for (let index = 0; index <= 8; index += 1) {
+    gradient.addColorStop(
+      index / 8,
+      `hsl(${getRainbowOutlineHue(timestamp, index)}, 96%, 62%)`,
+    );
+  }
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, buffers.paint.width, buffers.paint.height);
+  context.globalCompositeOperation = "source-over";
+  return buffers.paint;
+}
+
+function drawGestureOutline(
+  context,
+  buffers,
+  sourceMask,
+  rect,
+  targetWidth,
+  targetHeight,
+  revision,
+  timestamp,
+) {
+  prepareGestureOutlineMask(
+    buffers,
+    sourceMask,
+    rect,
+    targetWidth,
+    targetHeight,
+    revision,
+  );
+  const paint = paintGestureOutline(buffers, timestamp);
+  const position = -GESTURE_OUTLINE_PADDING_PX;
+
+  context.save();
+  context.shadowColor = `hsl(${getRainbowOutlineHue(timestamp)}, 98%, 66%)`;
+  context.shadowBlur = 12;
+  context.drawImage(paint, position, position);
+  context.restore();
+  context.drawImage(paint, position, position);
 }
 
 const GUIDE_AUDIO = {
@@ -176,6 +307,10 @@ const GESTURE_ACTIONS = {
   [CAMERA_GESTURES.THUMBS_UP]: {
     animation: "TalkingEmotion_Praise",
     toast: "也给你点个赞",
+  },
+  [CAMERA_GESTURES.VICTORY]: {
+    animation: "TalkingEmotion_Happy",
+    toast: "和你一起比个耶",
   },
   [CAMERA_GESTURES.OK]: {
     animation: "TalkingEmotion_Sure",
@@ -459,6 +594,21 @@ function getTimestamp() {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 }
 
+function createCaptureId(type) {
+  const randomPart = globalThis.crypto?.randomUUID?.()
+    || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${type}-${randomPart}`;
+}
+
+function formatCaptureDate(createdAt) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(createdAt));
+}
+
 async function fetchAsset(asset, onProgress) {
   const response = await fetch(`${BASE_URL}${asset.path}`, { cache: "force-cache" });
   if (!response.ok) throw new Error(`Failed to load ${asset.path}`);
@@ -536,6 +686,10 @@ function App() {
   const riveCaptureCanvasRef = useRef(null);
   const foregroundCanvasRef = useRef(null);
   const maskCanvasRef = useRef(null);
+  const gestureOutlineBuffersRef = useRef(null);
+  const takePhotoRef = useRef(null);
+  const autoCaptureTimerRef = useRef(null);
+  const lastAutoCaptureAtRef = useRef(0);
   const guideAudioRef = useRef(null);
   const riveRef = useRef(null);
   const rivePlaybackRateRef = useRef(COVER_RIVE_PLAYBACK_RATE);
@@ -558,6 +712,9 @@ function App() {
   const lastFaceAtRef = useRef(0);
   const lastGestureAtRef = useRef(0);
   const maskReadyRef = useRef(false);
+  const personMaskRevisionRef = useRef(0);
+  const gestureEffectUntilRef = useRef(0);
+  const gestureEffectTimerRef = useRef(null);
   const recordingRef = useRef(false);
   const recorderRef = useRef(null);
   const recordingChunksRef = useRef([]);
@@ -576,6 +733,8 @@ function App() {
   const lastGuideKeyRef = useRef(null);
   const cameraReadyRef = useRef(false);
   const mediaPreviewRef = useRef(null);
+  const mediaLibraryRef = useRef([]);
+  const mediaLibraryOpenRef = useRef(false);
   const riveAnimationsRef = useRef([]);
   const riveAnimationIndexRef = useRef(0);
   const riveAnimationNameRef = useRef(DEFAULT_RIVE_ANIMATION);
@@ -608,6 +767,7 @@ function App() {
   const [faceLandmarkerReady, setFaceLandmarkerReady] = useState(false);
   const [gestureRecognizerReady, setGestureRecognizerReady] = useState(false);
   const [lastRecognizedGesture, setLastRecognizedGesture] = useState("");
+  const [activeGestureEffect, setActiveGestureEffect] = useState("");
   const [cameraState, setCameraState] = useState("idle");
   const [cameraError, setCameraError] = useState("");
   const [cameraLensMode, setCameraLensMode] = useState("default");
@@ -643,11 +803,44 @@ function App() {
   const [flash, setFlash] = useState(false);
   const [toast, setToast] = useState("");
   const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaLibrary, setMediaLibrary] = useState([]);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const frameSize = FRAME_SIZES[frameOrientation];
 
   useEffect(() => {
     mediaPreviewRef.current = mediaPreview;
   }, [mediaPreview]);
+
+  useEffect(() => {
+    mediaLibraryRef.current = mediaLibrary;
+  }, [mediaLibrary]);
+
+  useEffect(() => {
+    mediaLibraryOpenRef.current = mediaLibraryOpen;
+  }, [mediaLibraryOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadMediaCaptures().then((captures) => {
+      if (cancelled) return;
+      const loadedCaptures = captures
+        .filter((capture) => capture?.blob instanceof Blob)
+        .map((capture) => ({ ...capture, url: URL.createObjectURL(capture.blob) }));
+      setMediaLibrary((current) => {
+        const currentIds = new Set(current.map(({ id }) => id));
+        const uniqueLoaded = loadedCaptures.filter(({ id }) => !currentIds.has(id));
+        return [...current, ...uniqueLoaded]
+          .sort((left, right) => right.createdAt - left.createdAt)
+          .slice(0, MEDIA_LIBRARY_LIMIT);
+      });
+    }).catch((error) => {
+      console.warn("Local media library unavailable", error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const orientationQuery = window.matchMedia("(orientation: landscape)");
@@ -670,6 +863,44 @@ function App() {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     setToast(message);
     toastTimerRef.current = window.setTimeout(() => setToast(""), 2_600);
+  }, []);
+
+  const addMediaCapture = useCallback((capture, { automatic = false } = {}) => {
+    const item = {
+      ...capture,
+      id: createCaptureId(capture.type),
+      createdAt: Date.now(),
+      url: URL.createObjectURL(capture.blob),
+    };
+    setMediaLibrary((current) => {
+      const next = [item, ...current].slice(0, MEDIA_LIBRARY_LIMIT);
+      for (const staleItem of current.slice(MEDIA_LIBRARY_LIMIT - 1)) {
+        if (staleItem.url) URL.revokeObjectURL(staleItem.url);
+      }
+      return next;
+    });
+    storeMediaCapture(item).catch((error) => {
+      console.warn("Capture could not be persisted to the local media library", error);
+      showToast("作品已保留在本次相机中");
+    });
+    showToast(automatic ? "已自动拍下这一刻" : capture.type === "video" ? "短视频已加入作品" : "照片已加入作品");
+    return item;
+  }, [showToast]);
+
+  const scheduleAutoCapture = useCallback((reason, delay = 360) => {
+    if (autoCaptureTimerRef.current) window.clearTimeout(autoCaptureTimerRef.current);
+    autoCaptureTimerRef.current = window.setTimeout(() => {
+      autoCaptureTimerRef.current = null;
+      const now = performance.now();
+      if (
+        recordingRef.current
+        || mediaPreviewRef.current
+        || mediaLibraryOpenRef.current
+        || now - lastAutoCaptureAtRef.current < 1_200
+      ) return;
+      lastAutoCaptureAtRef.current = now;
+      takePhotoRef.current?.({ automatic: true, reason });
+    }, delay);
   }, []);
 
   const preloadLvdou = useCallback(() => {
@@ -778,15 +1009,27 @@ function App() {
     if (
       !update.trigger
       || mediaPreviewRef.current
+      || mediaLibraryOpenRef.current
       || characterSwitchingRef.current
     ) return;
 
     const action = GESTURE_ACTIONS[update.trigger];
     if (!action || !rivePlayAnimationRef.current?.(action.animation)) return;
     setLastRecognizedGesture(update.trigger);
+    if (shouldOutlineGesture(update.trigger)) {
+      gestureEffectUntilRef.current = timestamp + GESTURE_OUTLINE_DURATION_MS;
+      setActiveGestureEffect(update.trigger);
+      if (gestureEffectTimerRef.current) window.clearTimeout(gestureEffectTimerRef.current);
+      gestureEffectTimerRef.current = window.setTimeout(() => {
+        gestureEffectTimerRef.current = null;
+        gestureEffectUntilRef.current = 0;
+        setActiveGestureEffect("");
+      }, GESTURE_OUTLINE_DURATION_MS);
+      scheduleAutoCapture(`gesture:${update.trigger}`);
+    }
     if (action.audio) playGuideClip(action.audio, { force: true });
     showToast(`${CHARACTERS[activeCharacter].label}${action.toast}`);
-  }, [activeCharacter, playGuideClip, showToast]);
+  }, [activeCharacter, playGuideClip, scheduleAutoCapture, showToast]);
 
   const stopVoiceSession = useCallback(() => {
     voiceIntentionalCloseRef.current = true;
@@ -879,6 +1122,7 @@ function App() {
           if (!action || !rivePlayAnimationRef.current?.(action.animation)) return;
           playGuideClip(action.audio, { force: true });
           showToast(action.toast);
+          scheduleAutoCapture(`voice:${message.action}`, 420);
           return;
         }
         if (message.type === "error") {
@@ -894,7 +1138,7 @@ function App() {
       console.warn("Voice session unavailable", error);
       setVoiceState("unavailable");
     }
-  }, [playGuideClip, showToast, stopVoiceSession]);
+  }, [playGuideClip, scheduleAutoCapture, showToast, stopVoiceSession]);
 
   const maybePlayGuideForAnimation = useCallback((animationName, animationDurationSeconds) => {
     const guideKey = getGuideKeyForAnimation(animationName);
@@ -954,6 +1198,7 @@ function App() {
 
     maskContext.putImageData(imageData, 0, 0);
     maskReadyRef.current = true;
+    personMaskRevisionRef.current += 1;
   }, []);
 
   const updateMouthAnchor = useCallback((result) => {
@@ -1209,6 +1454,7 @@ function App() {
     const targetWidth = outputCanvas.width;
     const targetHeight = outputCanvas.height;
     const rect = getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight);
+    const timestamp = performance.now();
 
     outputContext.fillStyle = "#181b14";
     outputContext.fillRect(0, 0, targetWidth, targetHeight);
@@ -1216,6 +1462,21 @@ function App() {
 
     const drawPerson = () => {
       if (!maskReadyRef.current || !maskCanvas?.width || !maskCanvas?.height) return;
+      if (timestamp < gestureEffectUntilRef.current) {
+        if (!gestureOutlineBuffersRef.current) {
+          gestureOutlineBuffersRef.current = createGestureOutlineBuffers();
+        }
+        drawGestureOutline(
+          outputContext,
+          gestureOutlineBuffersRef.current,
+          maskCanvas,
+          rect,
+          targetWidth,
+          targetHeight,
+          personMaskRevisionRef.current,
+          timestamp,
+        );
+      }
       foregroundContext.clearRect(0, 0, targetWidth, targetHeight);
       foregroundContext.globalCompositeOperation = "source-over";
       foregroundContext.drawImage(video, rect.x, rect.y, rect.width, rect.height);
@@ -1693,7 +1954,7 @@ function App() {
                 minTrackingConfidence: 0.55,
                 cannedGesturesClassifierOptions: {
                   scoreThreshold: 0.62,
-                  categoryAllowlist: ["Thumb_Up"],
+                  categoryAllowlist: ["Thumb_Up", "Victory"],
                 },
               });
               if (cancelled) gestureRecognizer.close();
@@ -1834,8 +2095,12 @@ function App() {
     if (autoStopTimerRef.current) window.clearTimeout(autoStopTimerRef.current);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
+    if (gestureEffectTimerRef.current) window.clearTimeout(gestureEffectTimerRef.current);
+    if (autoCaptureTimerRef.current) window.clearTimeout(autoCaptureTimerRef.current);
     guideAudioRef.current?.pause();
-    if (mediaPreviewRef.current?.url) URL.revokeObjectURL(mediaPreviewRef.current.url);
+    for (const item of mediaLibraryRef.current) {
+      if (item.url) URL.revokeObjectURL(item.url);
+    }
   }, [stopVoiceSession]);
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
@@ -1849,9 +2114,19 @@ function App() {
     setCameraState("opening");
     setCameraError("");
     setCameraLensMode("default");
+    setCameraMenuOpen(false);
+    setMediaLibraryOpen(false);
     maskReadyRef.current = false;
+    personMaskRevisionRef.current = 0;
+    gestureEffectUntilRef.current = 0;
+    gestureOutlineBuffersRef.current = null;
+    if (gestureEffectTimerRef.current) window.clearTimeout(gestureEffectTimerRef.current);
+    gestureEffectTimerRef.current = null;
+    if (autoCaptureTimerRef.current) window.clearTimeout(autoCaptureTimerRef.current);
+    autoCaptureTimerRef.current = null;
     gestureTrackerRef.current = createGestureTracker();
     setLastRecognizedGesture("");
+    setActiveGestureEffect("");
     stopVoiceSession();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -2026,15 +2301,12 @@ function App() {
   }, [showToast]);
 
   const closePreview = useCallback(() => {
-    setMediaPreview((current) => {
-      if (current?.url) URL.revokeObjectURL(current.url);
-      return null;
-    });
+    setMediaPreview(null);
   }, []);
 
-  const takePhoto = useCallback(() => {
+  const takePhoto = useCallback(({ automatic = false, reason = "manual" } = {}) => {
     const canvas = outputCanvasRef.current;
-    if (!canvas || cameraState !== "ready") return;
+    if (!canvas || cameraState !== "ready" || recordingRef.current) return;
     const captureMoment = riveCaptureMomentRef.current || riveMarkCaptureRef.current?.();
     riveCaptureMomentRef.current = null;
     const captureRiveCanvas = rivePrepareCaptureRef.current?.(captureMoment) || riveCanvasRef.current;
@@ -2060,12 +2332,21 @@ function App() {
         showToast("照片生成失败，请再试一次");
         return;
       }
-      setMediaPreview((current) => {
-        if (current?.url) URL.revokeObjectURL(current.url);
-        return { type: "photo", blob, url: URL.createObjectURL(blob), day: paddedDay, captionMode };
+      addMediaCapture({
+        type: "photo",
+        blob,
+        day: paddedDay,
+        captionMode,
+        source: reason,
+      }, {
+        automatic,
       });
     }, "image/jpeg", 0.94);
-  }, [cameraState, captionMode, paddedDay, renderFrame, showToast]);
+  }, [addMediaCapture, cameraState, captionMode, paddedDay, renderFrame, showToast]);
+
+  useEffect(() => {
+    takePhotoRef.current = takePhoto;
+  }, [takePhoto]);
 
   useEffect(() => {
     const onVolumeShutter = (event) => {
@@ -2080,6 +2361,7 @@ function App() {
         || cameraState !== "ready"
         || recordingRef.current
         || mediaPreviewRef.current
+        || mediaLibraryOpenRef.current
       ) return;
 
       event.preventDefault();
@@ -2109,6 +2391,7 @@ function App() {
 
   const startRecording = useCallback(() => {
     riveCaptureMomentRef.current = null;
+    setCameraMenuOpen(false);
     const canvas = outputCanvasRef.current;
     const mimeType = chooseRecordingMimeType();
     if (!canvas?.captureStream || !window.MediaRecorder || !mimeType) {
@@ -2136,15 +2419,12 @@ function App() {
           showToast("录像没有成功保存，请再试一次");
           return;
         }
-        setMediaPreview((current) => {
-          if (current?.url) URL.revokeObjectURL(current.url);
-          return {
-            type: "video",
-            blob,
-            url: URL.createObjectURL(blob),
-            day: recordingDayRef.current,
-            captionMode: recordingCaptionModeRef.current,
-          };
+        addMediaCapture({
+          type: "video",
+          blob,
+          day: recordingDayRef.current,
+          captionMode: recordingCaptionModeRef.current,
+          source: "manual",
         });
       };
 
@@ -2163,7 +2443,7 @@ function App() {
       console.warn("Recording failed", error);
       showToast("录像启动失败，可以先拍照");
     }
-  }, [captionMode, paddedDay, showToast, stopRecording]);
+  }, [addMediaCapture, captionMode, paddedDay, showToast, stopRecording]);
 
   const onShutterPointerDown = useCallback((event) => {
     if (cameraState !== "ready") return;
@@ -2212,6 +2492,7 @@ function App() {
     );
   }, [captionMode, mediaPreview, paddedDay]);
 
+  const latestMedia = mediaLibrary[0] || null;
   const formattedRecordingTime = `${String(Math.floor(recordingTime / 1000)).padStart(2, "0")}.${Math.floor((recordingTime % 1000) / 100)}`;
   const readyForCamera = engineState !== "error";
   const activeRivePlaybackRate = cameraState === "ready" ? CAMERA_RIVE_PLAYBACK_RATE : COVER_RIVE_PLAYBACK_RATE;
@@ -2234,7 +2515,11 @@ function App() {
         data-face-tracking={faceLandmarkerReady ? "ready" : "unavailable"}
         data-gesture-tracking={gestureRecognizerReady ? "ready" : "unavailable"}
         data-last-gesture={lastRecognizedGesture || "none"}
+        data-gesture-effect={activeGestureEffect || "none"}
+        data-gesture-outline="rainbow-mask"
         data-camera-lens={cameraLensMode}
+        data-media-count={mediaLibrary.length}
+        data-camera-menu={cameraMenuOpen ? "open" : "closed"}
         data-voice-state={voiceState}
         data-reading-day={day}
         data-caption-mode={captionMode}
@@ -2336,15 +2621,28 @@ function App() {
           <div className="control-deck">
             <div className="capture-toolbar" aria-label="拍摄工具">
               <button
-                className={`round-control layer-control ${segmenterReady ? "is-ready" : ""} ${personLayer === "behind" ? "is-behind" : ""}`}
+                className={`media-library-entry ${latestMedia ? "has-media" : ""}`}
                 type="button"
-                disabled={!segmenterReady}
-                aria-pressed={personLayer === "front"}
-                aria-label={`切换人像图层，当前人像在叫叫${personLayer === "front" ? "前面" : "后面"}`}
-                onClick={togglePersonLayer}
+                disabled={recording}
+                onClick={() => {
+                  setCameraMenuOpen(false);
+                  setMediaLibraryOpen(true);
+                }}
+                aria-label={mediaLibrary.length ? `打开作品列表，共 ${mediaLibrary.length} 个作品` : "打开作品列表"}
               >
-                <ArrowsLeftRight size={18} weight="bold" />
-                <span>{personLayer === "front" ? "人在前" : "鸡在前"}</span>
+                {latestMedia ? (
+                  <>
+                    {latestMedia.type === "photo" ? (
+                      <img src={latestMedia.url} alt="最近拍摄的照片" />
+                    ) : (
+                      <video src={latestMedia.url} muted playsInline preload="metadata" aria-label="最近拍摄的短视频" />
+                    )}
+                    {latestMedia.type === "video" && <PlayCircle className="media-entry-play" size={19} weight="fill" aria-hidden="true" />}
+                    <span className="media-entry-count">{mediaLibrary.length}</span>
+                  </>
+                ) : (
+                  <ImagesSquare size={24} weight="bold" aria-hidden="true" />
+                )}
               </button>
 
               <div className="capture-controls">
@@ -2364,9 +2662,46 @@ function App() {
                 <span className="capture-limit">最长 15 秒</span>
               </div>
 
-              <button className="round-control camera-switch" type="button" disabled={recording} onClick={switchCamera} aria-label="切换前后摄像头">
-                <ArrowClockwise size={23} weight="bold" />
-              </button>
+              <div className="camera-menu-wrap">
+                <button
+                  className={`round-control camera-menu-trigger ${cameraMenuOpen ? "is-active" : ""}`}
+                  type="button"
+                  disabled={recording}
+                  aria-expanded={cameraMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label="打开相机设置菜单"
+                  onClick={() => setCameraMenuOpen((current) => !current)}
+                >
+                  <DotsThreeVertical size={24} weight="bold" aria-hidden="true" />
+                </button>
+                {cameraMenuOpen && (
+                  <div className="camera-menu-popover" role="menu" aria-label="相机设置">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!segmenterReady}
+                      onClick={() => {
+                        togglePersonLayer();
+                        setCameraMenuOpen(false);
+                      }}
+                    >
+                      <ArrowsLeftRight size={19} weight="bold" aria-hidden="true" />
+                      <span>{personLayer === "front" ? "切换为鸡在前" : "切换为人在前"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setCameraMenuOpen(false);
+                        switchCamera();
+                      }}
+                    >
+                      <ArrowClockwise size={20} weight="bold" aria-hidden="true" />
+                      <span>翻转镜头</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -2412,6 +2747,52 @@ function App() {
         )}
 
         {toast && <div className="camera-toast" role="status">{toast}</div>}
+
+        {mediaLibraryOpen && (
+          <div className="media-library-panel" role="dialog" aria-modal="true" aria-label="我的合拍作品">
+            <header className="media-library-header">
+              <div>
+                <strong>我的合拍</strong>
+                <span>{mediaLibrary.length ? `${mediaLibrary.length} 个作品 · 仅保存在本机` : "作品仅保存在本机"}</span>
+              </div>
+              <button type="button" onClick={() => setMediaLibraryOpen(false)} aria-label="关闭作品列表">
+                <X size={25} weight="bold" aria-hidden="true" />
+              </button>
+            </header>
+            {mediaLibrary.length ? (
+              <div className="media-library-grid">
+                {mediaLibrary.map((item) => (
+                  <button
+                    className={`media-library-card is-${item.type}`}
+                    type="button"
+                    key={item.id}
+                    onClick={() => setMediaPreview(item)}
+                    aria-label={`打开${item.type === "photo" ? "照片" : "短视频"}，${formatCaptureDate(item.createdAt)}`}
+                  >
+                    <span className="media-library-visual">
+                      {item.type === "photo" ? (
+                        <img src={item.url} alt="" />
+                      ) : (
+                        <video src={item.url} muted playsInline preload="metadata" aria-hidden="true" />
+                      )}
+                      {item.type === "video" && <PlayCircle size={28} weight="fill" aria-hidden="true" />}
+                    </span>
+                    <span className="media-library-meta">
+                      <strong>{item.type === "photo" ? "照片" : "短视频"}</strong>
+                      <small>{formatCaptureDate(item.createdAt)}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="media-library-empty">
+                <ImagesSquare size={42} weight="duotone" aria-hidden="true" />
+                <strong>还没有作品</strong>
+                <span>拍照、录像或做个手势试试</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {mediaPreview && (
           <div className={`media-preview is-${mediaPreview.type}`} role="dialog" aria-modal="true" aria-label={mediaPreview.type === "photo" ? "照片预览" : "录像预览"}>

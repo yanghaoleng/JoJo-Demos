@@ -1,5 +1,6 @@
 export const CAMERA_GESTURES = Object.freeze({
   THUMBS_UP: "thumbs_up",
+  VICTORY: "victory",
   OK: "ok",
   FINGER_HEART: "finger_heart",
 });
@@ -40,6 +41,9 @@ export function classifyCameraGesture(result) {
   const cannedGesture = result?.gestures?.[0]?.[0];
   if (cannedGesture?.categoryName === "Thumb_Up" && cannedGesture.score >= 0.62) {
     return CAMERA_GESTURES.THUMBS_UP;
+  }
+  if (cannedGesture?.categoryName === "Victory" && cannedGesture.score >= 0.62) {
+    return CAMERA_GESTURES.VICTORY;
   }
 
   const landmarks = result?.landmarks?.[0];
