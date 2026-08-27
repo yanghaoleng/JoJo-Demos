@@ -791,12 +791,18 @@ button {
   height: 54px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   margin-bottom: 19px;
   border-radius: 17px;
-  background: var(--accent);
-  color: #30250a;
   transform: rotate(-5deg);
   box-shadow: 0 14px 30px rgba(8, 9, 6, 0.2);
+}
+
+.welcome-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .welcome-copy h1 {
@@ -1525,23 +1531,20 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: max(12px, env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
   background: #000;
 }
 
 .app-shell.is-mobile-device .camera-stage.is-live.is-portrait .viewfinder {
   position: relative;
   inset: auto;
-  width: auto;
-  height: min(
-    calc(177.778vw - 42.667px),
-    calc(100dvh - max(12px, env(safe-area-inset-top)) - env(safe-area-inset-bottom) - 146px)
-  );
-  max-width: calc(100% - 24px);
-  aspect-ratio: 9 / 16;
+  width: 100%;
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 146px);
+  max-width: none;
+  aspect-ratio: auto;
   flex: 0 0 auto;
-  border: 1px solid rgba(255, 239, 184, 0.2);
-  border-radius: 18px;
+  border: 0;
+  border-radius: 0;
 }
 
 .app-shell.is-mobile-device .camera-stage.is-live.is-portrait .control-deck {

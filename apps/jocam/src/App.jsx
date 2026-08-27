@@ -3299,7 +3299,7 @@ function App() {
         {cameraState !== "ready" && (
           <div className="welcome-panel">
             <div className="welcome-copy">
-              <span className="welcome-icon"><Camera size={30} weight="fill" /></span>
+              <span className="welcome-icon"><img src="favicon-512.png" alt="JOJO Cam" /></span>
               <h1>和叫叫，拍一张<br />会动的阅读合照</h1>
               <p>相机在透明区域里，叫叫默认站在人像前面。</p>
             </div>
