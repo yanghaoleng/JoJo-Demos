@@ -760,7 +760,6 @@ function App() {
   const pipRequestIdRef = useRef(0);
   const voiceSocketRef = useRef(null);
   const voiceAudioGraphRef = useRef(null);
-  const speechBubbleOverlayRef = useRef(null);
   const voicePcmMutedRef = useRef(false);
   const voiceIntentionalCloseRef = useRef(false);
   const speechClearTimerRef = useRef(null);
@@ -1499,8 +1498,8 @@ function App() {
     const textWidth = bubbleWidth - horizontalPadding * 2;
     const lineHeight = fontSize * 1.12;
     const bubbleHeight = Math.max(fontSize * 2.15, lines.length * lineHeight + fontSize * 0.92);
-    const tailHeight = fontSize * 0.72;
-    const tailWidth = fontSize * 0.96;
+    const tailHeight = fontSize * 0.44;
+    const tailWidth = fontSize * 0.8;
     const mouthX = anchor.x * targetWidth;
     const mouthY = anchor.y * targetHeight;
     const eyeY = anchor.eyeY * targetHeight;
@@ -1549,14 +1548,6 @@ function App() {
       });
     }
 
-    const overlay = speechBubbleOverlayRef.current;
-    if (overlay) {
-      overlay.style.left = `${(bubbleX / targetWidth) * 100}%`;
-      overlay.style.top = `${(bubbleY / targetHeight) * 100}%`;
-      overlay.style.width = `${(Math.min(measuredTextWidth, textWidth) / targetWidth) * 100}%`;
-      overlay.style.height = `${(lines.length * lineHeight / targetHeight) * 100}%`;
-      overlay.style.setProperty("--speech-font-cqw", String((fontSize / targetWidth) * 100));
-    }
     context.restore();
   }, []);
 
@@ -1713,7 +1704,7 @@ function App() {
   const renderFrame = useCallback((
     includeCaption = recordingRef.current,
     riveCanvasOverride = null,
-    includeSpeechText = recordingRef.current,
+    includeSpeechText = true,
   ) => {
     const video = videoRef.current;
     const outputCanvas = outputCanvasRef.current;
@@ -3124,27 +3115,6 @@ function App() {
           <canvas ref={foregroundCanvasRef} className="render-source" width={frameSize.width} height={frameSize.height} aria-hidden="true" />
           <canvas ref={maskCanvasRef} className="render-source" width="256" height="256" aria-hidden="true" />
           <canvas ref={outputCanvasRef} className="camera-output" width={frameSize.width} height={frameSize.height} aria-label="实时合拍画面" />
-
-          {cameraState === "ready" && speechText && !recording && (
-            <span
-              ref={speechBubbleOverlayRef}
-              className="speech-bubble-text"
-              aria-hidden="true"
-            >
-              <Calligraph
-                as="span"
-                variant="text"
-                animation="smooth"
-                initial
-                autoSize={false}
-                drift={{ x: 6, y: 0 }}
-                trend={1}
-                stagger={0.015}
-              >
-                {speechText}
-              </Calligraph>
-            </span>
-          )}
 
           {cameraState === "ready" && riveReady && (
             <button

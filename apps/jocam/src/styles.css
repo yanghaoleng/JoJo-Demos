@@ -213,31 +213,6 @@ button {
   background: #211c10;
 }
 
-.speech-bubble-text {
-  position: absolute;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  color: #111;
-  font-family: "Mohr Rounded", "PingFang SC", sans-serif;
-  font-size: calc(var(--speech-font-cqw, 3.8) * 1cqw);
-  font-weight: 700;
-  line-height: 1.12;
-  text-align: center;
-  text-wrap: balance;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.speech-bubble-text > span {
-  width: 100%;
-  max-height: 2.24em;
-  display: block;
-  overflow: hidden;
-}
-
 .camera-stage:not(.is-live) .camera-output {
   opacity: 0;
   filter: blur(14px) saturate(0.86);
