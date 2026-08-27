@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "voice-server": "node server/index.js",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:voice": "node --test server/*.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
@@ -16,7 +18,8 @@
     "motion": "13.1.1",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "ws": "8.18.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.1.0",

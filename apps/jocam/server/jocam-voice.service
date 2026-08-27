@@ -1,0 +1,21 @@
+[Unit]
+Description=JOCAM Volcengine voice bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jocam-voice
+Group=jocam-voice
+WorkingDirectory=/opt/jocam-voice/current
+EnvironmentFile=/etc/jocam/voice.env
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

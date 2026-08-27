@@ -9,7 +9,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Rive, Layout, Fit, Alignment, RuntimeLoader, EventType } from "@rive-app/canvas";
-import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
+import { FaceLandmarker, FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
 import QRCode from "qrcode";
 
@@ -55,6 +55,38 @@ const GUIDE_AUDIO = {
     text: "你想摆什么姿势呀？",
     duration: 1.777,
   },
+  commandPraise: {
+    path: `${BASE_URL}audio/commands/praise.mp3`,
+    text: "嘿嘿，这个赞送给你！",
+  },
+  commandSurprised: {
+    path: `${BASE_URL}audio/commands/surprised.mp3`,
+    text: "哇！你把我吓了一跳！",
+  },
+  commandThink: {
+    path: `${BASE_URL}audio/commands/think.mp3`,
+    text: "好呀，让我认真想一想！",
+  },
+  commandHappy: {
+    path: `${BASE_URL}audio/commands/happy.mp3`,
+    text: "好开心呀！我们再拍一张！",
+  },
+  commandFrighten: {
+    path: `${BASE_URL}audio/commands/frighten.mp3`,
+    text: "哇呀！我有一点点害怕！",
+  },
+  commandCurious: {
+    path: `${BASE_URL}audio/commands/curious.mp3`,
+    text: "嗯？让我看看发生了什么！",
+  },
+};
+const VOICE_ACTIONS = {
+  praise: { animation: "TalkingEmotion_Praise", audio: "commandPraise", toast: "叫叫送你一个赞" },
+  surprised: { animation: "TalkingEmotion_Surprised", audio: "commandSurprised", toast: "叫叫做了个惊讶表情" },
+  think: { animation: "TalkingEmotion_Think", audio: "commandThink", toast: "叫叫正在认真思考" },
+  happy: { animation: "TalkingEmotion_Happy", audio: "commandHappy", toast: "叫叫开心地笑了" },
+  frighten: { animation: "TalkingEmotion_Frighten", audio: "commandFrighten", toast: "叫叫吓了一跳" },
+  curious: { animation: "TalkingEmotion_Curious", audio: "commandCurious", toast: "叫叫好奇地看过来" },
 };
 const GUIDE_SPEAK_PROBABILITY = 0.34;
 const GUIDE_MIN_INTERVAL_MS = 7_000;
@@ -95,6 +127,8 @@ const CAPTION_MODES = {
   streak: { prefix: "坚持连续学习叫叫阅读", dayPrefix: "第", suffix: "天" },
 };
 const SEGMENT_INTERVAL_MS = 92;
+const FACE_INTERVAL_MS = 84;
+const FACE_MISSING_TIMEOUT_MS = 850;
 const PERSON_MASK_THRESHOLD = 0.52;
 const PERSON_FEATHER_RANGE_PX = 5;
 const LONG_PRESS_MS = 430;
@@ -106,6 +140,7 @@ const LOAD_ASSETS = [
   { key: "visionWasm", path: "mediapipe/wasm/vision_wasm_internal.wasm", bytes: 11_756_954, retain: false },
   { key: "visionLoader", path: "mediapipe/wasm/vision_wasm_internal.js", bytes: 323_377, retain: false },
   { key: "segmentModel", path: "mediapipe/selfie_segmenter.tflite", bytes: 249_537, retain: true },
+  { key: "faceModel", path: "mediapipe/face_landmarker.task", bytes: 3_758_596, retain: true },
   { key: "guideEnter", path: "audio/guides/enter.mp3", bytes: 58_931, retain: false },
 ];
 const LOAD_TOTAL_BYTES = LOAD_ASSETS.reduce((total, asset) => total + asset.bytes, 0);
@@ -169,6 +204,74 @@ function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
     width,
     height,
   };
+}
+
+function downsampleToPcm16(floatSamples, inputSampleRate, outputSampleRate = 16_000) {
+  if (!floatSamples?.length || inputSampleRate < outputSampleRate) return new Int16Array();
+  const ratio = inputSampleRate / outputSampleRate;
+  const outputLength = Math.max(1, Math.floor(floatSamples.length / ratio));
+  const output = new Int16Array(outputLength);
+  let outputIndex = 0;
+  let inputIndex = 0;
+  while (outputIndex < outputLength) {
+    const nextInputIndex = Math.min(floatSamples.length, Math.round((outputIndex + 1) * ratio));
+    let sum = 0;
+    let count = 0;
+    for (let index = inputIndex; index < nextInputIndex; index += 1) {
+      sum += floatSamples[index];
+      count += 1;
+    }
+    const sample = clamp(sum / Math.max(count, 1), -1, 1);
+    output[outputIndex] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+    outputIndex += 1;
+    inputIndex = nextInputIndex;
+  }
+  return output;
+}
+
+function getVoiceSocketUrl() {
+  const configured = import.meta.env.VITE_JOCAM_VOICE_URL;
+  if (configured) return configured;
+  if (["localhost", "127.0.0.1"].includes(window.location.hostname)) return "ws://127.0.0.1:8787/voice";
+  return "wss://rive.mikeywa.site/jocam/api/voice";
+}
+
+function splitBubbleText(context, text, maxWidth) {
+  const allCharacters = Array.from(String(text || "").replace(/\s+/g, " ").trim());
+  const characters = allCharacters.slice(0, 42);
+  const lines = [""];
+  for (const character of characters) {
+    const current = lines.at(-1);
+    if (context.measureText(current + character).width <= maxWidth || !current) {
+      lines[lines.length - 1] = current + character;
+    } else if (lines.length < 2) {
+      lines.push(character);
+    } else {
+      lines[1] += character;
+    }
+  }
+  if (lines.length === 2) {
+    while (context.measureText(`${lines[1]}…`).width > maxWidth && lines[1].length > 1) {
+      lines[1] = lines[1].slice(0, -1);
+    }
+    if (lines.join("").length < characters.length || allCharacters.length > characters.length) lines[1] += "…";
+  }
+  return lines;
+}
+
+function roundedRectPath(context, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
 }
 
 function drawMirrored(context, source, rect, targetWidth) {
@@ -282,9 +385,19 @@ function App() {
   const riveRef = useRef(null);
   const rivePlaybackRateRef = useRef(COVER_RIVE_PLAYBACK_RATE);
   const segmenterRef = useRef(null);
+  const faceLandmarkerRef = useRef(null);
   const streamRef = useRef(null);
+  const voiceSocketRef = useRef(null);
+  const voiceAudioGraphRef = useRef(null);
+  const voicePcmMutedRef = useRef(false);
+  const voiceIntentionalCloseRef = useRef(false);
+  const speechClearTimerRef = useRef(null);
+  const speechTextRef = useRef("");
+  const mouthAnchorRef = useRef(null);
+  const lastFaceSeenAtRef = useRef(0);
   const frameRef = useRef(0);
   const lastSegmentAtRef = useRef(0);
+  const lastFaceAtRef = useRef(0);
   const maskReadyRef = useRef(false);
   const recordingRef = useRef(false);
   const recorderRef = useRef(null);
@@ -310,6 +423,7 @@ function App() {
   const riveGuidePlaybackRef = useRef(null);
   const riveMouthPlaybackRef = useRef(null);
   const rivePlayPraiseRef = useRef(null);
+  const rivePlayAnimationRef = useRef(null);
   const riveMarkCaptureRef = useRef(null);
   const rivePrepareCaptureRef = useRef(null);
   const riveCaptureMomentRef = useRef(null);
@@ -321,8 +435,11 @@ function App() {
   const [loadProgress, setLoadProgress] = useState(2);
   const [riveReady, setRiveReady] = useState(false);
   const [segmenterReady, setSegmenterReady] = useState(false);
+  const [faceLandmarkerReady, setFaceLandmarkerReady] = useState(false);
   const [cameraState, setCameraState] = useState("idle");
   const [cameraError, setCameraError] = useState("");
+  const [voiceState, setVoiceState] = useState("idle");
+  const [speechText, setSpeechText] = useState("");
 
   useEffect(() => {
     if (isMobileDevice) return undefined;
@@ -426,6 +543,114 @@ function App() {
     return true;
   }, []);
 
+  const stopVoiceSession = useCallback(() => {
+    voiceIntentionalCloseRef.current = true;
+    const graph = voiceAudioGraphRef.current;
+    voiceAudioGraphRef.current = null;
+    if (graph) {
+      graph.processor.onaudioprocess = null;
+      graph.source.disconnect();
+      graph.processor.disconnect();
+      graph.silent.disconnect();
+      graph.context.close().catch(() => {});
+    }
+    const socket = voiceSocketRef.current;
+    voiceSocketRef.current = null;
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, "camera closed");
+    if (speechClearTimerRef.current) window.clearTimeout(speechClearTimerRef.current);
+    speechTextRef.current = "";
+    mouthAnchorRef.current = null;
+    setSpeechText("");
+    setVoiceState("idle");
+  }, []);
+
+  const startVoiceSession = useCallback(async (stream) => {
+    const audioTrack = stream.getAudioTracks()[0];
+    if (!audioTrack) {
+      setVoiceState("unavailable");
+      return;
+    }
+
+    stopVoiceSession();
+    voiceIntentionalCloseRef.current = false;
+    setVoiceState("connecting");
+
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error("Web Audio is unavailable");
+      const context = new AudioContextClass();
+      await context.resume();
+      const source = context.createMediaStreamSource(new MediaStream([audioTrack]));
+      const processor = context.createScriptProcessor(4096, 1, 1);
+      const silent = context.createGain();
+      silent.gain.value = 0;
+      source.connect(processor);
+      processor.connect(silent);
+      silent.connect(context.destination);
+      voiceAudioGraphRef.current = { context, source, processor, silent };
+
+      const socket = new WebSocket(getVoiceSocketUrl());
+      socket.binaryType = "arraybuffer";
+      voiceSocketRef.current = socket;
+      processor.onaudioprocess = (event) => {
+        if (
+          voicePcmMutedRef.current
+          || socket.readyState !== WebSocket.OPEN
+        ) return;
+        const samples = event.inputBuffer.getChannelData(0);
+        const pcm = downsampleToPcm16(samples, context.sampleRate);
+        if (pcm.byteLength) socket.send(pcm.buffer);
+      };
+
+      socket.addEventListener("open", () => {
+        socket.send(JSON.stringify({ type: "start", sampleRate: 16_000, language: "zh-CN" }));
+      });
+      socket.addEventListener("message", (event) => {
+        if (typeof event.data !== "string") return;
+        let message;
+        try {
+          message = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+        if (message.type === "ready") {
+          setVoiceState("listening");
+          return;
+        }
+        if (message.type === "transcript") {
+          const text = String(message.text || "").trim().slice(0, 80);
+          if (!text) return;
+          speechTextRef.current = text;
+          setSpeechText(text);
+          if (speechClearTimerRef.current) window.clearTimeout(speechClearTimerRef.current);
+          speechClearTimerRef.current = window.setTimeout(() => {
+            speechTextRef.current = "";
+            setSpeechText("");
+          }, message.final ? 3_600 : 2_400);
+          return;
+        }
+        if (message.type === "action") {
+          const action = VOICE_ACTIONS[message.action];
+          if (!action || !rivePlayAnimationRef.current?.(action.animation)) return;
+          playGuideClip(action.audio, { force: true });
+          showToast(action.toast);
+          return;
+        }
+        if (message.type === "error") {
+          setVoiceState("unavailable");
+          showToast(message.message || "语音识别暂时不可用");
+        }
+      });
+      socket.addEventListener("error", () => setVoiceState("unavailable"));
+      socket.addEventListener("close", () => {
+        if (!voiceIntentionalCloseRef.current) setVoiceState("unavailable");
+      });
+    } catch (error) {
+      console.warn("Voice session unavailable", error);
+      setVoiceState("unavailable");
+    }
+  }, [playGuideClip, showToast, stopVoiceSession]);
+
   const maybePlayGuideForAnimation = useCallback((animationName, animationDurationSeconds) => {
     const guideKey = getGuideKeyForAnimation(animationName);
     const guide = GUIDE_AUDIO[guideKey];
@@ -484,6 +709,100 @@ function App() {
 
     maskContext.putImageData(imageData, 0, 0);
     maskReadyRef.current = true;
+  }, []);
+
+  const updateMouthAnchor = useCallback((result) => {
+    const landmarks = result?.faceLandmarks?.[0];
+    const outputCanvas = outputCanvasRef.current;
+    const video = videoRef.current;
+    if (!landmarks?.length || !outputCanvas || !video?.videoWidth) {
+      if (performance.now() - lastFaceSeenAtRef.current > FACE_MISSING_TIMEOUT_MS) {
+        mouthAnchorRef.current = null;
+      }
+      return;
+    }
+
+    const mouthPoints = [13, 14, 61, 291].map((index) => landmarks[index]).filter(Boolean);
+    if (!mouthPoints.length) return;
+    const normalizedX = mouthPoints.reduce((sum, point) => sum + point.x, 0) / mouthPoints.length;
+    const normalizedY = mouthPoints.reduce((sum, point) => sum + point.y, 0) / mouthPoints.length;
+    const targetWidth = outputCanvas.width;
+    const targetHeight = outputCanvas.height;
+    const rect = getCoverRect(video.videoWidth, video.videoHeight, targetWidth, targetHeight);
+    const unmirroredX = rect.x + normalizedX * rect.width;
+    const next = {
+      x: clamp((targetWidth - unmirroredX) / targetWidth, 0.02, 0.98),
+      y: clamp((rect.y + normalizedY * rect.height) / targetHeight, 0.02, 0.98),
+    };
+    const current = mouthAnchorRef.current;
+    mouthAnchorRef.current = current
+      ? { x: current.x * 0.68 + next.x * 0.32, y: current.y * 0.68 + next.y * 0.32 }
+      : next;
+    lastFaceSeenAtRef.current = performance.now();
+  }, []);
+
+  const drawSpeechBubble = useCallback((context, targetWidth, targetHeight) => {
+    const text = speechTextRef.current;
+    const anchor = mouthAnchorRef.current;
+    if (!text || !anchor) return;
+
+    const isLandscape = targetWidth > targetHeight;
+    const fontSize = clamp(targetWidth * (isLandscape ? 0.021 : 0.038), 22, 31);
+    const bubbleWidth = clamp(targetWidth * (isLandscape ? 0.42 : 0.68), 330, 610);
+    const textWidth = bubbleWidth - fontSize * 2.2;
+    context.save();
+    context.font = `700 ${fontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
+    const lines = splitBubbleText(context, text, textWidth);
+    const lineHeight = fontSize * 1.12;
+    const bubbleHeight = Math.max(fontSize * 2.15, lines.length * lineHeight + fontSize * 0.92);
+    const mouthX = anchor.x * targetWidth;
+    const mouthY = anchor.y * targetHeight;
+    const direction = anchor.x < 0.5 ? 1 : -1;
+    const captionSafeY = isLandscape ? 120 : 240;
+    const bubbleX = clamp(
+      mouthX + direction * targetWidth * (isLandscape ? 0.17 : 0.2),
+      bubbleWidth / 2 + 18,
+      targetWidth - bubbleWidth / 2 - 18,
+    );
+    const bubbleY = clamp(
+      mouthY - targetHeight * (isLandscape ? 0.17 : 0.13),
+      captionSafeY + bubbleHeight / 2,
+      targetHeight - bubbleHeight / 2 - 30,
+    );
+    const left = bubbleX - bubbleWidth / 2;
+    const top = bubbleY - bubbleHeight / 2;
+    const lineEndX = bubbleX + (mouthX < bubbleX ? -bubbleWidth * 0.34 : bubbleWidth * 0.34);
+    const lineEndY = bubbleY + bubbleHeight * 0.32;
+
+    context.beginPath();
+    context.moveTo(mouthX, mouthY);
+    context.quadraticCurveTo(
+      mouthX + (lineEndX - mouthX) * 0.48,
+      Math.min(mouthY, lineEndY) - fontSize * 1.2,
+      lineEndX,
+      lineEndY,
+    );
+    context.lineWidth = Math.max(5, targetWidth / 180);
+    context.lineCap = "round";
+    context.strokeStyle = "rgba(255, 255, 255, 0.98)";
+    context.shadowColor = "rgba(0, 0, 0, 0.28)";
+    context.shadowBlur = 8;
+    context.stroke();
+
+    roundedRectPath(context, left, top, bubbleWidth, bubbleHeight, bubbleHeight / 2);
+    context.fillStyle = "#ffffff";
+    context.shadowColor = "rgba(0, 0, 0, 0.2)";
+    context.shadowBlur = 14;
+    context.fill();
+    context.shadowColor = "transparent";
+    context.fillStyle = "#111111";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    lines.forEach((line, index) => {
+      const y = bubbleY + (index - (lines.length - 1) / 2) * lineHeight;
+      context.fillText(line, bubbleX, y, textWidth);
+    });
+    context.restore();
   }, []);
 
   const drawCaption = useCallback((context, targetWidth, targetHeight) => {
@@ -644,7 +963,8 @@ function App() {
     if (personLayer === "front") drawPerson();
 
     if (includeCaption) drawCaption(outputContext, targetWidth, targetHeight);
-  }, [drawCaption, drawRiveLayer, personLayer]);
+    drawSpeechBubble(outputContext, targetWidth, targetHeight);
+  }, [drawCaption, drawRiveLayer, drawSpeechBubble, personLayer]);
 
   useEffect(() => {
     let cancelled = false;
@@ -668,6 +988,7 @@ function App() {
         if (cancelled) return;
         const riveBuffer = downloads[LOAD_ASSETS.findIndex((asset) => asset.key === "riveFile")];
         const modelBuffer = downloads[LOAD_ASSETS.findIndex((asset) => asset.key === "segmentModel")];
+        const faceModelBuffer = downloads[LOAD_ASSETS.findIndex((asset) => asset.key === "faceModel")];
 
         setLoadProgress(84);
         setEngineMessage("正在唤醒叫叫");
@@ -904,6 +1225,12 @@ function App() {
                 playAtIndex(praiseIndex);
                 return true;
               };
+              rivePlayAnimationRef.current = (animationName) => {
+                const animationIndex = riveAnimationsRef.current.indexOf(animationName);
+                if (animationIndex < 0) return false;
+                playAtIndex(animationIndex);
+                return true;
+              };
               playAtIndex(0);
               setRiveReady(true);
               setLoadProgress((value) => Math.max(value, 92));
@@ -915,39 +1242,73 @@ function App() {
           riveRef.current = instance;
         });
 
-        const prepareSegmenter = (async () => {
+        const prepareVision = (async () => {
+          let segmenterLoaded = false;
+          let faceLoaded = false;
           try {
             const vision = await FilesetResolver.forVisionTasks(`${BASE_URL}mediapipe/wasm`);
-            if (cancelled) return false;
-            const segmenter = await ImageSegmenter.createFromOptions(vision, {
-              baseOptions: {
-                modelAssetBuffer: new Uint8Array(modelBuffer),
-                delegate: "CPU",
-              },
-              runningMode: "VIDEO",
-              outputConfidenceMasks: true,
-              outputCategoryMask: false,
-            });
-            if (cancelled) {
-              segmenter.close();
-              return false;
+            if (cancelled) return { segmenterLoaded, faceLoaded };
+            try {
+              const segmenter = await ImageSegmenter.createFromOptions(vision, {
+                baseOptions: {
+                  modelAssetBuffer: new Uint8Array(modelBuffer),
+                  delegate: "CPU",
+                },
+                runningMode: "VIDEO",
+                outputConfidenceMasks: true,
+                outputCategoryMask: false,
+              });
+              if (cancelled) segmenter.close();
+              else {
+                segmenterRef.current = segmenter;
+                setSegmenterReady(true);
+                segmenterLoaded = true;
+                setLoadProgress((value) => Math.max(value, 94));
+              }
+            } catch (error) {
+              console.warn("Person segmentation unavailable", error);
             }
-            segmenterRef.current = segmenter;
-            setSegmenterReady(true);
-            setLoadProgress((value) => Math.max(value, 97));
-            return true;
+
+            try {
+              const faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                  modelAssetBuffer: new Uint8Array(faceModelBuffer),
+                  delegate: "CPU",
+                },
+                runningMode: "VIDEO",
+                numFaces: 1,
+                minFaceDetectionConfidence: 0.5,
+                minFacePresenceConfidence: 0.5,
+                minTrackingConfidence: 0.5,
+                outputFaceBlendshapes: false,
+                outputFacialTransformationMatrixes: false,
+              });
+              if (cancelled) faceLandmarker.close();
+              else {
+                faceLandmarkerRef.current = faceLandmarker;
+                setFaceLandmarkerReady(true);
+                faceLoaded = true;
+                setLoadProgress((value) => Math.max(value, 97));
+              }
+            } catch (error) {
+              console.warn("Face landmark tracking unavailable", error);
+            }
           } catch (error) {
-            console.warn("Person segmentation unavailable", error);
-            return false;
+            console.warn("MediaPipe vision runtime unavailable", error);
           }
+          return { segmenterLoaded, faceLoaded };
         })();
 
-        const [riveLoaded, segmenterLoaded] = await Promise.all([prepareRive, prepareSegmenter]);
+        const [riveLoaded, visionLoaded] = await Promise.all([prepareRive, prepareVision]);
         if (cancelled) return;
         if (!riveLoaded) throw new Error("Rive failed to initialize");
         setLoadProgress(100);
         setEngineState("ready");
-        setEngineMessage(segmenterLoaded ? "叫叫和人像识别都准备好了" : "叫叫准备好了，人像识别稍后重试");
+        setEngineMessage(
+          visionLoaded.segmenterLoaded && visionLoaded.faceLoaded
+            ? "叫叫、人像与嘴部跟踪都准备好了"
+            : "叫叫准备好了，部分人像能力稍后重试",
+        );
       } catch (error) {
         if (cancelled) return;
         console.error("Jocam preparation failed", error);
@@ -965,6 +1326,7 @@ function App() {
       riveRef.current?.cleanup();
       riveRef.current = null;
       rivePlayPraiseRef.current = null;
+      rivePlayAnimationRef.current = null;
       riveGuidePlaybackRef.current = null;
       riveMouthPlaybackRef.current = null;
       riveMarkCaptureRef.current = null;
@@ -972,6 +1334,8 @@ function App() {
       riveCaptureMomentRef.current = null;
       segmenterRef.current?.close();
       segmenterRef.current = null;
+      faceLandmarkerRef.current?.close();
+      faceLandmarkerRef.current = null;
     };
   }, []);
 
@@ -1003,6 +1367,14 @@ function App() {
             console.warn("Person segmentation frame failed", error);
           }
         }
+        if (faceLandmarkerRef.current && timestamp - lastFaceAtRef.current >= FACE_INTERVAL_MS) {
+          lastFaceAtRef.current = timestamp;
+          try {
+            updateMouthAnchor(faceLandmarkerRef.current.detectForVideo(video, timestamp));
+          } catch (error) {
+            console.warn("Face landmark frame failed", error);
+          }
+        }
         renderFrame();
       } else if (riveReady) {
         renderWelcomeFrame();
@@ -1012,10 +1384,11 @@ function App() {
 
     frameRef.current = window.requestAnimationFrame(loop);
     return () => window.cancelAnimationFrame(frameRef.current);
-  }, [cameraState, renderFrame, renderWelcomeFrame, riveReady, updateMask]);
+  }, [cameraState, renderFrame, renderWelcomeFrame, riveReady, updateMask, updateMouthAnchor]);
 
   useEffect(() => () => {
     cameraReadyRef.current = false;
+    stopVoiceSession();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingIntervalRef.current) window.clearInterval(recordingIntervalRef.current);
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
@@ -1024,7 +1397,7 @@ function App() {
     if (guideTimerRef.current) window.clearTimeout(guideTimerRef.current);
     guideAudioRef.current?.pause();
     if (mediaPreviewRef.current?.url) URL.revokeObjectURL(mediaPreviewRef.current.url);
-  }, []);
+  }, [stopVoiceSession]);
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     cameraReadyRef.current = false;
@@ -1037,17 +1410,32 @@ function App() {
     setCameraState("opening");
     setCameraError("");
     maskReadyRef.current = false;
+    stopVoiceSession();
     streamRef.current?.getTracks().forEach((track) => track.stop());
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          facingMode: { ideal: nextFacingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
+      const videoConstraints = {
+        facingMode: { ideal: nextFacingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      };
+      let stream;
+      let microphoneUnavailable = false;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: { ideal: 1 },
+            echoCancellation: { ideal: true },
+            noiseSuppression: { ideal: true },
+            autoGainControl: { ideal: true },
+          },
+          video: videoConstraints,
+        });
+      } catch (mediaError) {
+        microphoneUnavailable = true;
+        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
+        console.warn("Microphone permission unavailable; continuing with camera only", mediaError);
+      }
       streamRef.current = stream;
       const video = videoRef.current;
       video.srcObject = stream;
@@ -1055,6 +1443,11 @@ function App() {
       setFacingMode(nextFacingMode);
       cameraReadyRef.current = true;
       setCameraState("ready");
+      if (!microphoneUnavailable) startVoiceSession(stream);
+      else {
+        setVoiceState("unavailable");
+        showToast("相机已打开，允许麦克风后才会显示语音气泡");
+      }
       if (!segmenterReady) showToast("相机已打开，人像识别还在准备");
     } catch (error) {
       cameraReadyRef.current = false;
@@ -1069,7 +1462,7 @@ function App() {
             : "相机暂时打不开，请稍后再试",
       );
     }
-  }, [facingMode, segmenterReady, showToast]);
+  }, [facingMode, segmenterReady, showToast, startVoiceSession, stopVoiceSession]);
 
   const enterCamera = useCallback(() => {
     playGuideClip("enter", { force: true });
@@ -1194,6 +1587,7 @@ function App() {
 
     try {
       const stream = canvas.captureStream(30);
+      streamRef.current?.getAudioTracks().forEach((track) => stream.addTrack(track.clone()));
       const recorder = new MediaRecorder(stream, {
         mimeType,
         videoBitsPerSecond: 5_000_000,
@@ -1303,6 +1697,8 @@ function App() {
         data-rive-mouth-animation={RIVE_MOUTH_ANIMATION}
         data-rive-capture-offset-frames={RIVE_CAPTURE_ADVANCE_FRAMES}
         data-person-layer={personLayer}
+        data-face-tracking={faceLandmarkerReady ? "ready" : "unavailable"}
+        data-voice-state={voiceState}
         data-reading-day={day}
         data-caption-mode={captionMode}
         aria-label="和叫叫合拍相机"
@@ -1313,11 +1709,21 @@ function App() {
           src={GUIDE_AUDIO.enter.path}
           preload="auto"
           playsInline
-          onPlay={() => riveMouthPlaybackRef.current?.(true)}
-          onPause={() => riveMouthPlaybackRef.current?.(false)}
-          onEnded={() => riveMouthPlaybackRef.current?.(false)}
+          onPlay={() => {
+            voicePcmMutedRef.current = true;
+            riveMouthPlaybackRef.current?.(true);
+          }}
+          onPause={() => {
+            voicePcmMutedRef.current = false;
+            riveMouthPlaybackRef.current?.(false);
+          }}
+          onEnded={() => {
+            voicePcmMutedRef.current = false;
+            riveMouthPlaybackRef.current?.(false);
+          }}
           aria-hidden="true"
         />
+        <span className="sr-only" aria-live="polite">{speechText}</span>
         <div className="viewfinder">
           <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
           <canvas ref={riveCanvasRef} className="rive-source" width={RIVE_SOURCE_SIZE.width} height={RIVE_SOURCE_SIZE.height} aria-hidden="true" />
@@ -1446,7 +1852,7 @@ function App() {
                 <span className="load-progress-track"><i style={{ transform: `scaleX(${loadProgress / 100})` }} /></span>
               </div>
             )}
-            <p className="privacy-note"><LockSimple size={14} weight="fill" />画面只在这台设备里合成，不会上传</p>
+            <p className="privacy-note"><LockSimple size={14} weight="fill" />画面只在本机合成；语音实时转文字且不保存</p>
           </div>
         )}
 
