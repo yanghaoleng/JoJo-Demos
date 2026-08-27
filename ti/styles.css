@@ -87,13 +87,15 @@ button:focus-visible {
   background: var(--paper);
   box-shadow: 0 26px 80px rgba(0, 0, 0, 0.22);
   touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .page-track {
   display: flex;
-  width: 200%;
+  width: 400%;
   height: 100%;
-  transform: translate3d(calc(var(--page-index, 0) * -50%), 0, 0);
+  transform: translate3d(calc(var(--page-index, 0) * -25%), 0, 0);
   transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
@@ -102,9 +104,9 @@ button:focus-visible {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(230px, 0.7fr);
-  width: 50%;
+  width: 25%;
   height: 100%;
-  flex: 0 0 50%;
+  flex: 0 0 25%;
   overflow: hidden;
   padding: clamp(38px, 7vh, 76px) clamp(50px, 8vw, 126px);
   background:
@@ -155,6 +157,14 @@ button:focus-visible {
 
 .book-page--second .book-page__art {
   transform: translate3d(1%, 4%, 0);
+}
+
+.book-page--third .book-page__art {
+  transform: translate3d(-4%, 5%, 0) scale(0.96);
+}
+
+.book-page--fourth .book-page__art {
+  transform: translate3d(2%, 3%, 0) scale(0.9);
 }
 
 .book-page__number {
@@ -473,7 +483,9 @@ button:focus-visible {
 
   .book-page__art,
   .book-page--first .book-page__art,
-  .book-page--second .book-page__art {
+  .book-page--second .book-page__art,
+  .book-page--third .book-page__art,
+  .book-page--fourth .book-page__art {
     align-self: end;
     justify-self: center;
     width: auto;

@@ -13,6 +13,20 @@ const quizzes = [
     success: "答对了。种植让人们可以逐渐定居下来。",
     retry: "想一想，不必经常搬家以后，人们会怎样生活？",
   },
+  {
+    question: "人们怎样知道播下的种子可以带来收获？",
+    options: ["观察四季里的生长变化", "等待别人送来粮食", "把种子一直收藏起来"],
+    correct: 0,
+    success: "答对了。人们在一次次播种与收获中积累了经验。",
+    retry: "回想嫩芽、新叶和秋天的谷物，它们记录了什么变化？",
+  },
+  {
+    question: "稳定耕种以后，人们逐渐形成了什么？",
+    options: ["漂在水上的船队", "田野旁的村落", "终年迁徙的队伍"],
+    correct: 1,
+    success: "答对了。房屋、田地和水源让村落逐渐形成。",
+    retry: "看看故事最后，人们把房屋建在了哪里？",
+  },
 ];
 
 const reader = document.querySelector("#reader");
@@ -36,7 +50,7 @@ let isQuizOpen = false;
 let dragState = null;
 let swipeStart = null;
 let revealTimer = null;
-let openOnNextFlip = false;
+let pageTwoGatePending = false;
 
 const TRIGGER_REVEAL_DELAY = 2000;
 
@@ -128,7 +142,7 @@ function scheduleQuizTrigger() {
 
 function openQuiz() {
   revealQuizTrigger();
-  openOnNextFlip = false;
+  if (currentPage === 1) pageTwoGatePending = false;
   isQuizOpen = true;
   quizDock.classList.add("is-open");
   quizTrigger.setAttribute("aria-expanded", "true");
@@ -156,17 +170,17 @@ function goToPage(nextIndex) {
   const clampedIndex = Math.max(0, Math.min(quizzes.length - 1, nextIndex));
   if (clampedIndex === currentPage) return;
 
-  const shouldOpenAfterFlip = openOnNextFlip;
+  if (currentPage === 1 && clampedIndex === 2 && pageTwoGatePending) {
+    openQuiz();
+    return;
+  }
+
+  const previousPage = currentPage;
   currentPage = clampedIndex;
   updatePageControls();
   renderQuiz();
-
-  if (shouldOpenAfterFlip) {
-    openQuiz();
-  } else {
-    openOnNextFlip = true;
-    scheduleQuizTrigger();
-  }
+  pageTwoGatePending = previousPage === 0 && currentPage === 1;
+  scheduleQuizTrigger();
 }
 
 function speakQuestion() {
