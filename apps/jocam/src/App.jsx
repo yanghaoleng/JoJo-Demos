@@ -24,9 +24,15 @@ import {
   RuntimeLoader as WebGLRuntimeLoader,
   EventType as WebGLEventType,
 } from "@rive-app/webgl2";
-import { FaceLandmarker, FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
+import { FaceLandmarker, FilesetResolver, GestureRecognizer, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
 import QRCode from "qrcode";
+import {
+  CAMERA_GESTURES,
+  advanceGestureTracker,
+  classifyCameraGesture,
+  createGestureTracker,
+} from "./gesture-recognition.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 const GUIDE_AUDIO = {
@@ -94,6 +100,16 @@ const GUIDE_AUDIO = {
     path: `${BASE_URL}audio/commands/curious.mp3`,
     text: "嗯？让我看看发生了什么！",
   },
+  gestureOk: {
+    path: `${BASE_URL}audio/gestures/ok.mp3`,
+    text: "我看到你比 OK 啦！",
+    duration: 1.933,
+  },
+  gestureHeart: {
+    path: `${BASE_URL}audio/gestures/heart.mp3`,
+    text: "我看到你比心啦！",
+    duration: 1.646,
+  },
 };
 const VOICE_ACTIONS = {
   praise: { animation: "TalkingEmotion_Praise", audio: "commandPraise", toast: "叫叫送你一个赞" },
@@ -102,6 +118,22 @@ const VOICE_ACTIONS = {
   happy: { animation: "TalkingEmotion_Happy", audio: "commandHappy", toast: "叫叫开心地笑了" },
   frighten: { animation: "TalkingEmotion_Frighten", audio: "commandFrighten", toast: "叫叫吓了一跳" },
   curious: { animation: "TalkingEmotion_Curious", audio: "commandCurious", toast: "叫叫好奇地看过来" },
+};
+const GESTURE_ACTIONS = {
+  [CAMERA_GESTURES.THUMBS_UP]: {
+    animation: "TalkingEmotion_Praise",
+    toast: "也给你点个赞",
+  },
+  [CAMERA_GESTURES.OK]: {
+    animation: "TalkingEmotion_Sure",
+    audio: "gestureOk",
+    toast: "收到你的 OK",
+  },
+  [CAMERA_GESTURES.FINGER_HEART]: {
+    animation: "TalkingEmotion_Happy",
+    audio: "gestureHeart",
+    toast: "接住你的比心",
+  },
 };
 const GUIDE_SPEAK_PROBABILITY = 0.34;
 const GUIDE_MIN_INTERVAL_MS = 7_000;
@@ -143,6 +175,7 @@ const CAPTION_MODES = {
 };
 const SEGMENT_INTERVAL_MS = 92;
 const FACE_INTERVAL_MS = 84;
+const GESTURE_INTERVAL_MS = 145;
 const FACE_MISSING_TIMEOUT_MS = 850;
 const PERSON_MASK_THRESHOLD = 0.52;
 const PERSON_FEATHER_RANGE_PX = 5;
@@ -154,6 +187,7 @@ const CORE_LOAD_ASSETS = [
   { key: "visionLoader", path: "mediapipe/wasm/vision_wasm_internal.js", bytes: 323_377, retain: false },
   { key: "segmentModel", path: "mediapipe/selfie_segmenter.tflite", bytes: 249_537, retain: true },
   { key: "faceModel", path: "mediapipe/face_landmarker.task", bytes: 3_758_596, retain: true },
+  { key: "gestureModel", path: "mediapipe/gesture_recognizer.task", bytes: 8_373_440, retain: true },
   { key: "guideEnter", path: "audio/guides/enter.mp3", bytes: 58_931, retain: false },
 ];
 const RIVE_RUNTIME_ASSETS = {
@@ -454,6 +488,8 @@ function App() {
   const rivePlaybackRateRef = useRef(COVER_RIVE_PLAYBACK_RATE);
   const segmenterRef = useRef(null);
   const faceLandmarkerRef = useRef(null);
+  const gestureRecognizerRef = useRef(null);
+  const gestureTrackerRef = useRef(createGestureTracker());
   const streamRef = useRef(null);
   const voiceSocketRef = useRef(null);
   const voiceAudioGraphRef = useRef(null);
@@ -467,6 +503,7 @@ function App() {
   const frameRef = useRef(0);
   const lastSegmentAtRef = useRef(0);
   const lastFaceAtRef = useRef(0);
+  const lastGestureAtRef = useRef(0);
   const maskReadyRef = useRef(false);
   const recordingRef = useRef(false);
   const recorderRef = useRef(null);
@@ -516,6 +553,8 @@ function App() {
   const [riveReady, setRiveReady] = useState(false);
   const [segmenterReady, setSegmenterReady] = useState(false);
   const [faceLandmarkerReady, setFaceLandmarkerReady] = useState(false);
+  const [gestureRecognizerReady, setGestureRecognizerReady] = useState(false);
+  const [lastRecognizedGesture, setLastRecognizedGesture] = useState("");
   const [cameraState, setCameraState] = useState("idle");
   const [cameraError, setCameraError] = useState("");
   const [voiceState, setVoiceState] = useState("idle");
@@ -677,6 +716,23 @@ function App() {
     }
     return true;
   }, []);
+
+  const handleGestureResult = useCallback((result, timestamp) => {
+    const candidate = classifyCameraGesture(result);
+    const update = advanceGestureTracker(gestureTrackerRef.current, candidate, timestamp);
+    gestureTrackerRef.current = update.state;
+    if (
+      !update.trigger
+      || mediaPreviewRef.current
+      || characterSwitchingRef.current
+    ) return;
+
+    const action = GESTURE_ACTIONS[update.trigger];
+    if (!action || !rivePlayAnimationRef.current?.(action.animation)) return;
+    setLastRecognizedGesture(update.trigger);
+    if (action.audio) playGuideClip(action.audio, { force: true });
+    showToast(`${CHARACTERS[activeCharacter].label}${action.toast}`);
+  }, [activeCharacter, playGuideClip, showToast]);
 
   const stopVoiceSession = useCallback(() => {
     voiceIntentionalCloseRef.current = true;
@@ -1168,6 +1224,7 @@ function App() {
         const riveBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "riveFile")];
         const modelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "segmentModel")];
         const faceModelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "faceModel")];
+        const gestureModelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "gestureModel")];
 
         setLoadProgress(84);
         setEngineMessage("正在唤醒叫叫");
@@ -1519,9 +1576,10 @@ function App() {
         const prepareVision = (async () => {
           let segmenterLoaded = false;
           let faceLoaded = false;
+          let gestureLoaded = false;
           try {
             const vision = await FilesetResolver.forVisionTasks(`${BASE_URL}mediapipe/wasm`);
-            if (cancelled) return { segmenterLoaded, faceLoaded };
+            if (cancelled) return { segmenterLoaded, faceLoaded, gestureLoaded };
             try {
               const segmenter = await ImageSegmenter.createFromOptions(vision, {
                 baseOptions: {
@@ -1567,10 +1625,37 @@ function App() {
             } catch (error) {
               console.warn("Face landmark tracking unavailable", error);
             }
+
+            try {
+              const gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
+                baseOptions: {
+                  modelAssetBuffer: new Uint8Array(gestureModelBuffer),
+                  delegate: "CPU",
+                },
+                runningMode: "VIDEO",
+                numHands: 1,
+                minHandDetectionConfidence: 0.55,
+                minHandPresenceConfidence: 0.55,
+                minTrackingConfidence: 0.55,
+                cannedGesturesClassifierOptions: {
+                  scoreThreshold: 0.62,
+                  categoryAllowlist: ["Thumb_Up"],
+                },
+              });
+              if (cancelled) gestureRecognizer.close();
+              else {
+                gestureRecognizerRef.current = gestureRecognizer;
+                setGestureRecognizerReady(true);
+                gestureLoaded = true;
+                setLoadProgress((value) => Math.max(value, 99));
+              }
+            } catch (error) {
+              console.warn("Hand gesture tracking unavailable", error);
+            }
           } catch (error) {
             console.warn("MediaPipe vision runtime unavailable", error);
           }
-          return { segmenterLoaded, faceLoaded };
+          return { segmenterLoaded, faceLoaded, gestureLoaded };
         })();
 
         const [riveLoaded, visionLoaded] = await Promise.all([prepareRive, prepareVision]);
@@ -1579,8 +1664,8 @@ function App() {
         setLoadProgress(100);
         setEngineState("ready");
         setEngineMessage(
-          visionLoaded.segmenterLoaded && visionLoaded.faceLoaded
-            ? "叫叫、人像与嘴部跟踪都准备好了"
+          visionLoaded.segmenterLoaded && visionLoaded.faceLoaded && visionLoaded.gestureLoaded
+            ? "叫叫、人像、嘴部与手势跟踪都准备好了"
             : "叫叫准备好了，部分人像能力稍后重试",
         );
       } catch (error) {
@@ -1626,6 +1711,8 @@ function App() {
       segmenterRef.current = null;
       faceLandmarkerRef.current?.close();
       faceLandmarkerRef.current = null;
+      gestureRecognizerRef.current?.close();
+      gestureRecognizerRef.current = null;
     };
   }, []);
 
@@ -1665,6 +1752,14 @@ function App() {
             console.warn("Face landmark frame failed", error);
           }
         }
+        if (gestureRecognizerRef.current && timestamp - lastGestureAtRef.current >= GESTURE_INTERVAL_MS) {
+          lastGestureAtRef.current = timestamp;
+          try {
+            handleGestureResult(gestureRecognizerRef.current.recognizeForVideo(video, timestamp), timestamp);
+          } catch (error) {
+            console.warn("Hand gesture frame failed", error);
+          }
+        }
         renderFrame();
       } else if (riveReady) {
         renderWelcomeFrame();
@@ -1674,7 +1769,7 @@ function App() {
 
     frameRef.current = window.requestAnimationFrame(loop);
     return () => window.cancelAnimationFrame(frameRef.current);
-  }, [cameraState, renderFrame, renderWelcomeFrame, riveReady, updateMask, updateMouthAnchor]);
+  }, [cameraState, handleGestureResult, renderFrame, renderWelcomeFrame, riveReady, updateMask, updateMouthAnchor]);
 
   useEffect(() => () => {
     cameraReadyRef.current = false;
@@ -1700,6 +1795,8 @@ function App() {
     setCameraState("opening");
     setCameraError("");
     maskReadyRef.current = false;
+    gestureTrackerRef.current = createGestureTracker();
+    setLastRecognizedGesture("");
     stopVoiceSession();
     streamRef.current?.getTracks().forEach((track) => track.stop());
 
@@ -2071,6 +2168,8 @@ function App() {
         data-character-switching={characterSwitching ? "true" : "false"}
         data-person-layer={personLayer}
         data-face-tracking={faceLandmarkerReady ? "ready" : "unavailable"}
+        data-gesture-tracking={gestureRecognizerReady ? "ready" : "unavailable"}
+        data-last-gesture={lastRecognizedGesture || "none"}
         data-voice-state={voiceState}
         data-reading-day={day}
         data-caption-mode={captionMode}
