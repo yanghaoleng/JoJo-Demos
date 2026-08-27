@@ -8,7 +8,7 @@ import {
   LockSimple,
   X,
 } from "@phosphor-icons/react";
-import { Rive, Layout, Fit, Alignment, RuntimeLoader, EventType } from "@rive-app/canvas";
+import { Rive, Layout, Fit, Alignment, RuntimeLoader, EventType } from "@rive-app/webgl2";
 import { FaceLandmarker, FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
 import QRCode from "qrcode";
@@ -135,8 +135,8 @@ const LONG_PRESS_MS = 430;
 const MAX_RECORDING_MS = 15_000;
 const LOAD_ASSETS = [
   { key: "riveFile", path: "media/jiaojiao.riv", bytes: 10_399_115, retain: true },
-  { key: "riveWasm", path: "rive/rive.wasm", bytes: 1_808_114, retain: false },
-  { key: "riveFallback", path: "rive/rive_fallback.wasm", bytes: 1_818_434, retain: false },
+  { key: "riveWasm", path: "rive/rive.wasm", bytes: 2_004_858, retain: false },
+  { key: "riveFallback", path: "rive/rive_fallback.wasm", bytes: 2_015_300, retain: false },
   { key: "visionWasm", path: "mediapipe/wasm/vision_wasm_internal.wasm", bytes: 11_756_954, retain: false },
   { key: "visionLoader", path: "mediapipe/wasm/vision_wasm_internal.js", bytes: 323_377, retain: false },
   { key: "segmentModel", path: "mediapipe/selfie_segmenter.tflite", bytes: 249_537, retain: true },
@@ -827,11 +827,22 @@ function App() {
 
     const isLandscape = targetWidth > targetHeight;
     const fontSize = clamp(targetWidth * (isLandscape ? 0.021 : 0.038), 22, 31);
-    const bubbleWidth = clamp(targetWidth * (isLandscape ? 0.42 : 0.68), 330, 610);
-    const textWidth = bubbleWidth - fontSize * 2.2;
     context.save();
     context.font = `700 ${fontSize}px "Mohr Rounded", "PingFang SC", sans-serif`;
-    const lines = splitBubbleText(context, text, textWidth);
+    const maxBubbleWidth = clamp(targetWidth * (isLandscape ? 0.42 : 0.68), 330, 610);
+    const horizontalPadding = fontSize * 1.1;
+    const maxTextWidth = maxBubbleWidth - horizontalPadding * 2;
+    const lines = splitBubbleText(context, text, maxTextWidth);
+    const measuredTextWidth = Math.max(
+      fontSize,
+      ...lines.map((line) => context.measureText(line).width),
+    );
+    const bubbleWidth = clamp(
+      measuredTextWidth + horizontalPadding * 2,
+      fontSize * 3.2,
+      maxBubbleWidth,
+    );
+    const textWidth = bubbleWidth - horizontalPadding * 2;
     const lineHeight = fontSize * 1.12;
     const bubbleHeight = Math.max(fontSize * 2.15, lines.length * lineHeight + fontSize * 0.92);
     const tailHeight = fontSize * 0.52;
@@ -889,7 +900,7 @@ function App() {
     if (overlay) {
       overlay.style.left = `${(bubbleX / targetWidth) * 100}%`;
       overlay.style.top = `${(bubbleY / targetHeight) * 100}%`;
-      overlay.style.width = `${(textWidth / targetWidth) * 100}%`;
+      overlay.style.width = `${(Math.min(measuredTextWidth, textWidth) / targetWidth) * 100}%`;
       overlay.style.height = `${(lines.length * lineHeight / targetHeight) * 100}%`;
       overlay.style.setProperty("--speech-font-cqw", String((fontSize / targetWidth) * 100));
     }
@@ -1100,6 +1111,7 @@ function App() {
             buffer: characterBuffer,
             canvas: riveCanvasRef.current,
             autoplay: false,
+            useOffscreenRenderer: true,
             layout: new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter }),
             onLoad: () => {
               if (cancelled) {
@@ -1905,6 +1917,7 @@ function App() {
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
         data-rive-playback-rate={activeRivePlaybackRate}
+        data-rive-renderer="webgl2"
         data-rive-switch-mode="on-complete"
         data-rive-position-basis={RIVE_POSITION_ANIMATION}
         data-rive-mouth-animation={RIVE_MOUTH_ANIMATION}
