@@ -638,18 +638,20 @@ function RecorderStage({
           onDoubleClick={onStageDoubleClick}
           onPointerUp={onStagePointerUp}
         >
-          {phase === "idle" || phase === "error" ? (
-            <img
-              className="stage-poster"
-              src={FILM_POSTER_URL}
-              alt="叫叫互动片段画面"
+          <div className="stage-media">
+            {phase === "idle" || phase === "error" ? (
+              <img
+                className="stage-poster"
+                src={FILM_POSTER_URL}
+                alt="叫叫互动片段画面"
+              />
+            ) : null}
+            <canvas
+              ref={canvasRef}
+              width={OUTPUT_SIZE.width}
+              height={OUTPUT_SIZE.height}
             />
-          ) : null}
-          <canvas
-            ref={canvasRef}
-            width={OUTPUT_SIZE.width}
-            height={OUTPUT_SIZE.height}
-          />
+          </div>
         </div>
 
         <div className="action-dock" aria-label="拍摄操作">
@@ -703,7 +705,9 @@ function ResultView({ videoUrl, mimeType, onAgain }) {
     <main className="capture-shell result-shell">
       <section className="capture-layout">
         <div className="video-stage result-stage">
-          <video src={videoUrl} controls playsInline autoPlay />
+          <div className="stage-media">
+            <video src={videoUrl} controls playsInline autoPlay />
+          </div>
         </div>
         <div className="action-dock result-actions" aria-label="成片操作">
           <a
@@ -1112,7 +1116,16 @@ export default function App() {
       if (phase !== "recording") return false;
       const bounds = reactionDisplayBoundsRef.current;
       if (!bounds || !stageElement) return false;
-      const stageRect = stageElement.getBoundingClientRect();
+      const mediaElement = stageElement.querySelector(".stage-media");
+      const stageRect = (mediaElement || stageElement).getBoundingClientRect();
+      if (
+        clientX < stageRect.left ||
+        clientX > stageRect.right ||
+        clientY < stageRect.top ||
+        clientY > stageRect.bottom
+      ) {
+        return false;
+      }
       const canvasX =
         ((clientX - stageRect.left) / stageRect.width) * OUTPUT_SIZE.width;
       const canvasY =
