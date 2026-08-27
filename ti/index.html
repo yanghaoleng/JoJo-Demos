@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#20201f" />
+    <meta
+      name="description"
+      content="儿童阅读页中的可拖拽题目浮钮与翻页触发答题弹窗 Demo"
+    />
+    <title>翻页答题 Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="demo" aria-label="翻页答题交互示意">
+      <header class="demo__header">
+        <p>神农氏的故事</p>
+        <span>左右滑动翻页</span>
+      </header>
+
+      <section class="reader" id="reader" aria-label="故事阅读区">
+        <div class="reader__viewport" id="readerViewport">
+          <div class="page-track" id="pageTrack">
+            <article class="book-page book-page--first" aria-label="故事第一页">
+              <div class="book-page__copy">
+                <p>
+                  很久很久以前，人们还不会种植粮食。大家在山林和草地间寻找食物，哪里有水，就在哪里停留，哪里有鱼，就在哪里撒网。
+                </p>
+                <p>
+                  搬家虽然辛苦，却是那时最常见的生活。人们一边寻找食物，一边学习辨认四季与草木。
+                </p>
+              </div>
+              <img
+                class="book-page__art"
+                src="./assets/farmer-child.png"
+                alt="戴斗笠的农夫和正在劳作的孩子水彩插画"
+                width="798"
+                height="1010"
+                decoding="async"
+                fetchpriority="high"
+              />
+              <span class="book-page__number" aria-hidden="true">1/2</span>
+            </article>
+
+            <article class="book-page book-page--second" aria-label="故事第二页">
+              <div class="book-page__copy">
+                <p>
+                  神农氏的故事虽然是传说，但我们的祖先也大概是在这一时期，开启了原始农业的新篇章。从此，人们的生活发生了翻天覆地的变化。
+                </p>
+                <p>
+                  在此之前，人们过着游牧生活，哪里有水，就在哪里捕鱼，哪里有草，就在哪里放牧。经常要搬家。
+                </p>
+              </div>
+              <img
+                class="book-page__art"
+                src="./assets/farmer-child.png"
+                alt="戴斗笠的农夫和正在劳作的孩子水彩插画"
+                width="798"
+                height="1010"
+                decoding="async"
+              />
+              <span class="book-page__number" aria-hidden="true">2/2</span>
+            </article>
+          </div>
+        </div>
+
+        <button class="page-nav page-nav--prev" id="prevPage" type="button" aria-label="上一页">
+          <span aria-hidden="true">‹</span>
+        </button>
+        <button class="page-nav page-nav--next" id="nextPage" type="button" aria-label="下一页">
+          <span aria-hidden="true">›</span>
+        </button>
+
+        <div class="page-status" aria-live="polite">
+          <span id="pageStatus">第 1 页，共 2 页</span>
+          <div class="page-dots" aria-hidden="true">
+            <i class="is-active"></i>
+            <i></i>
+          </div>
+        </div>
+
+        <div class="quiz-dock corner-tr" id="quizDock">
+          <button
+            class="quiz-trigger"
+            id="quizTrigger"
+            type="button"
+            aria-label="打开本页题目，可拖动到四个角"
+            aria-expanded="false"
+          >
+            <span>题</span>
+          </button>
+
+          <section
+            class="quiz-card"
+            id="quizCard"
+            aria-label="本页选择题"
+            aria-hidden="true"
+          >
+            <header class="quiz-card__header">
+              <div>
+                <span class="quiz-card__eyebrow">边读边想</span>
+                <h1 id="questionText"></h1>
+              </div>
+              <button class="quiz-card__collapse" id="collapseQuiz" type="button">
+                收起
+              </button>
+            </header>
+
+            <div
+              class="quiz-options"
+              id="quizOptions"
+              role="radiogroup"
+              aria-label="答案选项"
+            ></div>
+            <p class="quiz-feedback" id="quizFeedback" aria-live="polite">
+              选一个答案试试看
+            </p>
+
+            <footer class="quiz-card__footer">
+              <button class="listen-button" id="listenQuestion" type="button">听题</button>
+              <span>单选题</span>
+            </footer>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

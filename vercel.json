@@ -54,6 +54,10 @@
       "destination": "/DEMO/share-poster.html"
     },
     {
+      "source": "/ti",
+      "destination": "/ti/index.html"
+    },
+    {
       "source": "/",
       "destination": "/DEMO/index.html"
     }
