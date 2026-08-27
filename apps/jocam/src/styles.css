@@ -220,9 +220,6 @@ button {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 0;
-  border: 0;
-  background: transparent;
   color: #111;
   font-family: "Mohr Rounded", "PingFang SC", sans-serif;
   font-size: calc(var(--speech-font-cqw, 3.8) * 1cqw);
@@ -231,9 +228,7 @@ button {
   text-align: center;
   text-wrap: balance;
   transform: translate(-50%, -50%);
-  pointer-events: auto;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  pointer-events: none;
 }
 
 .speech-bubble-text > span {
