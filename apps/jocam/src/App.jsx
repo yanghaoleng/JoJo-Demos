@@ -590,6 +590,51 @@ function roundedRectPath(context, x, y, width, height, radius) {
   context.closePath();
 }
 
+function drawRoundedSpeechTail(context, {
+  centerX,
+  edgeY,
+  reach,
+  width,
+  lean,
+  pointsDown,
+}) {
+  const vertical = pointsDown ? 1 : -1;
+  const tipX = centerX + lean;
+  const tipY = edgeY + vertical * reach;
+  const halfWidth = width / 2;
+  const leftBaseX = centerX - halfWidth;
+  const rightBaseX = centerX + halfWidth;
+
+  context.beginPath();
+  context.moveTo(leftBaseX, edgeY);
+  context.bezierCurveTo(
+    centerX - width * 0.2,
+    edgeY,
+    tipX - width * 0.34,
+    tipY - vertical * reach * 0.2,
+    tipX,
+    tipY,
+  );
+  context.bezierCurveTo(
+    tipX + width * 0.3,
+    tipY + vertical * reach * 0.1,
+    centerX + width * 0.56,
+    edgeY + vertical * reach * 0.08,
+    rightBaseX,
+    edgeY,
+  );
+  context.bezierCurveTo(
+    centerX + width * 0.16,
+    edgeY + vertical * reach * 0.02,
+    centerX - width * 0.2,
+    edgeY + vertical * reach * 0.02,
+    leftBaseX,
+    edgeY,
+  );
+  context.closePath();
+  context.fill();
+}
+
 function drawCameraSource(context, source, rect, targetWidth, mirrored) {
   if (!mirrored) {
     context.drawImage(source, rect.x, rect.y, rect.width, rect.height);
@@ -827,6 +872,7 @@ function App() {
   const [pipOpening, setPipOpening] = useState(false);
   const [voiceState, setVoiceState] = useState("idle");
   const [speechText, setSpeechText] = useState("");
+  const [speechBubblePlacement, setSpeechBubblePlacement] = useState("above");
 
   useEffect(() => {
     if (isMobileDevice) return undefined;
@@ -1221,6 +1267,7 @@ function App() {
     speechTextRef.current = "";
     mouthAnchorRef.current = null;
     setSpeechText("");
+    setSpeechBubblePlacement("above");
     setVoiceState("idle");
   }, []);
 
@@ -1280,6 +1327,7 @@ function App() {
         if (message.type === "transcript") {
           const text = String(message.text || "").trim().slice(0, 42);
           if (!text) return;
+          if (!speechTextRef.current) setSpeechBubblePlacement("above");
           speechTextRef.current = text;
           setSpeechText(text);
           if (speechClearTimerRef.current) window.clearTimeout(speechClearTimerRef.current);
@@ -1478,40 +1526,41 @@ function App() {
     const textWidth = bubbleWidth - horizontalPadding * 2;
     const lineHeight = fontSize * 1.12;
     const bubbleHeight = Math.max(fontSize * 2.15, lines.length * lineHeight + fontSize * 0.92);
-    const tailHeight = fontSize * 0.52;
+    const tailHeight = fontSize * 1.75;
+    const tailWidth = fontSize * 1.08;
     const mouthX = anchor.x * targetWidth;
     const mouthY = anchor.y * targetHeight;
     const eyeY = anchor.eyeY * targetHeight;
     const direction = anchor.x < 0.5 ? 1 : -1;
+    const isBelowFace = speechBubblePlacement === "below";
     const captionSafeY = isLandscape ? 88 : 195;
     const bubbleX = clamp(
-      mouthX + direction * targetWidth * (isLandscape ? 0.17 : 0.2),
+      mouthX + direction * targetWidth * (isLandscape ? 0.22 : 0.24),
       bubbleWidth / 2 + 18,
       targetWidth - bubbleWidth / 2 - 18,
     );
-    const desiredBubbleY = mouthY - targetHeight * (isLandscape ? 0.21 : 0.19);
-    const eyeSafeBubbleY = eyeY - bubbleHeight / 2 - tailHeight - fontSize * 0.82;
+    const verticalOffset = targetHeight * (isLandscape ? 0.28 : 0.27);
+    const desiredBubbleY = mouthY + (isBelowFace ? verticalOffset : -verticalOffset);
+    const eyeSafeBubbleY = eyeY - bubbleHeight / 2 - tailHeight - fontSize * 1.08;
     const bubbleY = clamp(
-      Math.min(desiredBubbleY, eyeSafeBubbleY),
+      isBelowFace ? desiredBubbleY : Math.min(desiredBubbleY, eyeSafeBubbleY),
       captionSafeY + bubbleHeight / 2,
       targetHeight - bubbleHeight / 2 - tailHeight - 30,
     );
     const left = bubbleX - bubbleWidth / 2;
     const top = bubbleY - bubbleHeight / 2;
     const bottom = top + bubbleHeight;
-    const tailBaseX = clamp(mouthX, left + bubbleWidth * 0.28, left + bubbleWidth * 0.72);
-    const tailTipX = clamp(mouthX, tailBaseX - fontSize * 0.72, tailBaseX + fontSize * 0.72);
-    const tailHalfWidth = fontSize * 0.42;
-
-    context.beginPath();
-    context.moveTo(tailBaseX - tailHalfWidth, bottom - 2);
-    context.lineTo(tailTipX, bottom + tailHeight);
-    context.lineTo(tailBaseX + tailHalfWidth, bottom - 2);
-    context.closePath();
     context.fillStyle = "#ffffff";
     context.shadowColor = "rgba(0, 0, 0, 0.2)";
     context.shadowBlur = 14;
-    context.fill();
+    drawRoundedSpeechTail(context, {
+      centerX: bubbleX,
+      edgeY: isBelowFace ? top + 1 : bottom - 1,
+      reach: tailHeight,
+      width: tailWidth,
+      lean: clamp(mouthX - bubbleX, -tailWidth * 1.15, tailWidth * 1.15),
+      pointsDown: !isBelowFace,
+    });
 
     roundedRectPath(context, left, top, bubbleWidth, bubbleHeight, bubbleHeight / 2);
     context.fillStyle = "#ffffff";
@@ -1536,9 +1585,10 @@ function App() {
       overlay.style.width = `${(Math.min(measuredTextWidth, textWidth) / targetWidth) * 100}%`;
       overlay.style.height = `${(lines.length * lineHeight / targetHeight) * 100}%`;
       overlay.style.setProperty("--speech-font-cqw", String((fontSize / targetWidth) * 100));
+      overlay.dataset.placement = speechBubblePlacement;
     }
     context.restore();
-  }, []);
+  }, [speechBubblePlacement]);
 
   const drawCaption = useCallback((context, targetWidth, targetHeight) => {
     const activeCaption = CAPTION_MODES[captionMode];
@@ -3106,7 +3156,14 @@ function App() {
           <canvas ref={outputCanvasRef} className="camera-output" width={frameSize.width} height={frameSize.height} aria-label="实时合拍画面" />
 
           {cameraState === "ready" && speechText && !recording && (
-            <div ref={speechBubbleOverlayRef} className="speech-bubble-text" aria-hidden="true">
+            <button
+              ref={speechBubbleOverlayRef}
+              className="speech-bubble-text"
+              type="button"
+              data-placement={speechBubblePlacement}
+              aria-label={speechBubblePlacement === "above" ? "将语音气泡移到人物下方" : "将语音气泡移到人物上方"}
+              onClick={() => setSpeechBubblePlacement((current) => (current === "above" ? "below" : "above"))}
+            >
               <Calligraph
                 as="span"
                 variant="text"
@@ -3119,7 +3176,7 @@ function App() {
               >
                 {speechText}
               </Calligraph>
-            </div>
+            </button>
           )}
 
           {cameraState === "ready" && riveReady && (
