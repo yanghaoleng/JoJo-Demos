@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   ArrowClockwise,
   ArrowsLeftRight,
@@ -41,6 +42,7 @@ import {
   getFrontCameraLensKind,
   getMinimumCameraZoom,
   selectWidestFrontCamera,
+  shouldMirrorCamera,
 } from "./camera-selection.js";
 import {
   GESTURE_OUTLINE_DURATION_MS,
@@ -57,6 +59,13 @@ import {
 } from "./media-library.js";
 import { createShutterSamples } from "./camera-feedback.js";
 import { getFrontCameraPipRect, hasLiveVideoTrack } from "./dual-camera.js";
+import {
+  DEFAULT_PERSON_MASK_THRESHOLD,
+  DEFAULT_PERSON_MIN_RATIO,
+  getBackgroundCategoryIndex,
+  hasConfidentMaskArea,
+  hasSegmentedSubject,
+} from "./subject-segmentation.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -124,7 +133,7 @@ function resizeRenderCanvas(canvas, width, height) {
   canvas.height = height;
 }
 
-function prepareGestureOutlineMask(buffers, sourceMask, rect, targetWidth, targetHeight, revision) {
+function prepareGestureOutlineMask(buffers, sourceMask, rect, targetWidth, targetHeight, revision, mirrored) {
   const paddedWidth = targetWidth + GESTURE_OUTLINE_PADDING_PX * 2;
   const paddedHeight = targetHeight + GESTURE_OUTLINE_PADDING_PX * 2;
   const cacheKey = [
@@ -135,6 +144,7 @@ function prepareGestureOutlineMask(buffers, sourceMask, rect, targetWidth, targe
     Math.round(rect.y),
     Math.round(rect.width),
     Math.round(rect.height),
+    mirrored ? "mirrored" : "direct",
   ].join(":");
   if (buffers.cacheKey === cacheKey) return;
 
@@ -147,11 +157,15 @@ function prepareGestureOutlineMask(buffers, sourceMask, rect, targetWidth, targe
 
   silhouetteContext.clearRect(0, 0, paddedWidth, paddedHeight);
   silhouetteContext.save();
-  silhouetteContext.translate(
-    GESTURE_OUTLINE_PADDING_PX + targetWidth,
-    GESTURE_OUTLINE_PADDING_PX,
-  );
-  silhouetteContext.scale(-1, 1);
+  if (mirrored) {
+    silhouetteContext.translate(
+      GESTURE_OUTLINE_PADDING_PX + targetWidth,
+      GESTURE_OUTLINE_PADDING_PX,
+    );
+    silhouetteContext.scale(-1, 1);
+  } else {
+    silhouetteContext.translate(GESTURE_OUTLINE_PADDING_PX, GESTURE_OUTLINE_PADDING_PX);
+  }
   silhouetteContext.imageSmoothingEnabled = true;
   silhouetteContext.imageSmoothingQuality = "high";
   silhouetteContext.drawImage(sourceMask, rect.x, rect.y, rect.width, rect.height);
@@ -202,6 +216,7 @@ function drawGestureOutline(
   targetHeight,
   revision,
   timestamp,
+  mirrored,
 ) {
   prepareGestureOutlineMask(
     buffers,
@@ -210,6 +225,7 @@ function drawGestureOutline(
     targetWidth,
     targetHeight,
     revision,
+    mirrored,
   );
   const paint = paintGestureOutline(buffers, timestamp);
   const position = -GESTURE_OUTLINE_PADDING_PX;
@@ -365,10 +381,13 @@ const CAPTION_MODES = {
   streak: { prefix: "坚持连续学习叫叫阅读", dayPrefix: "第", suffix: "天" },
 };
 const SEGMENT_INTERVAL_MS = 92;
+const SUBJECT_SEGMENT_INTERVAL_MS = 420;
 const FACE_INTERVAL_MS = 84;
 const GESTURE_INTERVAL_MS = 145;
 const FACE_MISSING_TIMEOUT_MS = 850;
-const PERSON_MASK_THRESHOLD = 0.52;
+const PERSON_MASK_THRESHOLD = DEFAULT_PERSON_MASK_THRESHOLD;
+const PERSON_MIN_MASK_RATIO = DEFAULT_PERSON_MIN_RATIO;
+const PERSON_MISSING_FRAME_LIMIT = 3;
 const PERSON_FEATHER_RANGE_PX = 5;
 const LONG_PRESS_MS = 430;
 const MAX_RECORDING_MS = 15_000;
@@ -377,6 +396,7 @@ const CORE_LOAD_ASSETS = [
   { key: "visionWasm", path: "mediapipe/wasm/vision_wasm_internal.wasm", bytes: 11_756_954, retain: false },
   { key: "visionLoader", path: "mediapipe/wasm/vision_wasm_internal.js", bytes: 323_377, retain: false },
   { key: "segmentModel", path: "mediapipe/selfie_segmenter.tflite", bytes: 249_537, retain: true },
+  { key: "subjectModel", path: "mediapipe/deeplab_v3.tflite", bytes: 2_780_176, retain: true },
   { key: "faceModel", path: "mediapipe/face_landmarker.task", bytes: 3_758_596, retain: true },
   { key: "gestureModel", path: "mediapipe/gesture_recognizer.task", bytes: 8_373_440, retain: true },
   { key: "guideEnter", path: "audio/guides/enter.mp3", bytes: 58_931, retain: false },
@@ -567,7 +587,11 @@ function roundedRectPath(context, x, y, width, height, radius) {
   context.closePath();
 }
 
-function drawMirrored(context, source, rect, targetWidth) {
+function drawCameraSource(context, source, rect, targetWidth, mirrored) {
+  if (!mirrored) {
+    context.drawImage(source, rect.x, rect.y, rect.width, rect.height);
+    return;
+  }
   context.save();
   context.translate(targetWidth, 0);
   context.scale(-1, 1);
@@ -589,6 +613,10 @@ function chooseRecordingMimeType() {
 
 function getFileExtension(type) {
   return type.includes("mp4") ? "mp4" : "webm";
+}
+
+function getMediaTransitionName(id) {
+  return `jocam-media-${String(id).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
 function getTimestamp() {
@@ -699,6 +727,7 @@ function App() {
   const riveRef = useRef(null);
   const rivePlaybackRateRef = useRef(COVER_RIVE_PLAYBACK_RATE);
   const segmenterRef = useRef(null);
+  const subjectSegmenterRef = useRef(null);
   const faceLandmarkerRef = useRef(null);
   const gestureRecognizerRef = useRef(null);
   const gestureTrackerRef = useRef(createGestureTracker());
@@ -716,9 +745,12 @@ function App() {
   const lastFaceSeenAtRef = useRef(0);
   const frameRef = useRef(0);
   const lastSegmentAtRef = useRef(0);
+  const lastSubjectSegmentAtRef = useRef(0);
   const lastFaceAtRef = useRef(0);
   const lastGestureAtRef = useRef(0);
   const maskReadyRef = useRef(false);
+  const personPresentRef = useRef(false);
+  const personMissingFramesRef = useRef(0);
   const personMaskRevisionRef = useRef(0);
   const gestureEffectUntilRef = useRef(0);
   const gestureEffectTimerRef = useRef(null);
@@ -1311,6 +1343,14 @@ function App() {
     const personIndex = labels.findIndex((label) => /person|selfie|human/i.test(label));
     const mask = masks[personIndex >= 0 ? personIndex : masks.length - 1];
     const values = mask.getAsFloat32Array();
+    const personPresent = hasConfidentMaskArea(values, PERSON_MASK_THRESHOLD, PERSON_MIN_MASK_RATIO);
+    personPresentRef.current = personPresent;
+    if (!personPresent) {
+      personMissingFramesRef.current += 1;
+      if (personMissingFramesRef.current >= PERSON_MISSING_FRAME_LIMIT) maskReadyRef.current = false;
+      return;
+    }
+    personMissingFramesRef.current = 0;
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
 
@@ -1330,6 +1370,38 @@ function App() {
       imageData.data[offset + 3] = values[index] >= PERSON_MASK_THRESHOLD ? 255 : 0;
     }
 
+    maskContext.putImageData(imageData, 0, 0);
+    maskReadyRef.current = true;
+    personMaskRevisionRef.current += 1;
+  }, []);
+
+  const updateSubjectMask = useCallback((result) => {
+    if (personPresentRef.current) return;
+    const categoryMask = result.categoryMask;
+    if (!categoryMask) return;
+    const values = categoryMask.getAsUint8Array();
+    const labels = subjectSegmenterRef.current?.getLabels?.() || [];
+    const backgroundIndex = getBackgroundCategoryIndex(labels);
+    if (!hasSegmentedSubject(values, backgroundIndex)) {
+      maskReadyRef.current = false;
+      return;
+    }
+
+    const maskCanvas = maskCanvasRef.current;
+    if (!maskCanvas) return;
+    if (maskCanvas.width !== categoryMask.width || maskCanvas.height !== categoryMask.height) {
+      maskCanvas.width = categoryMask.width;
+      maskCanvas.height = categoryMask.height;
+    }
+    const maskContext = maskCanvas.getContext("2d", { willReadFrequently: true });
+    const imageData = maskContext.createImageData(categoryMask.width, categoryMask.height);
+    for (let index = 0; index < values.length; index += 1) {
+      const offset = index * 4;
+      imageData.data[offset] = 255;
+      imageData.data[offset + 1] = 255;
+      imageData.data[offset + 2] = 255;
+      imageData.data[offset + 3] = values[index] === backgroundIndex ? 0 : 255;
+    }
     maskContext.putImageData(imageData, 0, 0);
     maskReadyRef.current = true;
     personMaskRevisionRef.current += 1;
@@ -1356,8 +1428,9 @@ function App() {
     const targetHeight = outputCanvas.height;
     const rect = getCoverRect(video.videoWidth, video.videoHeight, targetWidth, targetHeight);
     const unmirroredX = rect.x + normalizedX * rect.width;
+    const displayX = shouldMirrorCamera(facingMode) ? targetWidth - unmirroredX : unmirroredX;
     const next = {
-      x: clamp((targetWidth - unmirroredX) / targetWidth, 0.02, 0.98),
+      x: clamp(displayX / targetWidth, 0.02, 0.98),
       y: clamp((rect.y + normalizedY * rect.height) / targetHeight, 0.02, 0.98),
       eyeY: clamp((rect.y + normalizedEyeY * rect.height) / targetHeight, 0.02, 0.98),
     };
@@ -1370,7 +1443,7 @@ function App() {
         }
       : next;
     lastFaceSeenAtRef.current = performance.now();
-  }, []);
+  }, [facingMode]);
 
   const drawSpeechBubble = useCallback((context, targetWidth, targetHeight, includeCanvasText = true) => {
     const text = speechTextRef.current;
@@ -1628,10 +1701,11 @@ function App() {
     const targetHeight = outputCanvas.height;
     const rect = getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight);
     const timestamp = performance.now();
+    const mirrored = shouldMirrorCamera(facingMode);
 
     outputContext.fillStyle = "#181b14";
     outputContext.fillRect(0, 0, targetWidth, targetHeight);
-    drawMirrored(outputContext, video, rect, targetWidth);
+    drawCameraSource(outputContext, video, rect, targetWidth, mirrored);
 
     const drawPerson = () => {
       if (!maskReadyRef.current || !maskCanvas?.width || !maskCanvas?.height) return;
@@ -1648,6 +1722,7 @@ function App() {
           targetHeight,
           personMaskRevisionRef.current,
           timestamp,
+          mirrored,
         );
       }
       foregroundContext.clearRect(0, 0, targetWidth, targetHeight);
@@ -1661,12 +1736,12 @@ function App() {
       }
       foregroundContext.drawImage(maskCanvas, rect.x, rect.y, rect.width, rect.height);
       foregroundContext.restore();
-      drawMirrored(outputContext, foregroundCanvas, {
+      drawCameraSource(outputContext, foregroundCanvas, {
         x: 0,
         y: 0,
         width: targetWidth,
         height: targetHeight,
-      }, targetWidth);
+      }, targetWidth, mirrored);
     };
 
     if (personLayer === "behind") drawPerson();
@@ -1678,7 +1753,7 @@ function App() {
     drawFrontCameraPip(outputContext, targetWidth, targetHeight);
     if (includeCaption) drawCaption(outputContext, targetWidth, targetHeight);
     drawSpeechBubble(outputContext, targetWidth, targetHeight, includeSpeechText);
-  }, [drawCaption, drawFrontCameraPip, drawRiveLayer, drawSpeechBubble, personLayer]);
+  }, [drawCaption, drawFrontCameraPip, drawRiveLayer, drawSpeechBubble, facingMode, personLayer]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1712,6 +1787,7 @@ function App() {
         if (cancelled) return;
         const riveBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "riveFile")];
         const modelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "segmentModel")];
+        const subjectModelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "subjectModel")];
         const faceModelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "faceModel")];
         const gestureModelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "gestureModel")];
 
@@ -2064,11 +2140,12 @@ function App() {
 
         const prepareVision = (async () => {
           let segmenterLoaded = false;
+          let subjectSegmenterLoaded = false;
           let faceLoaded = false;
           let gestureLoaded = false;
           try {
             const vision = await FilesetResolver.forVisionTasks(`${BASE_URL}mediapipe/wasm`);
-            if (cancelled) return { segmenterLoaded, faceLoaded, gestureLoaded };
+            if (cancelled) return { segmenterLoaded, subjectSegmenterLoaded, faceLoaded, gestureLoaded };
             try {
               const segmenter = await ImageSegmenter.createFromOptions(vision, {
                 baseOptions: {
@@ -2088,6 +2165,25 @@ function App() {
               }
             } catch (error) {
               console.warn("Person segmentation unavailable", error);
+            }
+
+            try {
+              const subjectSegmenter = await ImageSegmenter.createFromOptions(vision, {
+                baseOptions: {
+                  modelAssetBuffer: new Uint8Array(subjectModelBuffer),
+                  delegate: "CPU",
+                },
+                runningMode: "VIDEO",
+                outputConfidenceMasks: false,
+                outputCategoryMask: true,
+              });
+              if (cancelled) subjectSegmenter.close();
+              else {
+                subjectSegmenterRef.current = subjectSegmenter;
+                subjectSegmenterLoaded = true;
+              }
+            } catch (error) {
+              console.warn("General subject segmentation unavailable", error);
             }
 
             try {
@@ -2144,7 +2240,7 @@ function App() {
           } catch (error) {
             console.warn("MediaPipe vision runtime unavailable", error);
           }
-          return { segmenterLoaded, faceLoaded, gestureLoaded };
+          return { segmenterLoaded, subjectSegmenterLoaded, faceLoaded, gestureLoaded };
         })();
 
         const [riveLoaded, visionLoaded] = await Promise.all([prepareRive, prepareVision]);
@@ -2153,9 +2249,9 @@ function App() {
         setLoadProgress(100);
         setEngineState("ready");
         setEngineMessage(
-          visionLoaded.segmenterLoaded && visionLoaded.faceLoaded && visionLoaded.gestureLoaded
-            ? "叫叫、人像、嘴部与手势跟踪都准备好了"
-            : "叫叫准备好了，部分人像能力稍后重试",
+          visionLoaded.segmenterLoaded && visionLoaded.subjectSegmenterLoaded && visionLoaded.faceLoaded && visionLoaded.gestureLoaded
+            ? "叫叫、主体、嘴部与手势跟踪都准备好了"
+            : "叫叫准备好了，部分识别能力稍后重试",
         );
       } catch (error) {
         if (cancelled) return;
@@ -2198,6 +2294,8 @@ function App() {
       }
       segmenterRef.current?.close();
       segmenterRef.current = null;
+      subjectSegmenterRef.current?.close();
+      subjectSegmenterRef.current = null;
       faceLandmarkerRef.current?.close();
       faceLandmarkerRef.current = null;
       gestureRecognizerRef.current?.close();
@@ -2233,6 +2331,18 @@ function App() {
             console.warn("Person segmentation frame failed", error);
           }
         }
+        if (
+          subjectSegmenterRef.current
+          && !personPresentRef.current
+          && timestamp - lastSubjectSegmentAtRef.current >= SUBJECT_SEGMENT_INTERVAL_MS
+        ) {
+          lastSubjectSegmentAtRef.current = timestamp;
+          try {
+            subjectSegmenterRef.current.segmentForVideo(video, timestamp, updateSubjectMask);
+          } catch (error) {
+            console.warn("General subject segmentation frame failed", error);
+          }
+        }
         if (faceLandmarkerRef.current && timestamp - lastFaceAtRef.current >= FACE_INTERVAL_MS) {
           lastFaceAtRef.current = timestamp;
           try {
@@ -2258,7 +2368,7 @@ function App() {
 
     frameRef.current = window.requestAnimationFrame(loop);
     return () => window.cancelAnimationFrame(frameRef.current);
-  }, [cameraState, handleGestureResult, renderFrame, renderWelcomeFrame, riveReady, updateMask, updateMouthAnchor]);
+  }, [cameraState, handleGestureResult, renderFrame, renderWelcomeFrame, riveReady, updateMask, updateMouthAnchor, updateSubjectMask]);
 
   useEffect(() => () => {
     cameraReadyRef.current = false;
@@ -2309,6 +2419,9 @@ function App() {
     if (mediaLibraryCloseTimerRef.current) window.clearTimeout(mediaLibraryCloseTimerRef.current);
     if (mediaPreviewCloseTimerRef.current) window.clearTimeout(mediaPreviewCloseTimerRef.current);
     maskReadyRef.current = false;
+    personPresentRef.current = false;
+    personMissingFramesRef.current = 0;
+    lastSubjectSegmentAtRef.current = 0;
     personMaskRevisionRef.current = 0;
     gestureEffectUntilRef.current = 0;
     gestureOutlineBuffersRef.current = null;
@@ -2572,14 +2685,34 @@ function App() {
       window.clearTimeout(mediaPreviewCloseTimerRef.current);
       mediaPreviewCloseTimerRef.current = null;
     }
-    setMediaPreviewClosing(false);
-    setMediaPreviewDirection(direction);
-    mediaPreviewRef.current = item;
-    setMediaPreview(item);
+    const commit = () => {
+      flushSync(() => {
+        setMediaPreviewClosing(false);
+        setMediaPreviewDirection(direction);
+        mediaPreviewRef.current = item;
+        setMediaPreview(item);
+      });
+    };
+    if (direction === "open" && mediaLibraryOpenRef.current && document.startViewTransition) {
+      document.startViewTransition(commit);
+    } else {
+      commit();
+    }
   }, []);
 
   const closePreview = useCallback(() => {
     if (!mediaPreviewRef.current || mediaPreviewClosing) return;
+    if (mediaLibraryOpenRef.current && document.startViewTransition) {
+      document.startViewTransition(() => {
+        flushSync(() => {
+          mediaPreviewRef.current = null;
+          setMediaPreview(null);
+          setMediaPreviewClosing(false);
+          setMediaPreviewDirection("open");
+        });
+      });
+      return;
+    }
     setMediaPreviewClosing(true);
     if (mediaPreviewCloseTimerRef.current) window.clearTimeout(mediaPreviewCloseTimerRef.current);
     mediaPreviewCloseTimerRef.current = window.setTimeout(() => {
@@ -2703,7 +2836,7 @@ function App() {
     flashTimerRef.current = window.setTimeout(() => {
       flashTimerRef.current = null;
       setFlashMode("");
-    }, automatic ? 280 : 170);
+    }, 280);
 
     photoCanvas.toBlob((blob) => {
       if (!blob) {
@@ -2871,6 +3004,13 @@ function App() {
   }, [captionMode, mediaPreview, paddedDay]);
 
   const latestMedia = mediaLibrary[0] || null;
+  const mediaPreviewIndex = mediaPreview
+    ? mediaLibrary.findIndex(({ id }) => id === mediaPreview.id)
+    : -1;
+  const previousPreview = mediaPreviewIndex > 0 ? mediaLibrary[mediaPreviewIndex - 1] : null;
+  const nextPreview = mediaPreviewIndex >= 0 && mediaPreviewIndex < mediaLibrary.length - 1
+    ? mediaLibrary[mediaPreviewIndex + 1]
+    : null;
   const formattedRecordingTime = `${String(Math.floor(recordingTime / 1000)).padStart(2, "0")}.${Math.floor((recordingTime % 1000) / 100)}`;
   const readyForCamera = engineState !== "error";
   const activeRivePlaybackRate = cameraState === "ready" ? CAMERA_RIVE_PLAYBACK_RATE : COVER_RIVE_PLAYBACK_RATE;
@@ -3022,19 +3162,6 @@ function App() {
                     <ImagesSquare size={24} weight="bold" aria-hidden="true" />
                   )}
                 </button>
-                {facingMode === "environment" && (
-                  <button
-                    className={`round-control pip-control ${pipVisible ? "is-active" : ""} ${pipOpening ? "is-opening" : ""}`}
-                    type="button"
-                    disabled={recording || pipOpening}
-                    aria-pressed={pipVisible}
-                    aria-label={pipVisible ? "关闭前置摄像头小窗" : "显示前置摄像头小窗"}
-                    onClick={togglePipCamera}
-                  >
-                    <PictureInPicture size={21} weight={pipVisible ? "fill" : "bold"} aria-hidden="true" />
-                    <span className="pip-control-state" aria-hidden="true">{pipVisible ? "×" : "+"}</span>
-                  </button>
-                )}
               </div>
 
               <div className="capture-controls">
@@ -3054,45 +3181,60 @@ function App() {
                 <span className="capture-limit">最长 15 秒</span>
               </div>
 
-              <div className="camera-menu-wrap">
-                <button
-                  className={`round-control camera-menu-trigger ${cameraMenuOpen ? "is-active" : ""}`}
-                  type="button"
-                  disabled={recording}
-                  aria-expanded={cameraMenuOpen}
-                  aria-haspopup="menu"
-                  aria-label={cameraMenuOpen ? "收起相机设置菜单" : "展开相机设置菜单"}
-                  onClick={() => setCameraMenuOpen((current) => !current)}
-                >
-                  <CaretDown className="camera-menu-chevron" size={24} weight="bold" aria-hidden="true" />
-                </button>
-                {cameraMenuOpen && (
-                  <div className="camera-menu-popover" role="menu" aria-label="相机设置">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={!segmenterReady}
-                      onClick={() => {
-                        togglePersonLayer();
-                        setCameraMenuOpen(false);
-                      }}
-                    >
-                      <ArrowsLeftRight size={19} weight="bold" aria-hidden="true" />
-                      <span>{personLayer === "front" ? "切换为鸡在前" : "切换为人在前"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setCameraMenuOpen(false);
-                        switchCamera();
-                      }}
-                    >
-                      <ArrowClockwise size={20} weight="bold" aria-hidden="true" />
-                      <span>翻转镜头</span>
-                    </button>
-                  </div>
+              <div className="capture-side capture-side-right">
+                {facingMode === "environment" && (
+                  <button
+                    className={`round-control pip-control ${pipVisible ? "is-active" : ""} ${pipOpening ? "is-opening" : ""}`}
+                    type="button"
+                    disabled={recording || pipOpening}
+                    aria-pressed={pipVisible}
+                    aria-label={pipVisible ? "关闭前置摄像头小窗" : "显示前置摄像头小窗"}
+                    onClick={togglePipCamera}
+                  >
+                    <PictureInPicture size={21} weight={pipVisible ? "fill" : "bold"} aria-hidden="true" />
+                    <span className="pip-control-state" aria-hidden="true">{pipVisible ? "×" : "+"}</span>
+                  </button>
                 )}
+                <div className="camera-menu-wrap">
+                  <button
+                    className={`round-control camera-menu-trigger ${cameraMenuOpen ? "is-active" : ""}`}
+                    type="button"
+                    disabled={recording}
+                    aria-expanded={cameraMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label={cameraMenuOpen ? "收起相机设置菜单" : "展开相机设置菜单"}
+                    onClick={() => setCameraMenuOpen((current) => !current)}
+                  >
+                    <CaretDown className="camera-menu-chevron" size={24} weight="bold" aria-hidden="true" />
+                  </button>
+                  {cameraMenuOpen && (
+                    <div className="camera-menu-popover" role="menu" aria-label="相机设置">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={!segmenterReady}
+                        onClick={() => {
+                          togglePersonLayer();
+                          setCameraMenuOpen(false);
+                        }}
+                      >
+                        <ArrowsLeftRight size={19} weight="bold" aria-hidden="true" />
+                        <span>{personLayer === "front" ? "切换为鸡在前" : "切换为人在前"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setCameraMenuOpen(false);
+                          switchCamera();
+                        }}
+                      >
+                        <ArrowClockwise size={20} weight="bold" aria-hidden="true" />
+                        <span>翻转镜头</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -3171,7 +3313,14 @@ function App() {
                     onClick={() => openMediaPreview(item)}
                     aria-label={`打开${item.type === "photo" ? "照片" : "短视频"}，${formatCaptureDate(item.createdAt)}`}
                   >
-                    <span className="media-library-visual">
+                    <span
+                      className="media-library-visual"
+                      style={{
+                        viewTransitionName: mediaPreview?.id === item.id
+                          ? "none"
+                          : getMediaTransitionName(item.id),
+                      }}
+                    >
                       {item.type === "photo" ? (
                         <img src={item.url} alt="" />
                       ) : (
@@ -3205,23 +3354,58 @@ function App() {
             onPointerUp={onMediaPreviewPointerUp}
             onPointerCancel={onMediaPreviewPointerCancel}
           >
-            <div className="preview-media-wrap">
-              <div
-                className={`preview-media-clip is-${mediaPreviewDirection}`}
-                key={mediaPreview.id}
-              >
-                {mediaPreview.type === "photo" ? (
-                  <img
-                    src={mediaPreview.url}
-                    alt={getCaptionText(mediaPreview.captionMode || captionMode, mediaPreview.day || paddedDay)}
-                  />
-                ) : (
-                  <video src={mediaPreview.url} playsInline controls autoPlay loop />
-                )}
+            <div className="preview-media-carousel">
+              {previousPreview && (
+                <button
+                  className="preview-neighbor is-previous"
+                  type="button"
+                  onClick={() => showAdjacentPreview(-1)}
+                  aria-label="查看上一张作品"
+                >
+                  {previousPreview.type === "photo" ? (
+                    <img src={previousPreview.url} alt="" />
+                  ) : (
+                    <video src={previousPreview.url} muted playsInline preload="metadata" aria-hidden="true" />
+                  )}
+                </button>
+              )}
+              <div className="preview-media-wrap">
+                <div
+                  className={`preview-media-clip is-${mediaPreviewDirection}`}
+                  key={mediaPreview.id}
+                  style={{
+                    viewTransitionName: mediaPreviewDirection === "open"
+                      ? getMediaTransitionName(mediaPreview.id)
+                      : "none",
+                  }}
+                >
+                  {mediaPreview.type === "photo" ? (
+                    <img
+                      src={mediaPreview.url}
+                      alt={getCaptionText(mediaPreview.captionMode || captionMode, mediaPreview.day || paddedDay)}
+                    />
+                  ) : (
+                    <video src={mediaPreview.url} playsInline controls autoPlay loop />
+                  )}
+                </div>
+                <button className="preview-close" type="button" onClick={closePreview} aria-label="关闭预览">
+                  <X size={28} weight="bold" />
+                </button>
               </div>
-              <button className="preview-close" type="button" onClick={closePreview} aria-label="关闭预览">
-                <X size={28} weight="bold" />
-              </button>
+              {nextPreview && (
+                <button
+                  className="preview-neighbor is-next"
+                  type="button"
+                  onClick={() => showAdjacentPreview(1)}
+                  aria-label="查看下一张作品"
+                >
+                  {nextPreview.type === "photo" ? (
+                    <img src={nextPreview.url} alt="" />
+                  ) : (
+                    <video src={nextPreview.url} muted playsInline preload="metadata" aria-hidden="true" />
+                  )}
+                </button>
+              )}
             </div>
             <div className="preview-actions">
               <div>

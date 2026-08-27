@@ -447,12 +447,12 @@ button {
 }
 
 .camera-menu-chevron {
-  transform: rotate(0deg);
+  transform: rotate(180deg);
   transition: transform 300ms cubic-bezier(0.34, 1.45, 0.64, 1);
 }
 
 .camera-menu-trigger.is-active .camera-menu-chevron {
-  transform: rotate(180deg);
+  transform: rotate(0deg);
 }
 
 .camera-menu-popover {
@@ -942,7 +942,7 @@ button {
 }
 
 .camera-flash.is-manual {
-  animation: flash 170ms ease-out forwards;
+  animation: auto-flash 280ms ease-out forwards;
 }
 
 .camera-flash.is-automatic {
@@ -1176,8 +1176,19 @@ button {
 
 .preview-media-wrap {
   position: relative;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   overflow: visible;
+  z-index: 2;
+}
+
+.preview-media-carousel {
+  position: relative;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
 }
 
 .preview-media-clip {
@@ -1186,6 +1197,52 @@ button {
   overflow: hidden;
   border-radius: 20px;
   background: #241e11;
+}
+
+.media-preview.is-photo .preview-media-clip {
+  border: 3px solid #fff;
+  background: #050505;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28), 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+.preview-neighbor {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  width: 72%;
+  height: 70%;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  border-radius: 18px;
+  background: #050505;
+  opacity: 0.42;
+  filter: brightness(0.68) saturate(0.78);
+  cursor: pointer;
+  transition: opacity 180ms ease, filter 180ms ease, transform 180ms ease;
+}
+
+.preview-neighbor.is-previous {
+  left: -58%;
+  transform: translateY(-50%) scale(0.9);
+}
+
+.preview-neighbor.is-next {
+  right: -58%;
+  transform: translateY(-50%) scale(0.9);
+}
+
+.preview-neighbor:active {
+  opacity: 0.7;
+  filter: brightness(0.86) saturate(0.9);
+}
+
+.preview-neighbor img,
+.preview-neighbor video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
 .preview-media-clip.is-next {
@@ -1208,6 +1265,17 @@ button {
   width: 80%;
   height: 80%;
   place-self: center;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-group(*) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .preview-close:active {
@@ -1557,9 +1625,11 @@ button {
     transform: none;
   }
 
-  .camera-stage.is-live.is-landscape .camera-menu-wrap {
+  .camera-stage.is-live.is-landscape .capture-side-right {
     grid-row: 1;
     align-self: center;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .camera-stage.is-live.is-landscape .capture-controls {

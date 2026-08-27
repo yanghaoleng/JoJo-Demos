@@ -37,3 +37,7 @@ export function getMinimumCameraZoom(capabilities) {
   const minimumZoom = Number(capabilities?.zoom?.min);
   return Number.isFinite(minimumZoom) ? minimumZoom : null;
 }
+
+export function shouldMirrorCamera(facingMode) {
+  return facingMode === "user";
+}

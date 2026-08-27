@@ -4,6 +4,7 @@ import {
   getFrontCameraLensKind,
   getMinimumCameraZoom,
   selectWidestFrontCamera,
+  shouldMirrorCamera,
 } from "./camera-selection.js";
 
 test("only recognizes explicitly front-facing wide camera labels", () => {
@@ -37,4 +38,9 @@ test("keeps the current device when equally wide choices are available", () => {
 test("returns the minimum supported hardware zoom when available", () => {
   assert.equal(getMinimumCameraZoom({ zoom: { min: 0.5, max: 4 } }), 0.5);
   assert.equal(getMinimumCameraZoom({}), null);
+});
+
+test("mirrors only the front camera", () => {
+  assert.equal(shouldMirrorCamera("user"), true);
+  assert.equal(shouldMirrorCamera("environment"), false);
 });
