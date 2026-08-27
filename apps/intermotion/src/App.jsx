@@ -23,6 +23,8 @@ const OUTPUT_SIZE = { width: 1280, height: 720 };
 const MASK_THRESHOLD = 0.55;
 const MASK_FEATHER_PX = 3;
 const SEGMENT_INTERVAL_MS = 90;
+const OUTLINE_RADIUS_PX = 6;
+const OUTLINE_PADDING_PX = 24;
 const OUTLINE_STYLES = [
   { id: "white", label: "白色贴纸" },
   { id: "rainbow", label: "彩虹跑马灯" },
@@ -103,53 +105,131 @@ function drawFilmFrame(context, film) {
   context.drawImage(film, rect.x, rect.y, rect.width, rect.height);
 }
 
-function getOutlineFilter(styleId, timestamp, hasPersonMask) {
-  const floorShadow = "drop-shadow(0 12px 18px rgba(18,20,18,.28))";
-  if (!hasPersonMask) return floorShadow;
+function createOutlineBuffers() {
+  return {
+    sprite: document.createElement("canvas"),
+    mask: document.createElement("canvas"),
+    paint: document.createElement("canvas"),
+    cacheKey: "",
+  };
+}
+
+function resizeCanvas(canvas, width, height) {
+  if (canvas.width === width && canvas.height === height) return;
+  canvas.width = width;
+  canvas.height = height;
+}
+
+function getOutlineOffsets(radius) {
+  const offsets = [];
+  const seen = new Set();
+  [radius, Math.max(2, Math.round(radius / 2))].forEach(
+    (distance, ringIndex) => {
+      const steps = ringIndex === 0 ? 24 : 12;
+      for (let index = 0; index < steps; index += 1) {
+        const angle = (index / steps) * Math.PI * 2;
+        const x = Math.round(Math.cos(angle) * distance);
+        const y = Math.round(Math.sin(angle) * distance);
+        const key = `${x},${y}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          offsets.push({ x, y });
+        }
+      }
+    },
+  );
+  return offsets;
+}
+
+const OUTLINE_OFFSETS = getOutlineOffsets(OUTLINE_RADIUS_PX);
+
+export function prepareOutlineBuffers(
+  buffers,
+  source,
+  sourceRect,
+  targetWidth,
+  targetHeight,
+  sourceRevision,
+) {
+  const width = Math.max(1, Math.round(targetWidth));
+  const height = Math.max(1, Math.round(targetHeight));
+  const paddedWidth = width + OUTLINE_PADDING_PX * 2;
+  const paddedHeight = height + OUTLINE_PADDING_PX * 2;
+  const { sx, sy, sw, sh } = sourceRect;
+  const cacheKey = [
+    sourceRevision,
+    width,
+    height,
+    Math.round(sx * 10),
+    Math.round(sy * 10),
+    Math.round(sw * 10),
+    Math.round(sh * 10),
+  ].join(":");
+  if (buffers.cacheKey === cacheKey) return buffers;
+
+  resizeCanvas(buffers.sprite, paddedWidth, paddedHeight);
+  resizeCanvas(buffers.mask, paddedWidth, paddedHeight);
+  resizeCanvas(buffers.paint, paddedWidth, paddedHeight);
+
+  const spriteContext = buffers.sprite.getContext("2d");
+  const maskContext = buffers.mask.getContext("2d");
+  if (!spriteContext || !maskContext) return buffers;
+
+  spriteContext.clearRect(0, 0, paddedWidth, paddedHeight);
+  spriteContext.save();
+  spriteContext.translate(OUTLINE_PADDING_PX + width, OUTLINE_PADDING_PX);
+  spriteContext.scale(-1, 1);
+  spriteContext.drawImage(source, sx, sy, sw, sh, 0, 0, width, height);
+  spriteContext.restore();
+
+  maskContext.clearRect(0, 0, paddedWidth, paddedHeight);
+  maskContext.globalCompositeOperation = "source-over";
+  for (const offset of OUTLINE_OFFSETS) {
+    maskContext.drawImage(buffers.sprite, offset.x, offset.y);
+  }
+  maskContext.globalCompositeOperation = "destination-out";
+  maskContext.drawImage(buffers.sprite, 0, 0);
+  maskContext.globalCompositeOperation = "source-over";
+  buffers.cacheKey = cacheKey;
+  return buffers;
+}
+
+function paintOutline(buffers, styleId, timestamp) {
+  const { paint, mask } = buffers;
+  const context = paint.getContext("2d");
+  if (!context) return paint;
+  context.clearRect(0, 0, paint.width, paint.height);
+  context.globalCompositeOperation = "source-over";
+  context.drawImage(mask, 0, 0);
+  context.globalCompositeOperation = "source-in";
 
   if (styleId === "rainbow") {
     const baseHue = (timestamp * 0.16) % 360;
-    const colors = Array.from(
-      { length: 8 },
-      (_, index) => `hsl(${(baseHue + index * 45) % 360} 96% 62%)`,
+    const gradient = context.createLinearGradient(
+      0,
+      paint.height,
+      paint.width,
+      0,
     );
-    return [
-      `drop-shadow(4px 0 0 ${colors[0]})`,
-      `drop-shadow(3px 3px 0 ${colors[1]})`,
-      `drop-shadow(0 4px 0 ${colors[2]})`,
-      `drop-shadow(-3px 3px 0 ${colors[3]})`,
-      `drop-shadow(-4px 0 0 ${colors[4]})`,
-      `drop-shadow(-3px -3px 0 ${colors[5]})`,
-      `drop-shadow(0 -4px 0 ${colors[6]})`,
-      `drop-shadow(3px -3px 0 ${colors[7]})`,
-      `drop-shadow(0 0 11px hsl(${baseHue} 98% 66% / .8))`,
-      floorShadow,
-    ].join(" ");
+    for (let index = 0; index <= 8; index += 1) {
+      gradient.addColorStop(
+        index / 8,
+        `hsl(${(baseHue + index * 45) % 360}, 96%, 62%)`,
+      );
+    }
+    context.fillStyle = gradient;
+  } else if (styleId === "orange") {
+    const gradient = context.createLinearGradient(0, paint.height, 0, 0);
+    gradient.addColorStop(0, "#ff7628");
+    gradient.addColorStop(0.55, "#ff9d31");
+    gradient.addColorStop(1, "#ffd166");
+    context.fillStyle = gradient;
+  } else {
+    context.fillStyle = "rgba(255, 255, 255, 0.98)";
   }
-
-  if (styleId === "orange") {
-    return [
-      "drop-shadow(3px 0 0 rgba(255,139,49,.98))",
-      "drop-shadow(-3px 0 0 rgba(255,139,49,.98))",
-      "drop-shadow(0 3px 0 rgba(255,196,89,.98))",
-      "drop-shadow(0 -3px 0 rgba(255,196,89,.98))",
-      "drop-shadow(0 0 9px rgba(255,126,38,.95))",
-      "drop-shadow(0 0 18px rgba(255,103,31,.72))",
-      floorShadow,
-    ].join(" ");
-  }
-
-  return [
-    "drop-shadow(3px 0 0 rgba(255,255,255,.96))",
-    "drop-shadow(-3px 0 0 rgba(255,255,255,.96))",
-    "drop-shadow(0 3px 0 rgba(255,255,255,.96))",
-    "drop-shadow(0 -3px 0 rgba(255,255,255,.96))",
-    "drop-shadow(2px 2px 0 rgba(255,255,255,.94))",
-    "drop-shadow(-2px 2px 0 rgba(255,255,255,.94))",
-    "drop-shadow(2px -2px 0 rgba(255,255,255,.94))",
-    "drop-shadow(-2px -2px 0 rgba(255,255,255,.94))",
-    floorShadow,
-  ].join(" ");
+  context.fillRect(0, 0, paint.width, paint.height);
+  context.globalCompositeOperation = "source-over";
+  return paint;
 }
 
 function drawReactionOverlay(
@@ -160,6 +240,8 @@ function drawReactionOverlay(
   cameraEnabled,
   outlineStyleId,
   timestamp,
+  outlineBuffers,
+  personFrameRevision,
 ) {
   if (!cameraEnabled) return null;
   const source = personCanvas?.width ? personCanvas : cameraVideo;
@@ -193,17 +275,65 @@ function drawReactionOverlay(
   const x = OUTPUT_SIZE.width - targetWidth - 18;
   const y = OUTPUT_SIZE.height - targetHeight;
 
-  context.save();
-  context.translate(x + targetWidth, y);
-  context.scale(-1, 1);
-  context.filter = getOutlineFilter(
-    outlineStyleId,
-    timestamp,
-    Boolean(personCanvas?.width),
+  if (!personCanvas?.width) {
+    context.save();
+    context.translate(x + targetWidth, y);
+    context.scale(-1, 1);
+    context.shadowColor = "rgba(18, 20, 18, 0.28)";
+    context.shadowBlur = 18;
+    context.shadowOffsetY = 12;
+    context.drawImage(
+      source,
+      sx,
+      sy,
+      sw,
+      sh,
+      0,
+      0,
+      targetWidth,
+      targetHeight,
+    );
+    context.restore();
+    return { x, y, width: targetWidth, height: targetHeight };
+  }
+
+  prepareOutlineBuffers(
+    outlineBuffers,
+    source,
+    { sx, sy, sw, sh },
+    targetWidth,
+    targetHeight,
+    personFrameRevision,
   );
-  context.drawImage(source, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+  const outlinePaint = paintOutline(outlineBuffers, outlineStyleId, timestamp);
+  const bufferX = x - OUTLINE_PADDING_PX;
+  const bufferY = y - OUTLINE_PADDING_PX;
+
+  context.save();
+  context.shadowColor = "rgba(18, 20, 18, 0.3)";
+  context.shadowBlur = 18;
+  context.shadowOffsetY = 12;
+  context.drawImage(outlineBuffers.sprite, bufferX, bufferY);
   context.restore();
-  return { x, y, width: targetWidth, height: targetHeight };
+
+  if (outlineStyleId !== "white") {
+    context.save();
+    context.shadowColor =
+      outlineStyleId === "rainbow"
+        ? `hsl(${(timestamp * 0.16) % 360}, 98%, 66%)`
+        : "rgba(255, 111, 31, 0.92)";
+    context.shadowBlur = outlineStyleId === "rainbow" ? 12 : 17;
+    context.drawImage(outlinePaint, bufferX, bufferY);
+    context.restore();
+  }
+  context.drawImage(outlinePaint, bufferX, bufferY);
+  context.drawImage(outlineBuffers.sprite, bufferX, bufferY);
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: outlineBuffers.sprite.width - OUTLINE_PADDING_PX * 2,
+    height: outlineBuffers.sprite.height - OUTLINE_PADDING_PX * 2,
+  };
 }
 
 function drawComposition(
@@ -215,6 +345,8 @@ function drawComposition(
   cameraEnabled,
   outlineStyleId,
   timestamp,
+  outlineBuffers,
+  personFrameRevision,
 ) {
   drawFilmFrame(context, film);
   return drawReactionOverlay(
@@ -225,6 +357,8 @@ function drawComposition(
     cameraEnabled,
     outlineStyleId,
     timestamp,
+    outlineBuffers,
+    personFrameRevision,
   );
 }
 
@@ -468,6 +602,8 @@ export default function App() {
   const lastSegmentTimeRef = useRef(0);
   const personCanvasRef = useRef(document.createElement("canvas"));
   const maskCanvasRef = useRef(document.createElement("canvas"));
+  const outlineBuffersRef = useRef(createOutlineBuffers());
+  const personFrameRevisionRef = useRef(0);
   const personBoundsRef = useRef({
     left: 0.18,
     right: 0.82,
@@ -581,6 +717,7 @@ export default function App() {
     personContext.drawImage(maskCanvas, 0, 0, cameraWidth, cameraHeight);
     personContext.filter = "none";
     personContext.globalCompositeOperation = "source-over";
+    personFrameRevisionRef.current += 1;
 
     if (maxX >= minX && maxY >= minY) {
       const nextBounds = {
@@ -641,6 +778,8 @@ export default function App() {
         cameraEnabledRef.current,
         OUTLINE_STYLES[outlineStyleIndexRef.current].id,
         timestamp,
+        outlineBuffersRef.current,
+        personFrameRevisionRef.current,
       );
       setCurrentTime((previous) =>
         Math.abs(previous - film.currentTime) > 0.12
@@ -676,6 +815,8 @@ export default function App() {
     setCurrentTime(0);
     personCanvasRef.current.width = 0;
     personCanvasRef.current.height = 0;
+    personFrameRevisionRef.current = 0;
+    outlineBuffersRef.current.cacheKey = "";
     reactionDisplayBoundsRef.current = null;
 
     try {
