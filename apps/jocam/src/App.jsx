@@ -192,6 +192,20 @@ function getIsMobileDevice() {
   return Boolean(navigatorMobile || mobileUserAgent || iPadDesktopMode || window.matchMedia?.("(pointer: coarse)").matches);
 }
 
+function getRiveRendererMode() {
+  if (typeof window === "undefined") return "webgl2-direct";
+  const userAgent = window.navigator.userAgent || "";
+  const isAppleWebKit = /AppleWebKit/i.test(userAgent)
+    && !/(Chrome|Chromium|Edg|OPR|SamsungBrowser)/i.test(userAgent);
+  if (isAppleWebKit) return "webgl2-direct";
+  try {
+    const offscreenCanvas = new OffscreenCanvas(2, 2);
+    return offscreenCanvas.getContext("webgl2") ? "webgl2-offscreen" : "webgl2-direct";
+  } catch {
+    return "webgl2-direct";
+  }
+}
+
 function getShareUrl() {
   if (typeof window === "undefined") return "https://mikeywa.site/jocam/";
   const url = new URL(window.location.href);
@@ -437,6 +451,7 @@ function App() {
   const riveCaptureMomentRef = useRef(null);
   const riveCropXRef = useRef(RIVE_DEFAULT_CROP_X);
   const riveCropTimeoutsRef = useRef([]);
+  const riveCharacterEventCleanupRef = useRef(null);
   const riveLoadCharacterRef = useRef(null);
   const jiaojiaoBufferRef = useRef(null);
   const lvdouBufferRef = useRef(null);
@@ -479,6 +494,7 @@ function App() {
   const [facingMode, setFacingMode] = useState("user");
   const [frameOrientation, setFrameOrientation] = useState(getViewportOrientation);
   const [riveAnimationName, setRiveAnimationName] = useState(DEFAULT_RIVE_ANIMATION);
+  const [riveRendererMode] = useState(getRiveRendererMode);
   const [activeCharacter, setActiveCharacter] = useState("jiaojiao");
   const [characterSwitching, setCharacterSwitching] = useState(false);
   const [personLayer, setPersonLayer] = useState("behind");
@@ -1102,16 +1118,42 @@ function App() {
         const loadRiveCharacter = (characterBuffer) => new Promise((resolve) => {
           riveCropTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
           riveCropTimeoutsRef.current = [];
-          const previousInstance = riveRef.current;
-          riveRef.current = null;
-          previousInstance?.cleanup();
           riveCropXRef.current = RIVE_DEFAULT_CROP_X;
           setRiveReady(false);
+          const useOffscreenRenderer = riveRendererMode === "webgl2-offscreen";
+          const existingInstance = riveRef.current;
+          if (existingInstance) {
+            riveCharacterEventCleanupRef.current?.();
+            riveCharacterEventCleanupRef.current = null;
+            let settled = false;
+            const finish = (loaded) => {
+              if (settled) return;
+              settled = true;
+              existingInstance.off(EventType.Load, handleLoad);
+              existingInstance.off(EventType.LoadError, handleLoadError);
+              resolve(loaded);
+            };
+            const handleLoad = () => finish(true);
+            const handleLoadError = () => finish(false);
+            existingInstance.on(EventType.Load, handleLoad);
+            existingInstance.on(EventType.LoadError, handleLoadError);
+            try {
+              existingInstance.load({
+                buffer: characterBuffer,
+                autoplay: false,
+                useOffscreenRenderer,
+              });
+            } catch (error) {
+              console.warn("Rive character reload failed", error);
+              finish(false);
+            }
+            return;
+          }
           const instance = new Rive({
             buffer: characterBuffer,
             canvas: riveCanvasRef.current,
             autoplay: false,
-            useOffscreenRenderer: true,
+            useOffscreenRenderer,
             layout: new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter }),
             onLoad: () => {
               if (cancelled) {
@@ -1254,6 +1296,11 @@ function App() {
 
               instance.on(EventType.Loop, queueNextAfterCompletion);
               instance.on(EventType.Stop, queueNextAfterCompletion);
+              riveCharacterEventCleanupRef.current?.();
+              riveCharacterEventCleanupRef.current = () => {
+                instance.off(EventType.Loop, queueNextAfterCompletion);
+                instance.off(EventType.Stop, queueNextAfterCompletion);
+              };
 
               riveMouthPlaybackRef.current = (speaking) => {
                 const mouthAnimation = getActiveAnimation(RIVE_MOUTH_ANIMATION);
@@ -1454,6 +1501,8 @@ function App() {
       cancelled = true;
       riveCropTimeoutsRef.current.forEach((timeout) => window.clearTimeout(timeout));
       riveCropTimeoutsRef.current = [];
+      riveCharacterEventCleanupRef.current?.();
+      riveCharacterEventCleanupRef.current = null;
       riveRef.current?.cleanup();
       riveRef.current = null;
       riveLoadCharacterRef.current = null;
@@ -1917,7 +1966,7 @@ function App() {
         data-frame-orientation={frameOrientation}
         data-rive-animation={riveAnimationName}
         data-rive-playback-rate={activeRivePlaybackRate}
-        data-rive-renderer="webgl2"
+        data-rive-renderer={riveRendererMode}
         data-rive-switch-mode="on-complete"
         data-rive-position-basis={RIVE_POSITION_ANIMATION}
         data-rive-mouth-animation={RIVE_MOUTH_ANIMATION}
