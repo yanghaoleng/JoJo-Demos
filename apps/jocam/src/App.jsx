@@ -8,7 +8,22 @@ import {
   LockSimple,
   X,
 } from "@phosphor-icons/react";
-import { Rive, Layout, Fit, Alignment, RuntimeLoader, EventType } from "@rive-app/webgl2";
+import {
+  Rive as CanvasRive,
+  Layout as CanvasLayout,
+  Fit as CanvasFit,
+  Alignment as CanvasAlignment,
+  RuntimeLoader as CanvasRuntimeLoader,
+  EventType as CanvasEventType,
+} from "@rive-app/canvas";
+import {
+  Rive as WebGLRive,
+  Layout as WebGLLayout,
+  Fit as WebGLFit,
+  Alignment as WebGLAlignment,
+  RuntimeLoader as WebGLRuntimeLoader,
+  EventType as WebGLEventType,
+} from "@rive-app/webgl2";
 import { FaceLandmarker, FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
 import { Calligraph } from "calligraph";
 import QRCode from "qrcode";
@@ -133,17 +148,47 @@ const PERSON_MASK_THRESHOLD = 0.52;
 const PERSON_FEATHER_RANGE_PX = 5;
 const LONG_PRESS_MS = 430;
 const MAX_RECORDING_MS = 15_000;
-const LOAD_ASSETS = [
+const CORE_LOAD_ASSETS = [
   { key: "riveFile", path: "media/jiaojiao.riv", bytes: 10_399_115, retain: true },
-  { key: "riveWasm", path: "rive/rive.wasm", bytes: 2_004_858, retain: false },
-  { key: "riveFallback", path: "rive/rive_fallback.wasm", bytes: 2_015_300, retain: false },
   { key: "visionWasm", path: "mediapipe/wasm/vision_wasm_internal.wasm", bytes: 11_756_954, retain: false },
   { key: "visionLoader", path: "mediapipe/wasm/vision_wasm_internal.js", bytes: 323_377, retain: false },
   { key: "segmentModel", path: "mediapipe/selfie_segmenter.tflite", bytes: 249_537, retain: true },
   { key: "faceModel", path: "mediapipe/face_landmarker.task", bytes: 3_758_596, retain: true },
   { key: "guideEnter", path: "audio/guides/enter.mp3", bytes: 58_931, retain: false },
 ];
-const LOAD_TOTAL_BYTES = LOAD_ASSETS.reduce((total, asset) => total + asset.bytes, 0);
+const RIVE_RUNTIME_ASSETS = {
+  canvas: [
+    { key: "riveWasm", path: "rive/canvas.wasm", bytes: 1_808_114, retain: false },
+    { key: "riveFallback", path: "rive/canvas_fallback.wasm", bytes: 1_818_434, retain: false },
+  ],
+  webgl2: [
+    { key: "riveWasm", path: "rive/rive.wasm", bytes: 2_004_858, retain: false },
+    { key: "riveFallback", path: "rive/rive_fallback.wasm", bytes: 2_015_300, retain: false },
+  ],
+};
+const RIVE_RUNTIMES = {
+  canvas: {
+    Rive: CanvasRive,
+    Layout: CanvasLayout,
+    Fit: CanvasFit,
+    Alignment: CanvasAlignment,
+    RuntimeLoader: CanvasRuntimeLoader,
+    EventType: CanvasEventType,
+  },
+  webgl2: {
+    Rive: WebGLRive,
+    Layout: WebGLLayout,
+    Fit: WebGLFit,
+    Alignment: WebGLAlignment,
+    RuntimeLoader: WebGLRuntimeLoader,
+    EventType: WebGLEventType,
+  },
+};
+
+function getLoadAssets(rendererMode) {
+  const runtimeKey = rendererMode === "canvas" ? "canvas" : "webgl2";
+  return [CORE_LOAD_ASSETS[0], ...RIVE_RUNTIME_ASSETS[runtimeKey], ...CORE_LOAD_ASSETS.slice(1)];
+}
 const CHARACTERS = {
   jiaojiao: { label: "叫叫", path: "media/jiaojiao.riv" },
   lvdou: { label: "绿豆", path: "media/lvdou.riv" },
@@ -193,16 +238,18 @@ function getIsMobileDevice() {
 }
 
 function getRiveRendererMode() {
-  if (typeof window === "undefined") return "webgl2-direct";
+  if (typeof window === "undefined") return "canvas";
   const userAgent = window.navigator.userAgent || "";
   const isAppleWebKit = /AppleWebKit/i.test(userAgent)
     && !/(Chrome|Chromium|Edg|OPR|SamsungBrowser)/i.test(userAgent);
-  if (isAppleWebKit) return "webgl2-direct";
+  if (isAppleWebKit) return "canvas";
   try {
+    const probeCanvas = document.createElement("canvas");
+    if (!probeCanvas.getContext("webgl2")) return "canvas";
     const offscreenCanvas = new OffscreenCanvas(2, 2);
     return offscreenCanvas.getContext("webgl2") ? "webgl2-offscreen" : "webgl2-direct";
   } catch {
-    return "webgl2-direct";
+    return "canvas";
   }
 }
 
@@ -494,7 +541,7 @@ function App() {
   const [facingMode, setFacingMode] = useState("user");
   const [frameOrientation, setFrameOrientation] = useState(getViewportOrientation);
   const [riveAnimationName, setRiveAnimationName] = useState(DEFAULT_RIVE_ANIMATION);
-  const [riveRendererMode] = useState(getRiveRendererMode);
+  const [riveRendererMode, setRiveRendererMode] = useState(getRiveRendererMode);
   const [activeCharacter, setActiveCharacter] = useState("jiaojiao");
   const [characterSwitching, setCharacterSwitching] = useState(false);
   const [personLayer, setPersonLayer] = useState("behind");
@@ -1095,22 +1142,32 @@ function App() {
       try {
         setEngineState("loading");
         setEngineMessage("正在下载叫叫和人像模型");
-        RuntimeLoader.setWasmUrl(`${BASE_URL}rive/rive.wasm`);
-        RuntimeLoader.setWasmFallbackUrl(`${BASE_URL}rive/rive_fallback.wasm`);
+        let activeRiveRendererMode = riveRendererMode;
+        const configureRiveRuntime = (rendererMode) => {
+          const runtimeKey = rendererMode === "canvas" ? "canvas" : "webgl2";
+          const runtime = RIVE_RUNTIMES[runtimeKey];
+          const runtimeAssets = RIVE_RUNTIME_ASSETS[runtimeKey];
+          runtime.RuntimeLoader.setWasmUrl(`${BASE_URL}${runtimeAssets[0].path}`);
+          runtime.RuntimeLoader.setWasmFallbackUrl(`${BASE_URL}${runtimeAssets[1].path}`);
+          return runtime;
+        };
+        configureRiveRuntime(activeRiveRendererMode);
+        const loadAssets = getLoadAssets(activeRiveRendererMode);
+        const loadTotalBytes = loadAssets.reduce((total, asset) => total + asset.bytes, 0);
 
-        const loadedByKey = Object.fromEntries(LOAD_ASSETS.map((asset) => [asset.key, 0]));
+        const loadedByKey = Object.fromEntries(loadAssets.map((asset) => [asset.key, 0]));
         const onProgress = (key, loaded) => {
           loadedByKey[key] = loaded;
           const totalLoaded = Object.values(loadedByKey).reduce((total, value) => total + value, 0);
-          const percent = Math.round(3 + (totalLoaded / LOAD_TOTAL_BYTES) * 78);
+          const percent = Math.round(3 + (totalLoaded / loadTotalBytes) * 78);
           if (!cancelled) setLoadProgress(clamp(percent, 3, 81));
         };
 
-        const downloads = await Promise.all(LOAD_ASSETS.map((asset) => fetchAsset(asset, onProgress)));
+        const downloads = await Promise.all(loadAssets.map((asset) => fetchAsset(asset, onProgress)));
         if (cancelled) return;
-        const riveBuffer = downloads[LOAD_ASSETS.findIndex((asset) => asset.key === "riveFile")];
-        const modelBuffer = downloads[LOAD_ASSETS.findIndex((asset) => asset.key === "segmentModel")];
-        const faceModelBuffer = downloads[LOAD_ASSETS.findIndex((asset) => asset.key === "faceModel")];
+        const riveBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "riveFile")];
+        const modelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "segmentModel")];
+        const faceModelBuffer = downloads[loadAssets.findIndex((asset) => asset.key === "faceModel")];
 
         setLoadProgress(84);
         setEngineMessage("正在唤醒叫叫");
@@ -1120,7 +1177,15 @@ function App() {
           riveCropTimeoutsRef.current = [];
           riveCropXRef.current = RIVE_DEFAULT_CROP_X;
           setRiveReady(false);
-          const useOffscreenRenderer = riveRendererMode === "webgl2-offscreen";
+          const runtime = configureRiveRuntime(activeRiveRendererMode);
+          const {
+            Rive: RiveClass,
+            Layout: RiveLayout,
+            Fit: RiveFit,
+            Alignment: RiveAlignment,
+            EventType: RiveEventType,
+          } = runtime;
+          const useOffscreenRenderer = activeRiveRendererMode === "webgl2-offscreen";
           const existingInstance = riveRef.current;
           if (existingInstance) {
             riveCharacterEventCleanupRef.current?.();
@@ -1129,14 +1194,14 @@ function App() {
             const finish = (loaded) => {
               if (settled) return;
               settled = true;
-              existingInstance.off(EventType.Load, handleLoad);
-              existingInstance.off(EventType.LoadError, handleLoadError);
+              existingInstance.off(RiveEventType.Load, handleLoad);
+              existingInstance.off(RiveEventType.LoadError, handleLoadError);
               resolve(loaded);
             };
             const handleLoad = () => finish(true);
             const handleLoadError = () => finish(false);
-            existingInstance.on(EventType.Load, handleLoad);
-            existingInstance.on(EventType.LoadError, handleLoadError);
+            existingInstance.on(RiveEventType.Load, handleLoad);
+            existingInstance.on(RiveEventType.LoadError, handleLoadError);
             try {
               existingInstance.load({
                 buffer: characterBuffer,
@@ -1149,12 +1214,12 @@ function App() {
             }
             return;
           }
-          const instance = new Rive({
+          const instance = new RiveClass({
             buffer: characterBuffer,
             canvas: riveCanvasRef.current,
             autoplay: false,
             useOffscreenRenderer,
-            layout: new Layout({ fit: Fit.Contain, alignment: Alignment.BottomCenter }),
+            layout: new RiveLayout({ fit: RiveFit.Contain, alignment: RiveAlignment.BottomCenter }),
             onLoad: () => {
               if (cancelled) {
                 instance.cleanup();
@@ -1281,7 +1346,7 @@ function App() {
                   || completionQueued
                   || !activeAnimationName
                 ) return;
-                const completedAnimation = event.type === EventType.Loop
+                const completedAnimation = event.type === RiveEventType.Loop
                   ? event.data?.animation
                   : Array.isArray(event.data) && event.data.includes(activeAnimationName)
                     ? activeAnimationName
@@ -1294,12 +1359,12 @@ function App() {
                 });
               };
 
-              instance.on(EventType.Loop, queueNextAfterCompletion);
-              instance.on(EventType.Stop, queueNextAfterCompletion);
+              instance.on(RiveEventType.Loop, queueNextAfterCompletion);
+              instance.on(RiveEventType.Stop, queueNextAfterCompletion);
               riveCharacterEventCleanupRef.current?.();
               riveCharacterEventCleanupRef.current = () => {
-                instance.off(EventType.Loop, queueNextAfterCompletion);
-                instance.off(EventType.Stop, queueNextAfterCompletion);
+                instance.off(RiveEventType.Loop, queueNextAfterCompletion);
+                instance.off(RiveEventType.Stop, queueNextAfterCompletion);
               };
 
               riveMouthPlaybackRef.current = (speaking) => {
@@ -1408,7 +1473,11 @@ function App() {
               resolve(true);
             },
             onLoadError: () => {
-              instance.cleanup();
+              try {
+                instance.cleanup();
+              } catch (error) {
+                console.warn("Rive renderer cleanup failed", error);
+              }
               if (riveRef.current === instance) riveRef.current = null;
               resolve(false);
             },
@@ -1418,7 +1487,34 @@ function App() {
         });
         riveLoadCharacterRef.current = loadRiveCharacter;
         jiaojiaoBufferRef.current = riveBuffer;
-        const prepareRive = loadRiveCharacter(riveBuffer);
+        const prepareRive = (async () => {
+          let loaded = false;
+          try {
+            loaded = await loadRiveCharacter(riveBuffer);
+          } catch (error) {
+            console.warn("Preferred Rive renderer failed", error);
+          }
+          if (loaded || activeRiveRendererMode === "canvas") return loaded;
+
+          riveCharacterEventCleanupRef.current?.();
+          riveCharacterEventCleanupRef.current = null;
+          try {
+            riveRef.current?.cleanup();
+          } catch (error) {
+            console.warn("WebGL2 cleanup before Canvas fallback failed", error);
+          }
+          riveRef.current = null;
+          activeRiveRendererMode = "canvas";
+          setRiveRendererMode("canvas");
+          setEngineMessage("正在使用兼容模式唤醒叫叫");
+          configureRiveRuntime("canvas");
+          try {
+            return await loadRiveCharacter(riveBuffer);
+          } catch (error) {
+            console.warn("Canvas Rive fallback failed", error);
+            return false;
+          }
+        })();
 
         const prepareVision = (async () => {
           let segmenterLoaded = false;
