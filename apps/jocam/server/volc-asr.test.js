@@ -19,3 +19,10 @@ test("parseServerFrame handles responses without a sequence field", () => {
   compressed.copy(frame, 8);
   assert.equal(protocolInternals.parseServerFrame(frame).payload.result.text, "你好");
 });
+
+test("buildConnectRequest sends brand terms as Volcengine context hotwords", () => {
+  const request = protocolInternals.buildConnectRequest({ hotwords: ["叫叫", "绿豆"] }, "request-id");
+  assert.deepEqual(JSON.parse(request.request.context), {
+    hotwords: [{ word: "叫叫" }, { word: "绿豆" }],
+  });
+});

@@ -1,6 +1,7 @@
 import http from "node:http";
 import { WebSocketServer } from "ws";
 import { getArkConfig, inferJiaojiaoAction } from "./ark-command.js";
+import { correctBrandTranscript } from "./brand-lexicon.js";
 import { getVolcAsrConfig, VolcAsrSession } from "./volc-asr.js";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -25,10 +26,19 @@ try {
 }
 
 const activeByIp = new Map();
+const correctionMetrics = { applied: 0, lastAppliedAt: null };
 const server = http.createServer((request, response) => {
   if (request.url === "/health") {
     response.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    response.end(JSON.stringify({ ok: true, service: "jocam-voice" }));
+    response.end(JSON.stringify({
+      ok: true,
+      service: "jocam-voice",
+      brandLexicon: {
+        hotwordCount: asrConfig.hotwords.length,
+        correctionsApplied: correctionMetrics.applied,
+        lastCorrectionAt: correctionMetrics.lastAppliedAt,
+      },
+    }));
     return;
   }
   response.writeHead(404);
@@ -129,8 +139,18 @@ websocketServer.on("connection", (client) => {
       config: asrConfig,
       onReady: () => sendJson(client, { type: "ready" }),
       onTranscript: (transcript) => {
-        sendJson(client, { type: "transcript", ...transcript });
-        if (transcript.final) runInference(transcript.text);
+        const corrected = correctBrandTranscript(transcript.text);
+        const normalizedTranscript = { ...transcript, text: corrected.text };
+        sendJson(client, { type: "transcript", ...normalizedTranscript });
+        if (transcript.final && corrected.corrections.length) {
+          const applied = corrected.corrections.reduce((sum, item) => sum + item.occurrences, 0);
+          correctionMetrics.applied += applied;
+          correctionMetrics.lastAppliedAt = new Date().toISOString();
+          console.info("ASR brand correction", {
+            rules: corrected.corrections.map(({ heard, brandTerm, occurrences }) => ({ heard, brandTerm, occurrences })),
+          });
+        }
+        if (transcript.final) runInference(corrected.text);
       },
       onError: (error) => {
         console.error("ASR session failed", { name: error.name, message: error.message });

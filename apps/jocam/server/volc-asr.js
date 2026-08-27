@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import WebSocket from "ws";
+import { buildHotwordContext, getBrandTerms } from "./brand-lexicon.js";
 
 const MESSAGE_FULL_CLIENT_REQUEST = 0x1;
 const MESSAGE_AUDIO_ONLY_REQUEST = 0x2;
@@ -90,11 +91,33 @@ export function getVolcAsrConfig(env = process.env) {
     apiKey: env.VOLC_SPEECH_API_KEY || "",
     appId: env.VOLC_SPEECH_APP_ID || "",
     accessToken: env.VOLC_SPEECH_ACCESS_TOKEN || "",
+    hotwords: getBrandTerms(env),
   };
   if (!config.apiKey && !(config.appId && config.accessToken)) {
     throw new Error("Volcengine speech credentials are not configured");
   }
   return config;
+}
+
+function buildConnectRequest(config, requestId) {
+  const context = buildHotwordContext(config.hotwords);
+  return {
+    user: { uid: requestId },
+    audio: { format: "pcm", codec: "raw", rate: 16_000, bits: 16, channel: 1 },
+    request: {
+      model_name: "bigmodel",
+      enable_itn: true,
+      enable_punc: true,
+      enable_ddc: true,
+      enable_nonstream: true,
+      enable_accelerate_text: true,
+      show_utterances: true,
+      result_type: "full",
+      end_window_size: 800,
+      force_to_speech_time: 1_000,
+      ...(context ? { context } : {}),
+    },
+  };
 }
 
 export class VolcAsrSession {
@@ -124,22 +147,7 @@ export class VolcAsrSession {
       };
 
       socket.once("open", () => {
-        const request = {
-          user: { uid: this.requestId },
-          audio: { format: "pcm", codec: "raw", rate: 16_000, bits: 16, channel: 1 },
-          request: {
-            model_name: "bigmodel",
-            enable_itn: true,
-            enable_punc: true,
-            enable_ddc: true,
-            enable_nonstream: true,
-            enable_accelerate_text: true,
-            show_utterances: true,
-            result_type: "full",
-            end_window_size: 800,
-            force_to_speech_time: 1_000,
-          },
-        };
+        const request = buildConnectRequest(this.config, this.requestId);
         socket.send(buildFrame(
           MESSAGE_FULL_CLIENT_REQUEST,
           0,
@@ -195,4 +203,4 @@ export class VolcAsrSession {
   }
 }
 
-export const protocolInternals = { buildFrame, extractTranscript, parseServerFrame };
+export const protocolInternals = { buildConnectRequest, buildFrame, extractTranscript, parseServerFrame };
