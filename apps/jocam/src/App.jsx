@@ -8,6 +8,7 @@ import {
   DownloadSimple,
   ImagesSquare,
   LockSimple,
+  PictureInPicture,
   PlayCircle,
   X,
 } from "@phosphor-icons/react";
@@ -55,6 +56,7 @@ import {
   storeMediaCapture,
 } from "./media-library.js";
 import { createShutterSamples } from "./camera-feedback.js";
+import { getFrontCameraPipRect, hasLiveVideoTrack } from "./dual-camera.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 
@@ -682,6 +684,7 @@ function App() {
   const caption = CAPTION_MODES[captionMode];
 
   const videoRef = useRef(null);
+  const pipVideoRef = useRef(null);
   const outputCanvasRef = useRef(null);
   const photoCanvasRef = useRef(null);
   const riveCanvasRef = useRef(null);
@@ -700,6 +703,8 @@ function App() {
   const gestureRecognizerRef = useRef(null);
   const gestureTrackerRef = useRef(createGestureTracker());
   const streamRef = useRef(null);
+  const pipStreamRef = useRef(null);
+  const pipRequestIdRef = useRef(0);
   const voiceSocketRef = useRef(null);
   const voiceAudioGraphRef = useRef(null);
   const speechBubbleOverlayRef = useRef(null);
@@ -780,6 +785,8 @@ function App() {
   const [cameraState, setCameraState] = useState("idle");
   const [cameraError, setCameraError] = useState("");
   const [cameraLensMode, setCameraLensMode] = useState("default");
+  const [pipVisible, setPipVisible] = useState(false);
+  const [pipOpening, setPipOpening] = useState(false);
   const [voiceState, setVoiceState] = useState("idle");
   const [speechText, setSpeechText] = useState("");
 
@@ -913,6 +920,84 @@ function App() {
       console.warn("Shutter sound unavailable", error);
     }
   }, [unlockShutterSound]);
+
+  const stopPipCamera = useCallback(() => {
+    pipRequestIdRef.current += 1;
+    pipStreamRef.current?.getTracks().forEach((track) => track.stop());
+    pipStreamRef.current = null;
+    if (pipVideoRef.current) pipVideoRef.current.srcObject = null;
+    setPipVisible(false);
+    setPipOpening(false);
+  }, []);
+
+  const startPipCamera = useCallback(async (mainStream = streamRef.current) => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return { ok: false, mainInterrupted: false };
+    }
+
+    const requestId = pipRequestIdRef.current + 1;
+    pipRequestIdRef.current = requestId;
+    pipStreamRef.current?.getTracks().forEach((track) => track.stop());
+    pipStreamRef.current = null;
+    setPipVisible(false);
+    setPipOpening(true);
+    let pipStream;
+    try {
+      const pipConstraints = {
+        facingMode: { exact: "user" },
+        width: { ideal: 720 },
+        height: { ideal: 960 },
+      };
+      pipStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: pipConstraints,
+      });
+      const preferredCamera = await preferWidestFrontCamera(
+        navigator.mediaDevices,
+        pipStream,
+        pipConstraints,
+      );
+      pipStream = preferredCamera.stream;
+      if (requestId !== pipRequestIdRef.current) {
+        pipStream.getTracks().forEach((track) => track.stop());
+        return { ok: false, mainInterrupted: false, cancelled: true };
+      }
+
+      const pipVideo = pipVideoRef.current;
+      if (!pipVideo) throw new Error("Front camera preview is unavailable");
+      pipStreamRef.current = pipStream;
+      pipVideo.srcObject = pipStream;
+      await pipVideo.play();
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+      if (mainStream && !hasLiveVideoTrack(mainStream)) {
+        const interruption = new Error("Opening the front camera interrupted the rear camera");
+        interruption.name = "DualCameraInterruptionError";
+        throw interruption;
+      }
+
+      const pipTrack = pipStream.getVideoTracks()[0];
+      pipTrack?.addEventListener("ended", () => {
+        if (pipRequestIdRef.current !== requestId) return;
+        pipStreamRef.current = null;
+        if (pipVideoRef.current) pipVideoRef.current.srcObject = null;
+        setPipVisible(false);
+        setPipOpening(false);
+      }, { once: true });
+      setPipVisible(true);
+      return { ok: true, mainInterrupted: false };
+    } catch (error) {
+      pipStream?.getTracks().forEach((track) => track.stop());
+      if (pipStreamRef.current === pipStream) pipStreamRef.current = null;
+      if (pipVideoRef.current) pipVideoRef.current.srcObject = null;
+      setPipVisible(false);
+      const mainInterrupted = error?.name === "DualCameraInterruptionError"
+        || Boolean(mainStream && !hasLiveVideoTrack(mainStream));
+      console.warn("Front camera picture-in-picture unavailable", error);
+      return { ok: false, mainInterrupted, error };
+    } finally {
+      if (requestId === pipRequestIdRef.current) setPipOpening(false);
+    }
+  }, []);
 
   const addMediaCapture = useCallback((capture, { automatic = false } = {}) => {
     const item = {
@@ -1485,6 +1570,45 @@ function App() {
     drawRiveLayer(outputContext, outputCanvas, true);
   }, [drawRiveLayer]);
 
+  const drawFrontCameraPip = useCallback((context, targetWidth, targetHeight) => {
+    const pipVideo = pipVideoRef.current;
+    if (!pipVisible || !pipVideo || pipVideo.readyState < 2) return;
+    const pipRect = getFrontCameraPipRect(targetWidth, targetHeight);
+    const sourceWidth = pipVideo.videoWidth || 720;
+    const sourceHeight = pipVideo.videoHeight || 960;
+    const coverRect = getCoverRect(sourceWidth, sourceHeight, pipRect.width, pipRect.height);
+    const borderWidth = Math.max(4, Math.round(pipRect.width * 0.025));
+
+    context.save();
+    context.shadowColor = "rgba(10, 8, 3, 0.34)";
+    context.shadowBlur = Math.max(14, Math.round(pipRect.width * 0.09));
+    roundedRectPath(
+      context,
+      pipRect.x - borderWidth,
+      pipRect.y - borderWidth,
+      pipRect.width + borderWidth * 2,
+      pipRect.height + borderWidth * 2,
+      pipRect.radius + borderWidth,
+    );
+    context.fillStyle = "#ffd84d";
+    context.fill();
+    context.restore();
+
+    context.save();
+    roundedRectPath(context, pipRect.x, pipRect.y, pipRect.width, pipRect.height, pipRect.radius);
+    context.clip();
+    context.translate(pipRect.x + pipRect.width, pipRect.y);
+    context.scale(-1, 1);
+    context.drawImage(
+      pipVideo,
+      coverRect.x,
+      coverRect.y,
+      coverRect.width,
+      coverRect.height,
+    );
+    context.restore();
+  }, [pipVisible]);
+
   const renderFrame = useCallback((
     includeCaption = recordingRef.current,
     riveCanvasOverride = null,
@@ -1551,9 +1675,10 @@ function App() {
 
     if (personLayer === "front") drawPerson();
 
+    drawFrontCameraPip(outputContext, targetWidth, targetHeight);
     if (includeCaption) drawCaption(outputContext, targetWidth, targetHeight);
     drawSpeechBubble(outputContext, targetWidth, targetHeight, includeSpeechText);
-  }, [drawCaption, drawRiveLayer, drawSpeechBubble, personLayer]);
+  }, [drawCaption, drawFrontCameraPip, drawRiveLayer, drawSpeechBubble, personLayer]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2138,6 +2263,7 @@ function App() {
   useEffect(() => () => {
     cameraReadyRef.current = false;
     stopVoiceSession();
+    stopPipCamera();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingIntervalRef.current) window.clearInterval(recordingIntervalRef.current);
     if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
@@ -2155,9 +2281,12 @@ function App() {
     for (const item of mediaLibraryRef.current) {
       if (item.url) URL.revokeObjectURL(item.url);
     }
-  }, [stopVoiceSession]);
+  }, [stopPipCamera, stopVoiceSession]);
 
-  const openCamera = useCallback(async (nextFacingMode = facingMode) => {
+  const openCamera = useCallback(async (
+    nextFacingMode = facingMode,
+    { attemptPip = nextFacingMode === "environment" } = {},
+  ) => {
     cameraReadyRef.current = false;
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraState("error");
@@ -2191,6 +2320,7 @@ function App() {
     setLastRecognizedGesture("");
     setActiveGestureEffect("");
     stopVoiceSession();
+    stopPipCamera();
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
 
@@ -2201,22 +2331,31 @@ function App() {
         width: { ideal: 1280 },
         height: { ideal: 720 },
       };
-      let microphoneUnavailable = false;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            channelCount: { ideal: 1 },
-            echoCancellation: { ideal: true },
-            noiseSuppression: { ideal: true },
-            autoGainControl: { ideal: true },
-          },
-          video: videoConstraints,
-        });
-      } catch (mediaError) {
-        microphoneUnavailable = true;
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
-        console.warn("Microphone permission unavailable; continuing with camera only", mediaError);
-      }
+      const acquireMainStream = async () => {
+        try {
+          return {
+            stream: await navigator.mediaDevices.getUserMedia({
+              audio: {
+                channelCount: { ideal: 1 },
+                echoCancellation: { ideal: true },
+                noiseSuppression: { ideal: true },
+                autoGainControl: { ideal: true },
+              },
+              video: videoConstraints,
+            }),
+            microphoneUnavailable: false,
+          };
+        } catch (mediaError) {
+          console.warn("Microphone permission unavailable; continuing with camera only", mediaError);
+          return {
+            stream: await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints }),
+            microphoneUnavailable: true,
+          };
+        }
+      };
+      let acquired = await acquireMainStream();
+      stream = acquired.stream;
+      let microphoneUnavailable = acquired.microphoneUnavailable;
 
       if (nextFacingMode === "user") {
         const preferredCamera = await preferWidestFrontCamera(navigator.mediaDevices, stream, videoConstraints);
@@ -2227,6 +2366,20 @@ function App() {
       const video = videoRef.current;
       video.srcObject = stream;
       await video.play();
+      let pipResult = null;
+      if (nextFacingMode === "environment" && attemptPip) {
+        pipResult = await startPipCamera(stream);
+        if (pipResult.mainInterrupted) {
+          stopPipCamera();
+          stream.getTracks().forEach((track) => track.stop());
+          acquired = await acquireMainStream();
+          stream = acquired.stream;
+          microphoneUnavailable = acquired.microphoneUnavailable;
+          streamRef.current = stream;
+          video.srcObject = stream;
+          await video.play();
+        }
+      }
       setFacingMode(nextFacingMode);
       cameraReadyRef.current = true;
       setCameraState("ready");
@@ -2252,7 +2405,11 @@ function App() {
         setVoiceState("unavailable");
         showToast("相机已打开，允许麦克风后才会显示语音气泡");
       }
-      if (!segmenterReady) showToast("相机已打开，人像识别还在准备");
+      if (pipResult && !pipResult.ok) {
+        showToast("当前设备暂不支持前后双摄，已保留后摄主画面");
+      } else if (!segmenterReady) {
+        showToast("相机已打开，人像识别还在准备");
+      }
     } catch (error) {
       cameraReadyRef.current = false;
       stream?.getTracks().forEach((track) => track.stop());
@@ -2268,7 +2425,7 @@ function App() {
             : "相机暂时打不开，请稍后再试",
       );
     }
-  }, [facingMode, preloadLvdou, segmenterReady, showToast, startVoiceSession, stopVoiceSession]);
+  }, [facingMode, preloadLvdou, segmenterReady, showToast, startPipCamera, startVoiceSession, stopPipCamera, stopVoiceSession]);
 
   const enterCamera = useCallback(() => {
     unlockShutterSound();
@@ -2280,6 +2437,24 @@ function App() {
     if (recordingRef.current) return;
     openCamera(facingMode === "user" ? "environment" : "user");
   }, [facingMode, openCamera]);
+
+  const togglePipCamera = useCallback(async () => {
+    if (recordingRef.current || facingMode !== "environment" || pipOpening) return;
+    if (pipVisible) {
+      stopPipCamera();
+      showToast("前摄小窗已关闭");
+      return;
+    }
+    const result = await startPipCamera(streamRef.current);
+    if (result.ok) {
+      showToast("前摄小窗已打开，拍照和录像都会保留");
+      return;
+    }
+    if (result.mainInterrupted) {
+      await openCamera("environment", { attemptPip: false });
+    }
+    showToast("当前设备暂不支持同时打开前后摄像头");
+  }, [facingMode, openCamera, pipOpening, pipVisible, showToast, startPipCamera, stopPipCamera]);
 
   const switchRiveAnimation = useCallback(() => {
     if (!rivePlayPraiseRef.current?.()) return;
@@ -2721,6 +2896,7 @@ function App() {
         data-gesture-effect={activeGestureEffect || "none"}
         data-gesture-outline="rainbow-mask"
         data-camera-lens={cameraLensMode}
+        data-pip-camera={facingMode === "environment" ? (pipVisible ? "visible" : pipOpening ? "opening" : "hidden") : "inactive"}
         data-media-count={mediaLibrary.length}
         data-camera-menu={cameraMenuOpen ? "open" : "closed"}
         data-voice-state={voiceState}
@@ -2751,6 +2927,7 @@ function App() {
         <span className="sr-only" aria-live="polite">{speechText}</span>
         <div className="viewfinder">
           <video ref={videoRef} className="camera-source" playsInline muted aria-hidden="true" />
+          <video ref={pipVideoRef} className="camera-source pip-camera-source" playsInline muted aria-hidden="true" />
           <canvas ref={riveCanvasRef} className="rive-source" width={RIVE_SOURCE_SIZE.width} height={RIVE_SOURCE_SIZE.height} aria-hidden="true" />
           <canvas ref={foregroundCanvasRef} className="render-source" width={frameSize.width} height={frameSize.height} aria-hidden="true" />
           <canvas ref={maskCanvasRef} className="render-source" width="256" height="256" aria-hidden="true" />
@@ -2823,27 +3000,42 @@ function App() {
         {cameraState === "ready" && (
           <div className="control-deck">
             <div className="capture-toolbar" aria-label="拍摄工具">
-              <button
-                className={`media-library-entry ${latestMedia ? "has-media" : ""}`}
-                type="button"
-                disabled={recording}
-                onClick={openMediaLibrary}
-                aria-label={mediaLibrary.length ? `打开作品列表，共 ${mediaLibrary.length} 个作品` : "打开作品列表"}
-              >
-                {latestMedia ? (
-                  <>
-                    {latestMedia.type === "photo" ? (
-                      <img src={latestMedia.url} alt="最近拍摄的照片" />
-                    ) : (
-                      <video src={latestMedia.url} muted playsInline preload="metadata" aria-label="最近拍摄的短视频" />
-                    )}
-                    {latestMedia.type === "video" && <PlayCircle className="media-entry-play" size={19} weight="fill" aria-hidden="true" />}
-                    <span className="media-entry-count">{mediaLibrary.length}</span>
-                  </>
-                ) : (
-                  <ImagesSquare size={24} weight="bold" aria-hidden="true" />
+              <div className="capture-side capture-side-left">
+                <button
+                  className={`media-library-entry ${latestMedia ? "has-media" : ""}`}
+                  type="button"
+                  disabled={recording}
+                  onClick={openMediaLibrary}
+                  aria-label={mediaLibrary.length ? `打开作品列表，共 ${mediaLibrary.length} 个作品` : "打开作品列表"}
+                >
+                  {latestMedia ? (
+                    <>
+                      {latestMedia.type === "photo" ? (
+                        <img src={latestMedia.url} alt="最近拍摄的照片" />
+                      ) : (
+                        <video src={latestMedia.url} muted playsInline preload="metadata" aria-label="最近拍摄的短视频" />
+                      )}
+                      {latestMedia.type === "video" && <PlayCircle className="media-entry-play" size={19} weight="fill" aria-hidden="true" />}
+                      <span className="media-entry-count">{mediaLibrary.length}</span>
+                    </>
+                  ) : (
+                    <ImagesSquare size={24} weight="bold" aria-hidden="true" />
+                  )}
+                </button>
+                {facingMode === "environment" && (
+                  <button
+                    className={`round-control pip-control ${pipVisible ? "is-active" : ""} ${pipOpening ? "is-opening" : ""}`}
+                    type="button"
+                    disabled={recording || pipOpening}
+                    aria-pressed={pipVisible}
+                    aria-label={pipVisible ? "关闭前置摄像头小窗" : "显示前置摄像头小窗"}
+                    onClick={togglePipCamera}
+                  >
+                    <PictureInPicture size={21} weight={pipVisible ? "fill" : "bold"} aria-hidden="true" />
+                    <span className="pip-control-state" aria-hidden="true">{pipVisible ? "×" : "+"}</span>
+                  </button>
                 )}
-              </button>
+              </div>
 
               <div className="capture-controls">
                 <span className="capture-hint">轻点拍照 · 按住录像</span>

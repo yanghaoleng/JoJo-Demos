@@ -13,7 +13,8 @@
     "test:camera": "node --test src/camera-selection.test.js",
     "test:outline": "node --test src/reaction-outline.test.js",
     "test:library": "node --test src/media-library.test.js",
-    "test:feedback": "node --test src/camera-feedback.test.js"
+    "test:feedback": "node --test src/camera-feedback.test.js",
+    "test:dual-camera": "node --test src/dual-camera.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.0.1",
