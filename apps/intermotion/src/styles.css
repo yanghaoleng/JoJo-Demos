@@ -81,9 +81,11 @@ a:focus-visible {
 }
 
 .stage-media {
+  --media-ratio: 1.7777778;
   position: relative;
-  inline-size: min(100cqw, calc(100cqh * 16 / 9));
-  block-size: min(100cqh, calc(100cqw * 9 / 16));
+  inline-size: min(100cqw, calc(100cqh * var(--media-ratio)));
+  block-size: min(100cqh, calc(100cqw / var(--media-ratio)));
+  aspect-ratio: var(--media-ratio);
   overflow: hidden;
   border-radius: inherit;
   background: var(--stage);
@@ -91,6 +93,7 @@ a:focus-visible {
 
 .video-stage canvas,
 .stage-poster,
+.stage-preview,
 .result-stage video {
   position: absolute;
   inset: 0;
@@ -105,6 +108,10 @@ a:focus-visible {
 }
 
 .stage-poster {
+  z-index: 2;
+}
+
+.stage-preview {
   z-index: 2;
 }
 

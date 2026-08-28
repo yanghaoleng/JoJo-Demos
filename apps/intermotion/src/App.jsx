@@ -4,6 +4,7 @@ import {
   Camera,
   DownloadSimple,
   Stop,
+  UploadSimple,
 } from "@phosphor-icons/react";
 import {
   FaceDetector,
@@ -17,7 +18,8 @@ const FILM_POSTER_URL = `${BASE_URL}media/reaction-screen-recording-poster.jpg`;
 const MODEL_URL = `${BASE_URL}models/selfie_segmenter.tflite`;
 const FACE_MODEL_URL = `${BASE_URL}models/blaze_face_short_range.tflite`;
 const WASM_URL = `${BASE_URL}wasm`;
-const OUTPUT_SIZE = { width: 1280, height: 720 };
+const DEFAULT_OUTPUT_SIZE = { width: 1280, height: 720 };
+const DEFAULT_VIDEO_RATIO = 16 / 9;
 const MASK_THRESHOLD = 0.55;
 const MASK_FEATHER_PX = 3;
 const SEGMENT_INTERVAL_MS = 90;
@@ -45,6 +47,14 @@ const WIDE_CAMERA_PATTERN =
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function getOutputSize(videoWidth, videoHeight) {
+  const ratio = videoWidth / Math.max(1, videoHeight);
+  if (ratio >= 1) {
+    return { width: 1280, height: Math.round(1280 / ratio) };
+  }
+  return { width: Math.round(1280 * ratio), height: 1280 };
 }
 
 function stabilizeValue(
@@ -230,9 +240,9 @@ function getFileExtension(mimeType) {
   return mimeType.includes("mp4") ? "mp4" : "webm";
 }
 
-function createFilmVideoElement() {
+function createFilmVideoElement(sourceUrl = FILM_URL) {
   const film = document.createElement("video");
-  film.src = FILM_URL;
+  film.src = sourceUrl;
   film.preload = "auto";
   film.playsInline = true;
   film.load();
@@ -240,7 +250,7 @@ function createFilmVideoElement() {
 }
 
 function drawFilmFrame(context, film) {
-  const { width, height } = OUTPUT_SIZE;
+  const { width, height } = context.canvas;
   context.fillStyle = "#171b18";
   context.fillRect(0, 0, width, height);
   if (!film || film.readyState < 2) return;
@@ -414,14 +424,16 @@ function drawReactionOverlay(
   const sy = cropTop * sourceHeight;
   const sw = Math.max(1, (cropRight - cropLeft) * sourceWidth);
   const sh = Math.max(1, (cropBottom - cropTop) * sourceHeight);
+  const outputWidth = context.canvas.width;
+  const outputHeight = context.canvas.height;
 
-  const targetHeight = OUTPUT_SIZE.height * 0.78;
+  const targetHeight = outputHeight * 0.78;
   const targetWidth = Math.min(
-    OUTPUT_SIZE.width * 0.44,
+    outputWidth * 0.44,
     targetHeight * (sw / sh),
   );
-  const baseX = OUTPUT_SIZE.width - targetWidth - 18;
-  const baseY = OUTPUT_SIZE.height - targetHeight;
+  const baseX = outputWidth - targetWidth - 18;
+  const baseY = outputHeight - targetHeight;
   let desiredX = baseX;
   if (faceBounds && timestamp - faceBounds.lastSeen <= FACE_HOLD_MS) {
     const faceCenterX = (faceBounds.left + faceBounds.right) / 2;
@@ -432,7 +444,7 @@ function drawReactionOverlay(
     );
     const mirroredFaceX = (1 - relativeFaceX) * targetWidth;
     desiredX = clamp(
-      OUTPUT_SIZE.width * 0.86 - mirroredFaceX,
+      outputWidth * 0.86 - mirroredFaceX,
       baseX - 54,
       baseX + 22,
     );
@@ -623,9 +635,16 @@ function getLargestFaceBounds(result, cameraVideo, previous, timestamp) {
 function RecorderStage({
   phase,
   canvasRef,
+  previewVideoRef,
+  fileInputRef,
+  customVideoUrl,
+  videoRatio,
+  outputSize,
   errorMessage,
   onStart,
   onStop,
+  onImport,
+  onImportChange,
   onStageDoubleClick,
   onStagePointerUp,
 }) {
@@ -638,8 +657,21 @@ function RecorderStage({
           onDoubleClick={onStageDoubleClick}
           onPointerUp={onStagePointerUp}
         >
-          <div className="stage-media">
-            {phase === "idle" || phase === "error" ? (
+          <div
+            className="stage-media"
+            style={{ "--media-ratio": videoRatio }}
+          >
+            {(phase === "idle" || phase === "error") && customVideoUrl ? (
+              <video
+                ref={previewVideoRef}
+                className="stage-preview"
+                src={customVideoUrl}
+                controls
+                playsInline
+                autoPlay
+              />
+            ) : null}
+            {(phase === "idle" || phase === "error") && !customVideoUrl ? (
               <img
                 className="stage-poster"
                 src={FILM_POSTER_URL}
@@ -648,13 +680,32 @@ function RecorderStage({
             ) : null}
             <canvas
               ref={canvasRef}
-              width={OUTPUT_SIZE.width}
-              height={OUTPUT_SIZE.height}
+              width={outputSize.width}
+              height={outputSize.height}
             />
           </div>
         </div>
 
         <div className="action-dock" aria-label="拍摄操作">
+          {(phase === "idle" || phase === "error") && (
+            <>
+              <input
+                ref={fileInputRef}
+                className="visually-hidden"
+                type="file"
+                accept="video/*"
+                onChange={onImportChange}
+              />
+              <button
+                className="action-button action-secondary"
+                type="button"
+                onClick={onImport}
+              >
+                <UploadSimple size={23} weight="bold" aria-hidden="true" />
+                <span>导入视频</span>
+              </button>
+            </>
+          )}
           {(phase === "idle" || phase === "error") && (
             <button
               className="action-button action-primary"
@@ -699,13 +750,16 @@ function RecorderStage({
   );
 }
 
-function ResultView({ videoUrl, mimeType, onAgain }) {
+function ResultView({ videoUrl, mimeType, videoRatio, onAgain }) {
   const extension = getFileExtension(mimeType);
   return (
     <main className="capture-shell result-shell">
       <section className="capture-layout">
         <div className="video-stage result-stage">
-          <div className="stage-media">
+          <div
+            className="stage-media"
+            style={{ "--media-ratio": videoRatio }}
+          >
             <video src={videoUrl} controls playsInline autoPlay />
           </div>
         </div>
@@ -735,6 +789,9 @@ function ResultView({ videoUrl, mimeType, onAgain }) {
 export default function App() {
   const canvasRef = useRef(null);
   const filmVideoRef = useRef(null);
+  const previewVideoRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const customVideoUrlRef = useRef("");
   const cameraVideoRef = useRef(null);
   const userStreamRef = useRef(null);
   const outputStreamRef = useRef(null);
@@ -767,6 +824,9 @@ export default function App() {
 
   const [phase, setPhase] = useState("idle");
   const [videoUrl, setVideoUrl] = useState("");
+  const [customVideoUrl, setCustomVideoUrl] = useState("");
+  const [videoRatio, setVideoRatio] = useState(DEFAULT_VIDEO_RATIO);
+  const [outputSize, setOutputSize] = useState(DEFAULT_OUTPUT_SIZE);
   const [recordingMimeType, setRecordingMimeType] = useState("video/webm");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -984,6 +1044,7 @@ export default function App() {
     lastSegmentTimeRef.current = 0;
     lastFaceTimeRef.current = 0;
     outlineStyleIndexRef.current = getRandomDefaultOutlineIndex();
+    previewVideoRef.current?.pause();
 
     try {
       const mediaSession = mediaSessionRef.current;
@@ -1096,7 +1157,9 @@ export default function App() {
       startDrawLoop();
     } catch (error) {
       releaseMedia();
-      filmVideoRef.current = createFilmVideoElement();
+      filmVideoRef.current = createFilmVideoElement(
+        customVideoUrlRef.current || FILM_URL,
+      );
       stoppingRef.current = false;
       setPhase("error");
       if (error instanceof DOMException && error.name === "NotAllowedError") {
@@ -1126,10 +1189,12 @@ export default function App() {
       ) {
         return false;
       }
+      const canvas = canvasRef.current;
+      if (!canvas) return false;
       const canvasX =
-        ((clientX - stageRect.left) / stageRect.width) * OUTPUT_SIZE.width;
+        ((clientX - stageRect.left) / stageRect.width) * canvas.width;
       const canvasY =
-        ((clientY - stageRect.top) / stageRect.height) * OUTPUT_SIZE.height;
+        ((clientY - stageRect.top) / stageRect.height) * canvas.height;
       const hitPadding = 16;
       const isInside =
         canvasX >= bounds.x - hitPadding &&
@@ -1189,13 +1254,52 @@ export default function App() {
     [cycleOutlineAtPoint],
   );
 
+  const openVideoPicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const importVideo = useCallback((event) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file || (file.type && !file.type.startsWith("video/"))) return;
+
+    const nextUrl = URL.createObjectURL(file);
+    const probe = document.createElement("video");
+    probe.preload = "metadata";
+    probe.playsInline = true;
+    probe.onloadedmetadata = () => {
+      const nextRatio = probe.videoWidth / Math.max(1, probe.videoHeight);
+      const previousUrl = customVideoUrlRef.current;
+      filmVideoRef.current?.pause();
+      filmVideoRef.current = createFilmVideoElement(nextUrl);
+      customVideoUrlRef.current = nextUrl;
+      setCustomVideoUrl(nextUrl);
+      setVideoRatio(nextRatio);
+      setOutputSize(getOutputSize(probe.videoWidth, probe.videoHeight));
+      setErrorMessage("");
+      setPhase("idle");
+      if (previousUrl) URL.revokeObjectURL(previousUrl);
+      probe.removeAttribute("src");
+      probe.load();
+    };
+    probe.onerror = () => {
+      URL.revokeObjectURL(nextUrl);
+      setErrorMessage("这个视频无法读取，请换一个本机视频再试。");
+      setPhase("error");
+    };
+    probe.src = nextUrl;
+  }, []);
+
   const recordAgain = useCallback(() => {
     if (resultUrlRef.current) {
       URL.revokeObjectURL(resultUrlRef.current);
       resultUrlRef.current = "";
     }
     setVideoUrl("");
-    filmVideoRef.current = createFilmVideoElement();
+    filmVideoRef.current = createFilmVideoElement(
+      customVideoUrlRef.current || FILM_URL,
+    );
     setPhase("idle");
   }, []);
 
@@ -1207,11 +1311,15 @@ export default function App() {
     cameraVideoRef.current = camera;
 
     return () => {
-      film.pause();
-      film.removeAttribute("src");
-      film.load();
+      filmVideoRef.current?.pause();
+      filmVideoRef.current?.removeAttribute("src");
+      filmVideoRef.current?.load();
       releaseMedia();
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
+      if (customVideoUrlRef.current) {
+        URL.revokeObjectURL(customVideoUrlRef.current);
+        customVideoUrlRef.current = "";
+      }
     };
   }, [releaseMedia]);
 
@@ -1220,6 +1328,7 @@ export default function App() {
       <ResultView
         videoUrl={videoUrl}
         mimeType={recordingMimeType}
+        videoRatio={videoRatio}
         onAgain={recordAgain}
       />
     );
@@ -1229,9 +1338,16 @@ export default function App() {
     <RecorderStage
       phase={phase}
       canvasRef={canvasRef}
+      previewVideoRef={previewVideoRef}
+      fileInputRef={fileInputRef}
+      customVideoUrl={customVideoUrl}
+      videoRatio={videoRatio}
+      outputSize={outputSize}
       errorMessage={errorMessage}
       onStart={startRecording}
       onStop={stopRecording}
+      onImport={openVideoPicker}
+      onImportChange={importVideo}
       onStageDoubleClick={handleStageDoubleClick}
       onStagePointerUp={handleStagePointerUp}
     />
