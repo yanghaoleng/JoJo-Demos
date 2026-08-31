@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#20201f" />
     <meta
       name="description"
-      content="儿童阅读页中的可拖拽题目浮钮与翻页触发答题弹窗 Demo"
+      content="儿童阅读页中的双模式跟手题板与翻页答题 Demo"
     />
     <title>翻页答题 Demo</title>
     <link rel="stylesheet" href="/ti/styles.css" />
@@ -15,6 +15,24 @@
     <main class="demo" aria-label="翻页答题交互示意">
       <header class="demo__header">
         <p>神农氏的故事</p>
+        <div class="gesture-tabs" role="group" aria-label="题板拖动方式">
+          <button
+            class="gesture-tab is-active"
+            type="button"
+            data-gesture-mode="follow"
+            aria-pressed="true"
+          >
+            10px 跟手
+          </button>
+          <button
+            class="gesture-tab"
+            type="button"
+            data-gesture-mode="threshold"
+            aria-pressed="false"
+          >
+            阈值触发
+          </button>
+        </div>
         <span id="readingStatus" aria-live="polite">正在准备朗读</span>
       </header>
 

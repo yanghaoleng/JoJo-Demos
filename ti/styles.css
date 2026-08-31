@@ -53,9 +53,10 @@ button:focus-visible {
 }
 
 .demo__header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   min-height: 42px;
   color: var(--stage-muted);
   font-size: 12px;
@@ -70,6 +71,46 @@ button:focus-visible {
   color: #d2cec6;
   font-weight: 600;
   letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#readingStatus {
+  justify-self: end;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gesture-tabs {
+  display: inline-flex;
+  justify-self: center;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.gesture-tab {
+  min-height: 25px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: transparent;
+  color: #918e88;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.gesture-tab.is-active {
+  background: #f2e3c5;
+  color: #714a12;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 .reader {
@@ -247,7 +288,7 @@ button:focus-visible {
   border-radius: var(--page-radius);
   background: transparent;
   pointer-events: none;
-  transform: translate3d(100%, 0, 0);
+  transform: translate3d(var(--quiz-closed-x, 100%), 0, 0);
   transition:
     transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
     visibility 0s linear 560ms;
@@ -450,6 +491,13 @@ button:focus-visible {
   .demo__header {
     min-height: 36px;
     padding-inline: 4px;
+    gap: 5px;
+  }
+
+  .gesture-tab {
+    min-height: 23px;
+    padding-inline: 7px;
+    font-size: 9px;
   }
 
   .book-page {
@@ -515,6 +563,13 @@ button:focus-visible {
 
 @media (max-width: 767px) and (orientation: landscape) {
   .demo__header {
+    display: flex;
+    min-height: 28px;
+    justify-content: center;
+  }
+
+  .demo__header > p,
+  #readingStatus {
     display: none;
   }
 

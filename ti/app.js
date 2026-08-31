@@ -30,10 +30,16 @@ const questionText = document.querySelector("#questionText");
 const quizOptions = document.querySelector("#quizOptions");
 const quizFeedback = document.querySelector("#quizFeedback");
 const listenQuestion = document.querySelector("#listenQuestion");
+const gestureTabs = [...document.querySelectorAll("[data-gesture-mode]")];
 
 const PAGE_SETTLE_MS = 620;
 const READING_START_MS = 420;
 const SWIPE_THRESHOLD_PX = 72;
+const FOLLOW_DEAD_ZONE_PX = 10;
+const QUIZ_GESTURE_MODES = {
+  FOLLOW: "follow",
+  THRESHOLD: "threshold",
+};
 
 let currentPage = 0;
 let selectedAnswer = null;
@@ -44,6 +50,7 @@ let readingStartTimer = null;
 let readingStepTimer = null;
 let boardExitTimer = null;
 let readingRun = 0;
+let quizGestureMode = QUIZ_GESTURE_MODES.FOLLOW;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -55,6 +62,26 @@ function pageOffset(index = currentPage) {
 
 function setTrackOffset(offset) {
   pageTrack.style.transform = `translate3d(${offset}px, 0, 0)`;
+}
+
+function updateQuizClosedOffset() {
+  const closedX = Math.max(0, quizBoard.clientWidth - quizCard.offsetLeft);
+  quizBoard.style.setProperty("--quiz-closed-x", `${closedX}px`);
+  return closedX;
+}
+
+function setQuizGestureMode(mode) {
+  if (!Object.values(QUIZ_GESTURE_MODES).includes(mode) || swipeState) return;
+
+  quizGestureMode = mode;
+  document.documentElement.dataset.quizGestureMode = mode;
+  gestureTabs.forEach((tab) => {
+    const isActive = tab.dataset.gestureMode === mode;
+    tab.classList.toggle("is-active", isActive);
+    tab.setAttribute("aria-pressed", String(isActive));
+  });
+
+  if (!isQuizOpen) defaultReadingStatus();
 }
 
 function hasQuiz(index = currentPage) {
@@ -255,18 +282,27 @@ function resetQuizBoardAfterExit() {
   quizBoard.style.removeProperty("transform");
 }
 
-function openQuiz(source = "reading") {
+function openQuiz(source = "reading", { settleFromDrag = false } = {}) {
   if (!hasQuiz()) return;
 
   window.clearTimeout(boardExitTimer);
+  const draggedTransform = settleFromDrag ? quizBoard.style.transform : "";
   stopPageReading({ keepProgress: true });
   renderQuiz();
   quizHandledForVisit = true;
   isQuizOpen = true;
   quizBoard.classList.remove("is-dragging", "is-peeking", "is-exiting-left");
   quizBoard.classList.add("is-open");
-  quizBoard.style.removeProperty("transform");
   quizBoard.setAttribute("aria-hidden", "false");
+
+  if (draggedTransform) {
+    quizBoard.style.transform = draggedTransform;
+    void quizBoard.offsetWidth;
+    window.requestAnimationFrame(() => quizBoard.style.removeProperty("transform"));
+  } else {
+    quizBoard.style.removeProperty("transform");
+  }
+
   readingStatus.textContent = source === "swipe"
     ? "本页有题 · 题板优先展开"
     : "朗读完成 · 题板已展开";
@@ -339,6 +375,9 @@ function beginSwipe(event) {
     deltaY: 0,
     mode: null,
     boardWasOpen: isQuizOpen,
+    quizGestureMode,
+    quizPreviewReady: false,
+    quizPreviewVisible: false,
     captureTarget: event.currentTarget,
   };
 
@@ -363,11 +402,7 @@ function moveSwipe(event) {
     stopPageReading({ keepProgress: true });
     swipeState.mode = deltaX < 0 && hasPendingQuiz() ? "quiz" : "page";
 
-    if (swipeState.mode === "quiz") {
-      renderQuiz();
-      quizBoard.classList.add("is-peeking", "is-dragging");
-      readingStatus.textContent = "左滑中 · 题板优先";
-    } else {
+    if (swipeState.mode === "page") {
       pageTrack.classList.add("is-dragging");
       if (swipeState.boardWasOpen) quizBoard.classList.add("is-dragging");
       readingStatus.textContent = "正在跟随手势翻页";
@@ -378,9 +413,39 @@ function moveSwipe(event) {
   event.preventDefault();
 
   if (swipeState.mode === "quiz") {
-    const boardX = clamp(readerViewport.clientWidth + deltaX, 0, readerViewport.clientWidth);
+    if (swipeState.quizGestureMode === QUIZ_GESTURE_MODES.THRESHOLD) {
+      setTrackOffset(pageOffset() + Math.min(0, deltaX * 0.12));
+      readingStatus.textContent = "阈值触发 · 松手后打开";
+      return;
+    }
+
+    const followDistance = Math.max(0, -deltaX - FOLLOW_DEAD_ZONE_PX);
+    if (followDistance === 0) {
+      if (swipeState.quizPreviewVisible) {
+        swipeState.quizPreviewVisible = false;
+        quizBoard.classList.remove("is-peeking", "is-dragging");
+        quizBoard.style.removeProperty("transform");
+        quizBoard.setAttribute("aria-hidden", "true");
+      }
+      setTrackOffset(pageOffset());
+      readingStatus.textContent = "回到 10px 内 · 题板取消";
+      return;
+    }
+
+    if (!swipeState.quizPreviewReady) {
+      renderQuiz();
+      swipeState.quizPreviewReady = true;
+    }
+    swipeState.quizPreviewVisible = true;
+    quizBoard.classList.add("is-peeking", "is-dragging");
+    const rawBoardX = updateQuizClosedOffset() - followDistance;
+    const boardX = rawBoardX < 0 ? rawBoardX * 0.22 : rawBoardX;
     quizBoard.style.transform = `translate3d(${boardX}px, 0, 0)`;
+    quizBoard.setAttribute("aria-hidden", "true");
     setTrackOffset(pageOffset() + Math.min(0, deltaX * 0.12));
+    readingStatus.textContent = rawBoardX < 0
+      ? "已超过停靠位 · 松手回弹"
+      : "10px 跟手 · 松手展开";
     return;
   }
 
@@ -409,11 +474,19 @@ function finishSwipe(event, forceCancel = false) {
   quizBoard.classList.remove("is-dragging");
 
   if (state.mode === "quiz") {
-    const shouldOpen = !forceCancel && state.deltaX < -Math.min(SWIPE_THRESHOLD_PX, readerViewport.clientWidth * 0.22);
+    const threshold = state.quizGestureMode === QUIZ_GESTURE_MODES.FOLLOW
+      ? FOLLOW_DEAD_ZONE_PX
+      : Math.min(SWIPE_THRESHOLD_PX, readerViewport.clientWidth * 0.22);
+    const shouldOpen = !forceCancel
+      && state.deltaX < -threshold
+      && Math.abs(state.deltaX) > Math.abs(state.deltaY) * 1.2;
     setTrackOffset(pageOffset());
 
     if (shouldOpen) {
-      openQuiz("swipe");
+      openQuiz("swipe", {
+        settleFromDrag: state.quizGestureMode === QUIZ_GESTURE_MODES.FOLLOW
+          && state.quizPreviewVisible,
+      });
     } else {
       quizBoard.classList.remove("is-peeking");
       quizBoard.style.removeProperty("transform");
@@ -450,10 +523,15 @@ function finishSwipe(event, forceCancel = false) {
 prepareReadingWords();
 renderQuiz();
 updatePageControls();
+updateQuizClosedOffset();
+setQuizGestureMode(QUIZ_GESTURE_MODES.FOLLOW);
 schedulePageReading(700);
 
 collapseQuiz.addEventListener("click", () => closeQuiz());
 listenQuestion.addEventListener("click", speakQuestion);
+gestureTabs.forEach((tab) => {
+  tab.addEventListener("click", () => setQuizGestureMode(tab.dataset.gestureMode));
+});
 
 [readerViewport, quizBoard].forEach((surface) => {
   surface.addEventListener("pointerdown", beginSwipe);
@@ -463,7 +541,10 @@ listenQuestion.addEventListener("click", speakQuestion);
 });
 
 window.addEventListener("resize", () => {
-  if (!swipeState) setTrackOffset(pageOffset());
+  if (!swipeState) {
+    setTrackOffset(pageOffset());
+    updateQuizClosedOffset();
+  }
 });
 
 document.addEventListener("keydown", (event) => {
