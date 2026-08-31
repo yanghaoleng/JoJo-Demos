@@ -75,6 +75,8 @@ button:focus-visible {
 .reader {
   position: relative;
   min-height: 0;
+  overflow: hidden;
+  border-radius: var(--page-radius);
   isolation: isolate;
 }
 
@@ -98,6 +100,10 @@ button:focus-visible {
   transform: translate3d(calc(var(--page-index, 0) * -25%), 0, 0);
   transition: transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
+}
+
+.page-track.is-dragging {
+  transition: none;
 }
 
 .book-page {
@@ -135,6 +141,27 @@ button:focus-visible {
 
 .book-page__copy p + p {
   margin-top: 0.2em;
+}
+
+.reading-word {
+  border-radius: 0.24em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition:
+    color 700ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 700ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 700ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reading-word.is-read {
+  color: #86663d;
+}
+
+.reading-word.is-reading {
+  background: #ffdd82;
+  color: #312717;
+  box-shadow: 0 0 0 0.12em rgba(255, 221, 130, 0.72);
 }
 
 .book-page__art {
@@ -189,126 +216,81 @@ button:focus-visible {
   transform: translateX(-50%);
 }
 
-.page-dots {
-  display: flex;
-  gap: 5px;
-}
-
-.page-dots i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(123, 76, 9, 0.2);
-  transition: transform 260ms ease, background-color 260ms ease;
-}
-
-.page-dots i.is-active {
-  background: var(--accent);
-  transform: scale(1.35);
-}
-
-.quiz-dock {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-}
-
-.quiz-trigger,
-.quiz-card {
-  position: absolute;
-  pointer-events: auto;
-}
-
-.quiz-trigger {
-  display: grid;
-  width: 58px;
-  height: 58px;
+.page-quiz-mark {
+  display: inline-grid;
+  width: 19px;
+  height: 19px;
   place-items: center;
-  border: 2px solid rgba(255, 255, 255, 0.72);
-  border-radius: 50%;
-  background: linear-gradient(145deg, #ffd86f, var(--accent));
-  color: #573403;
-  box-shadow: 0 12px 34px var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.62);
-  cursor: grab;
-  opacity: 0;
-  pointer-events: none;
-  touch-action: none;
-  transform: scale(0.66);
-  transition: opacity 480ms ease, transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
-  user-select: none;
-}
-
-.quiz-trigger span {
+  border: 1px solid rgba(168, 107, 16, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 225, 158, 0.72);
+  color: #8c570b;
   font-family: "STKaiti", "KaiTi", "PingFang SC", serif;
-  font-size: 27px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
 }
 
-.quiz-dock.is-ready:not(.is-open) .quiz-trigger {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1);
+.page-quiz-mark[hidden] {
+  display: none;
 }
 
-.quiz-dock.is-dragging .quiz-trigger {
-  cursor: grabbing;
+.quiz-board {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  padding: clamp(22px, 5vw, 72px);
+  overflow: hidden;
+  border-radius: var(--page-radius);
+  background:
+    linear-gradient(90deg, rgba(205, 153, 73, 0.16), transparent 18px),
+    radial-gradient(circle at 84% 16%, rgba(230, 168, 63, 0.11), transparent 30%),
+    #fbf8ef;
+  box-shadow: -24px 0 58px rgba(64, 42, 14, 0.18);
+  pointer-events: none;
+  transform: translate3d(100%, 0, 0);
+  transition:
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 560ms;
+  visibility: hidden;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.quiz-board.is-peeking,
+.quiz-board.is-open {
+  visibility: visible;
+  transition:
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s;
+}
+
+.quiz-board.is-open {
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+}
+
+.quiz-board.is-exiting-left {
+  transform: translate3d(-100%, 0, 0);
+  visibility: visible;
+}
+
+.quiz-board.is-dragging {
   transition: none;
 }
 
-.quiz-dock.is-open .quiz-trigger {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.74);
-}
-
 .quiz-card {
-  width: min(360px, calc(100% - 32px));
-  padding: 18px;
+  position: relative;
+  width: min(620px, 100%);
+  padding: clamp(20px, 3vw, 34px);
   border: 1px solid var(--line);
-  border-radius: 24px;
-  background: rgba(255, 250, 239, 0.97);
+  border-radius: clamp(22px, 3vw, 32px);
+  background: rgba(255, 252, 245, 0.96);
   color: var(--ink);
   box-shadow: 0 22px 64px rgba(57, 37, 10, 0.2), inset 0 1px 0 #fff;
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.72);
-  transition: opacity 240ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.quiz-dock.is-open .quiz-card {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1);
-}
-
-.corner-tl .quiz-trigger,
-.corner-tl .quiz-card {
-  top: 18px;
-  left: 18px;
-  transform-origin: top left;
-}
-
-.corner-tr .quiz-trigger,
-.corner-tr .quiz-card {
-  top: 18px;
-  right: 18px;
-  transform-origin: top right;
-}
-
-.corner-bl .quiz-trigger,
-.corner-bl .quiz-card {
-  bottom: 18px;
-  left: 18px;
-  transform-origin: bottom left;
-}
-
-.corner-br .quiz-trigger,
-.corner-br .quiz-card {
-  right: 18px;
-  bottom: 18px;
-  transform-origin: bottom right;
 }
 
 .quiz-card__header {
@@ -500,42 +482,16 @@ button:focus-visible {
 
   .page-status {
     bottom: 8px;
-    flex-direction: column;
-    gap: 4px;
+    gap: 6px;
   }
 
-  .quiz-trigger {
-    width: 54px;
-    height: 54px;
-  }
-
-  .quiz-card {
-    width: min(330px, calc(100% - 20px));
+  .quiz-board {
     padding: 16px;
   }
 
-  .corner-tl .quiz-trigger,
-  .corner-tl .quiz-card {
-    top: 10px;
-    left: 10px;
-  }
-
-  .corner-tr .quiz-trigger,
-  .corner-tr .quiz-card {
-    top: 10px;
-    right: 10px;
-  }
-
-  .corner-bl .quiz-trigger,
-  .corner-bl .quiz-card {
-    bottom: 62px;
-    left: 10px;
-  }
-
-  .corner-br .quiz-trigger,
-  .corner-br .quiz-card {
-    right: 10px;
-    bottom: 62px;
+  .quiz-card {
+    width: 100%;
+    padding: 16px;
   }
 }
 
@@ -568,7 +524,9 @@ button:focus-visible {
 
   .book-page__art,
   .book-page--first .book-page__art,
-  .book-page--second .book-page__art {
+  .book-page--second .book-page__art,
+  .book-page--third .book-page__art,
+  .book-page--fourth .book-page__art {
     align-self: center;
     justify-self: end;
     width: 100%;
@@ -579,9 +537,9 @@ button:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .page-track,
-  .quiz-trigger,
+  .quiz-board,
   .quiz-card,
-  .page-dots i,
+  .reading-word,
   .quiz-option,
   .quiz-card__collapse,
   .listen-button {

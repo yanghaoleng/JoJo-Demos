@@ -1,11 +1,5 @@
-const quizzes = [
-  {
-    question: "在学会种植以前，人们会怎样寻找食物？",
-    options: ["跟着水草迁徙", "住在固定的高楼里", "每天去集市购买"],
-    correct: 0,
-    success: "答对了。那时的人们常常跟着水源和草场迁徙。",
-    retry: "再看看故事里的水、鱼和草，它们都在提示答案。",
-  },
+const quizByPage = [
+  null,
   {
     question: "原始农业出现后，人们的生活发生了什么变化？",
     options: ["开始学习航海", "逐渐从迁徙走向定居", "只在山顶生活"],
@@ -13,13 +7,7 @@ const quizzes = [
     success: "答对了。种植让人们可以逐渐定居下来。",
     retry: "想一想，不必经常搬家以后，人们会怎样生活？",
   },
-  {
-    question: "人们怎样知道播下的种子可以带来收获？",
-    options: ["观察四季里的生长变化", "等待别人送来粮食", "把种子一直收藏起来"],
-    correct: 0,
-    success: "答对了。人们在一次次播种与收获中积累了经验。",
-    retry: "回想嫩芽、新叶和秋天的谷物，它们记录了什么变化？",
-  },
+  null,
   {
     question: "稳定耕种以后，人们逐渐形成了什么？",
     options: ["漂在水上的船队", "田野旁的村落", "终年迁徙的队伍"],
@@ -29,59 +17,197 @@ const quizzes = [
   },
 ];
 
-const reader = document.querySelector("#reader");
 const readerViewport = document.querySelector("#readerViewport");
 const pageTrack = document.querySelector("#pageTrack");
+const pages = [...document.querySelectorAll(".book-page")];
 const pageStatus = document.querySelector("#pageStatus");
-const pageDots = [...document.querySelectorAll(".page-dots i")];
-const quizDock = document.querySelector("#quizDock");
-const quizTrigger = document.querySelector("#quizTrigger");
-const quizCard = document.querySelector("#quizCard");
+const pageQuizMark = document.querySelector("#pageQuizMark");
+const readingStatus = document.querySelector("#readingStatus");
+const quizBoard = document.querySelector("#quizBoard");
+const quizEyebrow = document.querySelector("#quizEyebrow");
 const collapseQuiz = document.querySelector("#collapseQuiz");
 const questionText = document.querySelector("#questionText");
 const quizOptions = document.querySelector("#quizOptions");
 const quizFeedback = document.querySelector("#quizFeedback");
 const listenQuestion = document.querySelector("#listenQuestion");
 
-const cornerClasses = ["corner-tl", "corner-tr", "corner-bl", "corner-br"];
+const PAGE_SETTLE_MS = 620;
+const READING_START_MS = 420;
+const SWIPE_THRESHOLD_PX = 72;
+
 let currentPage = 0;
 let selectedAnswer = null;
 let isQuizOpen = false;
-let dragState = null;
-let swipeStart = null;
-let revealTimer = null;
-let pageTwoGatePending = false;
+let quizHandledForVisit = false;
+let swipeState = null;
+let readingStartTimer = null;
+let readingStepTimer = null;
+let boardExitTimer = null;
+let readingRun = 0;
 
-const TRIGGER_REVEAL_DELAY = 2000;
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
-function setCorner(corner) {
-  quizDock.classList.remove(...cornerClasses);
-  quizDock.classList.add(corner);
-  try {
-    localStorage.setItem("ti-quiz-corner", corner);
-  } catch {
-    // Local storage can be unavailable in private browsing.
+function pageOffset(index = currentPage) {
+  return index * -readerViewport.clientWidth;
+}
+
+function setTrackOffset(offset) {
+  pageTrack.style.transform = `translate3d(${offset}px, 0, 0)`;
+}
+
+function hasQuiz(index = currentPage) {
+  return Boolean(quizByPage[index]);
+}
+
+function hasPendingQuiz() {
+  return hasQuiz() && !quizHandledForVisit && !isQuizOpen;
+}
+
+function defaultReadingStatus() {
+  readingStatus.textContent = hasQuiz()
+    ? "本页有题 · 朗读后自动出现"
+    : "左右滑动翻页";
+}
+
+function prepareReadingWords() {
+  const segmenter = "Segmenter" in Intl
+    ? new Intl.Segmenter("zh-CN", { granularity: "word" })
+    : null;
+
+  pages.forEach((page) => {
+    page.querySelectorAll(".book-page__copy p").forEach((paragraph) => {
+      const text = paragraph.textContent.trim();
+      const fragment = document.createDocumentFragment();
+      const segments = segmenter
+        ? [...segmenter.segment(text)]
+        : [...text].map((segment) => ({ segment, isWordLike: /[\p{L}\p{N}]/u.test(segment) }));
+
+      segments.forEach(({ segment, isWordLike }) => {
+        if (!isWordLike) {
+          fragment.append(document.createTextNode(segment));
+          return;
+        }
+
+        const word = document.createElement("span");
+        word.className = "reading-word";
+        word.textContent = segment;
+        fragment.append(word);
+      });
+
+      paragraph.replaceChildren(fragment);
+    });
+  });
+}
+
+function stopPageReading({ keepProgress = true } = {}) {
+  readingRun += 1;
+  window.clearTimeout(readingStartTimer);
+  window.clearTimeout(readingStepTimer);
+
+  pages[currentPage]
+    ?.querySelectorAll(".reading-word.is-reading")
+    .forEach((word) => word.classList.remove("is-reading"));
+
+  if (!keepProgress) {
+    pages[currentPage]
+      ?.querySelectorAll(".reading-word.is-read")
+      .forEach((word) => word.classList.remove("is-read"));
+  }
+
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+}
+
+function finishPageReading(runId) {
+  if (runId !== readingRun) return;
+
+  const currentWords = pages[currentPage].querySelectorAll(".reading-word");
+  currentWords.forEach((word) => {
+    word.classList.remove("is-reading");
+    word.classList.add("is-read");
+  });
+
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  readingStatus.textContent = hasQuiz() ? "朗读完成 · 题板出现" : "朗读完成 · 左右滑动翻页";
+
+  if (hasPendingQuiz()) {
+    readingStepTimer = window.setTimeout(() => openQuiz("reading"), 360);
   }
 }
 
-function restoreCorner() {
-  let savedCorner = "corner-tr";
-  try {
-    const stored = localStorage.getItem("ti-quiz-corner");
-    if (cornerClasses.includes(stored)) savedCorner = stored;
-  } catch {
-    // Keep the default corner when storage is unavailable.
+function startPageReading() {
+  if (isQuizOpen || swipeState) return;
+
+  stopPageReading({ keepProgress: false });
+  const runId = readingRun;
+  const page = pages[currentPage];
+  const words = [...page.querySelectorAll(".reading-word")];
+  const fullText = page.querySelector(".book-page__copy").innerText.trim();
+
+  if (!words.length) {
+    finishPageReading(runId);
+    return;
   }
-  setCorner(savedCorner);
+
+  readingStatus.textContent = "正在朗读 · 文字同步高亮";
+
+  if ("speechSynthesis" in window && "SpeechSynthesisUtterance" in window) {
+    try {
+      const utterance = new SpeechSynthesisUtterance(fullText);
+      utterance.lang = "zh-CN";
+      utterance.rate = 1.12;
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // The deterministic visual read-along still runs when speech is unavailable.
+    }
+  }
+
+  let wordIndex = 0;
+  const advance = () => {
+    if (runId !== readingRun) return;
+
+    if (wordIndex > 0) {
+      words[wordIndex - 1].classList.remove("is-reading");
+      words[wordIndex - 1].classList.add("is-read");
+    }
+
+    if (wordIndex >= words.length) {
+      finishPageReading(runId);
+      return;
+    }
+
+    const word = words[wordIndex];
+    word.classList.add("is-reading");
+    const holdMs = clamp(105 + word.textContent.length * 42, 145, 285);
+    wordIndex += 1;
+    readingStepTimer = window.setTimeout(advance, holdMs);
+  };
+
+  advance();
+}
+
+function schedulePageReading(delay = READING_START_MS) {
+  stopPageReading({ keepProgress: false });
+  readingStatus.textContent = "正在准备朗读";
+  readingStartTimer = window.setTimeout(startPageReading, delay);
 }
 
 function renderQuiz() {
-  const quiz = quizzes[currentPage];
+  const quiz = quizByPage[currentPage];
   selectedAnswer = null;
-  questionText.textContent = quiz.question;
+  quizOptions.replaceChildren();
   quizFeedback.textContent = "选一个答案试试看";
   quizFeedback.className = "quiz-feedback";
-  quizOptions.replaceChildren();
+
+  if (!quiz) {
+    quizEyebrow.textContent = "本页没有题目";
+    questionText.textContent = "";
+    return;
+  }
+
+  quizEyebrow.textContent = `第 ${currentPage + 1} 页 · 本页题目`;
+  questionText.textContent = quiz.question;
 
   quiz.options.forEach((option, index) => {
     const button = document.createElement("button");
@@ -102,7 +228,9 @@ function renderQuiz() {
 }
 
 function chooseAnswer(index) {
-  const quiz = quizzes[currentPage];
+  const quiz = quizByPage[currentPage];
+  if (!quiz) return;
+
   const optionButtons = [...quizOptions.querySelectorAll(".quiz-option")];
   selectedAnswer = index;
 
@@ -122,159 +250,220 @@ function chooseAnswer(index) {
   }
 }
 
-function revealQuizTrigger() {
-  window.clearTimeout(revealTimer);
-  quizDock.classList.add("is-ready");
+function resetQuizBoardAfterExit() {
+  quizBoard.classList.remove("is-exiting-left", "is-dragging", "is-peeking");
+  quizBoard.style.removeProperty("transform");
 }
 
-function resetQuizDock() {
-  window.clearTimeout(revealTimer);
-  isQuizOpen = false;
-  quizDock.classList.remove("is-ready", "is-open");
-  quizTrigger.setAttribute("aria-expanded", "false");
-  quizCard.setAttribute("aria-hidden", "true");
-}
+function openQuiz(source = "reading") {
+  if (!hasQuiz()) return;
 
-function scheduleQuizTrigger() {
-  resetQuizDock();
-  revealTimer = window.setTimeout(revealQuizTrigger, TRIGGER_REVEAL_DELAY);
-}
-
-function openQuiz() {
-  revealQuizTrigger();
-  if (currentPage === 1) pageTwoGatePending = false;
+  window.clearTimeout(boardExitTimer);
+  stopPageReading({ keepProgress: true });
+  renderQuiz();
+  quizHandledForVisit = true;
   isQuizOpen = true;
-  quizDock.classList.add("is-open");
-  quizTrigger.setAttribute("aria-expanded", "true");
-  quizCard.setAttribute("aria-hidden", "false");
-  window.setTimeout(() => collapseQuiz.focus({ preventScroll: true }), 260);
+  quizBoard.classList.remove("is-dragging", "is-peeking", "is-exiting-left");
+  quizBoard.classList.add("is-open");
+  quizBoard.style.removeProperty("transform");
+  quizBoard.setAttribute("aria-hidden", "false");
+  readingStatus.textContent = source === "swipe"
+    ? "本页有题 · 题板优先展开"
+    : "朗读完成 · 题板已展开";
 }
 
-function closeQuiz({ focusTrigger = true } = {}) {
+function closeQuiz({ direction = "right" } = {}) {
+  if (!isQuizOpen && !quizBoard.classList.contains("is-peeking")) return;
+
+  window.clearTimeout(boardExitTimer);
   isQuizOpen = false;
-  quizDock.classList.remove("is-open");
-  quizTrigger.setAttribute("aria-expanded", "false");
-  quizCard.setAttribute("aria-hidden", "true");
-  if (focusTrigger) {
-    window.setTimeout(() => quizTrigger.focus({ preventScroll: true }), 180);
+  quizBoard.setAttribute("aria-hidden", "true");
+  quizBoard.classList.remove("is-open", "is-peeking", "is-dragging");
+  quizBoard.style.removeProperty("transform");
+
+  if (direction === "left") {
+    quizBoard.classList.add("is-exiting-left");
+    boardExitTimer = window.setTimeout(resetQuizBoardAfterExit, 580);
+  } else {
+    quizBoard.classList.remove("is-exiting-left");
   }
+
+  defaultReadingStatus();
 }
 
 function updatePageControls() {
-  pageTrack.style.setProperty("--page-index", currentPage);
-  pageStatus.textContent = `第 ${currentPage + 1} 页，共 ${quizzes.length} 页`;
-  pageDots.forEach((dot, index) => dot.classList.toggle("is-active", index === currentPage));
+  setTrackOffset(pageOffset());
+  pageStatus.textContent = `第 ${currentPage + 1} 页，共 ${pages.length} 页`;
+  pageQuizMark.hidden = !hasQuiz();
 }
 
 function goToPage(nextIndex) {
-  const clampedIndex = Math.max(0, Math.min(quizzes.length - 1, nextIndex));
-  if (clampedIndex === currentPage) return;
-
-  if (currentPage === 1 && clampedIndex === 2 && pageTwoGatePending) {
-    openQuiz();
+  const targetPage = clamp(nextIndex, 0, pages.length - 1);
+  if (targetPage === currentPage) {
+    setTrackOffset(pageOffset());
     return;
   }
 
-  const previousPage = currentPage;
-  currentPage = clampedIndex;
+  stopPageReading({ keepProgress: false });
+  if (isQuizOpen) closeQuiz({ direction: targetPage > currentPage ? "left" : "right" });
+
+  currentPage = targetPage;
+  quizHandledForVisit = false;
   updatePageControls();
-  renderQuiz();
-  pageTwoGatePending = previousPage === 0 && currentPage === 1;
-  scheduleQuizTrigger();
+  schedulePageReading(PAGE_SETTLE_MS);
 }
 
 function speakQuestion() {
-  if (!("speechSynthesis" in window)) {
+  const quiz = quizByPage[currentPage];
+  if (!quiz || !("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
     quizFeedback.textContent = "当前浏览器暂不支持朗读。";
     quizFeedback.className = "quiz-feedback is-error";
     return;
   }
 
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(quizzes[currentPage].question);
+  const utterance = new SpeechSynthesisUtterance(quiz.question);
   utterance.lang = "zh-CN";
-  utterance.rate = 0.9;
+  utterance.rate = 0.92;
   window.speechSynthesis.speak(utterance);
 }
 
-function beginDrag(event) {
-  if (isQuizOpen || event.button > 0) return;
+function beginSwipe(event) {
+  if (event.button > 0 || event.target.closest("button")) return;
 
-  dragState = {
+  swipeState = {
     pointerId: event.pointerId,
     startX: event.clientX,
     startY: event.clientY,
-    moved: false,
+    deltaX: 0,
+    deltaY: 0,
+    mode: null,
+    boardWasOpen: isQuizOpen,
+    captureTarget: event.currentTarget,
   };
-  quizTrigger.setPointerCapture(event.pointerId);
+
+  event.currentTarget.setPointerCapture(event.pointerId);
 }
 
-function moveDrag(event) {
-  if (!dragState || event.pointerId !== dragState.pointerId) return;
+function moveSwipe(event) {
+  if (!swipeState || event.pointerId !== swipeState.pointerId) return;
 
-  const deltaX = event.clientX - dragState.startX;
-  const deltaY = event.clientY - dragState.startY;
-  if (Math.hypot(deltaX, deltaY) > 6) dragState.moved = true;
-  if (!dragState.moved) return;
+  const deltaX = event.clientX - swipeState.startX;
+  const deltaY = event.clientY - swipeState.startY;
+  swipeState.deltaX = deltaX;
+  swipeState.deltaY = deltaY;
 
-  quizDock.classList.add("is-dragging");
-  quizTrigger.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.04)`;
-}
+  if (!swipeState.mode) {
+    if (Math.hypot(deltaX, deltaY) < 8) return;
+    if (Math.abs(deltaY) > Math.abs(deltaX) * 0.9) {
+      swipeState.mode = "vertical";
+      return;
+    }
 
-function endDrag(event) {
-  if (!dragState || event.pointerId !== dragState.pointerId) return;
+    stopPageReading({ keepProgress: true });
+    swipeState.mode = deltaX < 0 && hasPendingQuiz() ? "quiz" : "page";
 
-  const wasMoved = dragState.moved;
-  quizTrigger.releasePointerCapture(event.pointerId);
-  quizDock.classList.remove("is-dragging");
-  quizTrigger.style.removeProperty("transform");
-
-  if (wasMoved) {
-    const rect = reader.getBoundingClientRect();
-    const horizontal = event.clientX < rect.left + rect.width / 2 ? "l" : "r";
-    const vertical = event.clientY < rect.top + rect.height / 2 ? "t" : "b";
-    setCorner(`corner-${vertical}${horizontal}`);
-  } else {
-    openQuiz();
+    if (swipeState.mode === "quiz") {
+      renderQuiz();
+      quizBoard.classList.add("is-peeking", "is-dragging");
+      readingStatus.textContent = "左滑中 · 题板优先";
+    } else {
+      pageTrack.classList.add("is-dragging");
+      if (swipeState.boardWasOpen) quizBoard.classList.add("is-dragging");
+      readingStatus.textContent = "正在跟随手势翻页";
+    }
   }
 
-  dragState = null;
+  if (swipeState.mode === "vertical") return;
+  event.preventDefault();
+
+  if (swipeState.mode === "quiz") {
+    const boardX = clamp(readerViewport.clientWidth + deltaX, 0, readerViewport.clientWidth);
+    quizBoard.style.transform = `translate3d(${boardX}px, 0, 0)`;
+    setTrackOffset(pageOffset() + Math.min(0, deltaX * 0.12));
+    return;
+  }
+
+  let pageDelta = deltaX;
+  const atFirstPage = currentPage === 0 && deltaX > 0;
+  const atLastPage = currentPage === pages.length - 1 && deltaX < 0;
+  if (atFirstPage || atLastPage) pageDelta *= 0.22;
+
+  setTrackOffset(pageOffset() + pageDelta);
+  if (swipeState.boardWasOpen) {
+    quizBoard.style.transform = `translate3d(${Math.min(0, deltaX)}px, 0, 0)`;
+  }
 }
 
-function beginSwipe(event) {
-  if (event.target.closest("button") || event.target.closest(".quiz-card")) return;
-  swipeStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+function finishSwipe(event, forceCancel = false) {
+  if (!swipeState || event.pointerId !== swipeState.pointerId) return;
+
+  const state = swipeState;
+  swipeState = null;
+
+  if (state.captureTarget.hasPointerCapture(event.pointerId)) {
+    state.captureTarget.releasePointerCapture(event.pointerId);
+  }
+
+  pageTrack.classList.remove("is-dragging");
+  quizBoard.classList.remove("is-dragging");
+
+  if (state.mode === "quiz") {
+    const shouldOpen = !forceCancel && state.deltaX < -Math.min(SWIPE_THRESHOLD_PX, readerViewport.clientWidth * 0.22);
+    setTrackOffset(pageOffset());
+
+    if (shouldOpen) {
+      openQuiz("swipe");
+    } else {
+      quizBoard.classList.remove("is-peeking");
+      quizBoard.style.removeProperty("transform");
+      quizBoard.setAttribute("aria-hidden", "true");
+      schedulePageReading(480);
+    }
+    return;
+  }
+
+  if (state.mode !== "page") {
+    setTrackOffset(pageOffset());
+    return;
+  }
+
+  const horizontalEnough = Math.abs(state.deltaX) >= SWIPE_THRESHOLD_PX;
+  const dominantDirection = Math.abs(state.deltaX) > Math.abs(state.deltaY) * 1.2;
+  const direction = state.deltaX < 0 ? 1 : -1;
+  const targetPage = clamp(currentPage + direction, 0, pages.length - 1);
+  const shouldMove = !forceCancel && horizontalEnough && dominantDirection && targetPage !== currentPage;
+
+  if (shouldMove) {
+    goToPage(targetPage);
+  } else {
+    setTrackOffset(pageOffset());
+    if (state.boardWasOpen) {
+      quizBoard.classList.add("is-open");
+      quizBoard.style.removeProperty("transform");
+    } else {
+      schedulePageReading(480);
+    }
+  }
 }
 
-function endSwipe(event) {
-  if (!swipeStart || event.pointerId !== swipeStart.pointerId) return;
-
-  const deltaX = event.clientX - swipeStart.x;
-  const deltaY = event.clientY - swipeStart.y;
-  swipeStart = null;
-
-  if (Math.abs(deltaX) < 56 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
-  goToPage(currentPage + (deltaX < 0 ? 1 : -1));
-}
-
-restoreCorner();
+prepareReadingWords();
 renderQuiz();
 updatePageControls();
-scheduleQuizTrigger();
+schedulePageReading(700);
 
-quizTrigger.addEventListener("pointerdown", beginDrag);
-quizTrigger.addEventListener("pointermove", moveDrag);
-quizTrigger.addEventListener("pointerup", endDrag);
-quizTrigger.addEventListener("pointercancel", endDrag);
-quizTrigger.addEventListener("click", (event) => {
-  if (event.detail === 0) openQuiz();
-});
 collapseQuiz.addEventListener("click", () => closeQuiz());
 listenQuestion.addEventListener("click", speakQuestion);
-readerViewport.addEventListener("pointerdown", beginSwipe);
-readerViewport.addEventListener("pointerup", endSwipe);
-readerViewport.addEventListener("pointercancel", () => {
-  swipeStart = null;
+
+[readerViewport, quizBoard].forEach((surface) => {
+  surface.addEventListener("pointerdown", beginSwipe);
+  surface.addEventListener("pointermove", moveSwipe);
+  surface.addEventListener("pointerup", finishSwipe);
+  surface.addEventListener("pointercancel", (event) => finishSwipe(event, true));
+});
+
+window.addEventListener("resize", () => {
+  if (!swipeState) setTrackOffset(pageOffset());
 });
 
 document.addEventListener("keydown", (event) => {
