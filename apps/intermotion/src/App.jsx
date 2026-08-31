@@ -3,21 +3,33 @@ import {
   ArrowCounterClockwise,
   Camera,
   DownloadSimple,
+  FilmStrip,
+  Smiley,
   Stop,
   UploadSimple,
 } from "@phosphor-icons/react";
 import {
   FaceDetector,
+  FaceLandmarker,
   FilesetResolver,
   ImageSegmenter,
 } from "@mediapipe/tasks-vision";
+import {
+  buildEmotionRanges,
+  getEmotionalReaction,
+  updateEmotionCandidate,
+} from "./emotionClips.js";
+import { createEmotionMontage } from "./emotionMontage.js";
 import { isPersonMaskReady } from "./maskReadiness.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 const FILM_URL = `${BASE_URL}media/reaction-screen-recording.mp4`;
 const FILM_POSTER_URL = `${BASE_URL}media/reaction-screen-recording-poster.jpg`;
+const COURSE_FILM_URL = `${BASE_URL}media/g-line-course.mp4`;
+const COURSE_POSTER_URL = `${BASE_URL}media/g-line-course-poster.jpg`;
 const MODEL_URL = `${BASE_URL}models/selfie_segmenter.tflite`;
 const FACE_MODEL_URL = `${BASE_URL}models/blaze_face_short_range.tflite`;
+const EMOTION_MODEL_URL = `${BASE_URL}models/face_landmarker.task`;
 const WASM_URL = `${BASE_URL}wasm`;
 const DEFAULT_OUTPUT_SIZE = { width: 1280, height: 720 };
 const DEFAULT_VIDEO_RATIO = 16 / 9;
@@ -27,6 +39,7 @@ const SEGMENT_INTERVAL_MS = 90;
 const PERSON_MASK_READY_FRAMES = 3;
 const PERSON_MASK_READY_TIMEOUT_MS = 10_000;
 const FACE_INTERVAL_MS = 180;
+const EMOTION_INTERVAL_MS = 260;
 const FACE_HOLD_MS = 900;
 const OUTLINE_RADIUS_PX = 6;
 const OUTLINE_PADDING_PX = 24;
@@ -559,6 +572,31 @@ async function createFaceDetector() {
   });
 }
 
+async function createEmotionLandmarker() {
+  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+  const options = {
+    baseOptions: {
+      modelAssetPath: EMOTION_MODEL_URL,
+      delegate: "GPU",
+    },
+    runningMode: "VIDEO",
+    numFaces: 1,
+    minFaceDetectionConfidence: 0.5,
+    minFacePresenceConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+    outputFaceBlendshapes: true,
+    outputFacialTransformationMatrices: false,
+  };
+  try {
+    return await FaceLandmarker.createFromOptions(vision, options);
+  } catch {
+    return FaceLandmarker.createFromOptions(vision, {
+      ...options,
+      baseOptions: { ...options.baseOptions, delegate: "CPU" },
+    });
+  }
+}
+
 function getLargestFaceBounds(result, cameraVideo, previous, timestamp) {
   const cameraWidth = cameraVideo.videoWidth || 1;
   const cameraHeight = cameraVideo.videoHeight || 1;
@@ -608,6 +646,31 @@ function getLargestFaceBounds(result, cameraVideo, previous, timestamp) {
   };
 }
 
+function ModeMenu({ onSelect }) {
+  return (
+    <main className="mode-menu-shell">
+      <section className="mode-options" aria-label="选择拍摄方式">
+        <button
+          className="mode-choice mode-choice-course"
+          type="button"
+          onClick={() => onSelect("course")}
+        >
+          <Smiley size={42} weight="fill" aria-hidden="true" />
+          <span>课程情绪剪辑</span>
+        </button>
+        <button
+          className="mode-choice"
+          type="button"
+          onClick={() => onSelect("clip")}
+        >
+          <FilmStrip size={42} weight="fill" aria-hidden="true" />
+          <span>片段</span>
+        </button>
+      </section>
+    </main>
+  );
+}
+
 function RecorderStage({
   phase,
   canvasRef,
@@ -617,6 +680,10 @@ function RecorderStage({
   customVideoUrl,
   videoRatio,
   outputSize,
+  allowImport,
+  posterUrl,
+  posterAlt,
+  processingLabel,
   errorMessage,
   onStart,
   onStop,
@@ -651,8 +718,8 @@ function RecorderStage({
             {(phase === "idle" || phase === "error") && !customVideoUrl ? (
               <img
                 className="stage-poster"
-                src={FILM_POSTER_URL}
-                alt="叫叫互动片段画面"
+                src={posterUrl}
+                alt={posterAlt}
               />
             ) : null}
             <canvas
@@ -673,7 +740,7 @@ function RecorderStage({
         </div>
 
         <div className="action-dock" aria-label="拍摄操作">
-          {(phase === "idle" || phase === "error") && (
+          {(phase === "idle" || phase === "error") && allowImport && (
             <>
               <input
                 ref={fileInputRef}
@@ -722,7 +789,7 @@ function RecorderStage({
           {phase === "processing" && (
             <button className="action-button" type="button" disabled>
               <Stop size={22} weight="fill" aria-hidden="true" />
-              <span>生成中</span>
+              <span>{processingLabel}</span>
             </button>
           )}
         </div>
@@ -736,7 +803,7 @@ function RecorderStage({
   );
 }
 
-function ResultView({ videoUrl, mimeType, videoRatio, onAgain }) {
+function ResultView({ videoUrl, mimeType, videoRatio, downloadName, onAgain }) {
   const extension = getFileExtension(mimeType);
   return (
     <main className="capture-shell result-shell">
@@ -753,7 +820,7 @@ function ResultView({ videoUrl, mimeType, videoRatio, onAgain }) {
           <a
             className="action-button action-primary"
             href={videoUrl}
-            download={`童趣反应视频.${extension}`}
+            download={`${downloadName}.${extension}`}
           >
             <DownloadSimple size={23} weight="bold" aria-hidden="true" />
             <span>保存</span>
@@ -778,6 +845,7 @@ export default function App() {
   const filmVideoRef = useRef(null);
   const previewVideoRef = useRef(null);
   const fileInputRef = useRef(null);
+  const experienceModeRef = useRef(null);
   const customVideoUrlRef = useRef("");
   const cameraVideoRef = useRef(null);
   const userStreamRef = useRef(null);
@@ -791,6 +859,11 @@ export default function App() {
   const lastSegmentTimeRef = useRef(0);
   const faceDetectorRef = useRef(null);
   const lastFaceTimeRef = useRef(0);
+  const emotionLandmarkerRef = useRef(null);
+  const lastEmotionTimeRef = useRef(0);
+  const emotionCandidateRef = useRef(null);
+  const emotionSamplesRef = useRef([]);
+  const emotionPeakRef = useRef(null);
   const faceBoundsRef = useRef(null);
   const personCanvasRef = useRef(document.createElement("canvas"));
   const maskCanvasRef = useRef(document.createElement("canvas"));
@@ -809,6 +882,7 @@ export default function App() {
   const lastTouchTapRef = useRef(null);
   const lastTouchCycleTimeRef = useRef(0);
 
+  const [experienceMode, setExperienceMode] = useState(null);
   const [phase, setPhase] = useState("idle");
   const [videoUrl, setVideoUrl] = useState("");
   const [customVideoUrl, setCustomVideoUrl] = useState("");
@@ -817,7 +891,7 @@ export default function App() {
   const [recordingMimeType, setRecordingMimeType] = useState("video/webm");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const releaseMedia = useCallback(() => {
+  const releaseMedia = useCallback(({ preserveAudioContext = false } = {}) => {
     mediaSessionRef.current += 1;
     cancelAnimationFrame(frameRequestRef.current);
     frameRequestRef.current = 0;
@@ -831,10 +905,20 @@ export default function App() {
     segmentingRef.current = false;
     faceDetectorRef.current?.close();
     faceDetectorRef.current = null;
+    emotionLandmarkerRef.current?.close();
+    emotionLandmarkerRef.current = null;
     faceBoundsRef.current = null;
     overlayPlacementRef.current = null;
-    audioContextRef.current?.close().catch(() => {});
-    audioContextRef.current = null;
+    try {
+      filmGainRef.current?.disconnect();
+      microphoneGainRef.current?.disconnect();
+    } catch {
+      // The graph may already be disconnected after a recorder error.
+    }
+    if (!preserveAudioContext) {
+      audioContextRef.current?.close().catch(() => {});
+      audioContextRef.current = null;
+    }
     filmGainRef.current = null;
     microphoneGainRef.current = null;
   }, []);
@@ -1055,6 +1139,37 @@ export default function App() {
         }
       }
 
+      const emotionLandmarker = emotionLandmarkerRef.current;
+      if (
+        experienceModeRef.current === "course" &&
+        emotionLandmarker &&
+        camera.readyState >= 2 &&
+        !segmentingRef.current &&
+        timestamp - lastEmotionTimeRef.current >= EMOTION_INTERVAL_MS
+      ) {
+        lastEmotionTimeRef.current = timestamp;
+        try {
+          const result = emotionLandmarker.detectForVideo(camera, timestamp);
+          const reaction = getEmotionalReaction(result.faceBlendshapes);
+          const videoTime = film.currentTime;
+          if (
+            !emotionPeakRef.current ||
+            reaction.score > emotionPeakRef.current.score
+          ) {
+            emotionPeakRef.current = { ...reaction, time: videoTime };
+          }
+          const { candidate, sample } = updateEmotionCandidate(
+            emotionCandidateRef.current,
+            reaction,
+            videoTime,
+          );
+          emotionCandidateRef.current = candidate;
+          if (sample) emotionSamplesRef.current.push(sample);
+        } catch {
+          // A skipped emotion sample must never interrupt the recording.
+        }
+      }
+
       reactionDisplayBoundsRef.current = drawComposition(
         context,
         film,
@@ -1101,6 +1216,10 @@ export default function App() {
     overlayPlacementRef.current = null;
     lastSegmentTimeRef.current = 0;
     lastFaceTimeRef.current = 0;
+    lastEmotionTimeRef.current = 0;
+    emotionCandidateRef.current = null;
+    emotionSamplesRef.current = [];
+    emotionPeakRef.current = null;
     outlineStyleIndexRef.current = getRandomDefaultOutlineIndex();
     previewVideoRef.current?.pause();
 
@@ -1143,6 +1262,18 @@ export default function App() {
       }
       segmenterRef.current = segmenter;
       await preparePersonMask(segmenter, camera, mediaSession);
+
+      if (experienceModeRef.current === "course") {
+        const emotionLandmarker = await createEmotionLandmarker();
+        if (
+          mediaSessionRef.current !== mediaSession ||
+          !userStreamRef.current
+        ) {
+          emotionLandmarker.close();
+          throw new Error("拍摄准备已取消");
+        }
+        emotionLandmarkerRef.current = emotionLandmarker;
+      }
 
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
@@ -1224,16 +1355,78 @@ export default function App() {
       recorder.onerror = () => {
         setErrorMessage("录制过程中出现了问题，请重新拍摄。");
       };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: actualMimeType });
-        if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
-        const nextUrl = blob.size > 0 ? URL.createObjectURL(blob) : "";
-        resultUrlRef.current = nextUrl;
-        setVideoUrl(nextUrl);
-        releaseMedia();
-        setPhase(nextUrl ? "result" : "error");
-        if (!nextUrl) setErrorMessage("没有读取到成片数据，请重新拍摄。");
-        stoppingRef.current = false;
+      recorder.onstop = async () => {
+        const sourceBlob = new Blob(chunksRef.current, {
+          type: actualMimeType,
+        });
+        const capturedDuration = film.currentTime;
+        const isCourseMode = experienceModeRef.current === "course";
+
+        if (!sourceBlob.size) {
+          releaseMedia();
+          setPhase("error");
+          setErrorMessage("没有读取到成片数据，请重新拍摄。");
+          stoppingRef.current = false;
+          return;
+        }
+
+        if (!isCourseMode) {
+          if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
+          const nextUrl = URL.createObjectURL(sourceBlob);
+          resultUrlRef.current = nextUrl;
+          setVideoUrl(nextUrl);
+          releaseMedia();
+          setPhase("result");
+          stoppingRef.current = false;
+          return;
+        }
+
+        const fallbackSample = emotionPeakRef.current;
+        const samples = emotionSamplesRef.current.length
+          ? emotionSamplesRef.current
+          : fallbackSample?.score >= 0.22
+            ? [fallbackSample]
+            : [];
+        const ranges = buildEmotionRanges(samples, capturedDuration);
+        const montageAudioContext = audioContextRef.current;
+        releaseMedia({ preserveAudioContext: true });
+
+        if (!ranges.length) {
+          montageAudioContext?.close().catch(() => {});
+          audioContextRef.current = null;
+          setPhase("error");
+          setErrorMessage("没有检测到明显的情绪互动，请重新拍摄。");
+          stoppingRef.current = false;
+          return;
+        }
+
+        try {
+          const montage = await createEmotionMontage({
+            sourceBlob,
+            ranges,
+            width: canvas.width,
+            height: canvas.height,
+            mimeType: actualMimeType,
+            audioContext: montageAudioContext,
+          });
+          if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
+          const nextUrl = URL.createObjectURL(montage.blob);
+          resultUrlRef.current = nextUrl;
+          setRecordingMimeType(montage.mimeType);
+          setVideoUrl(nextUrl);
+          setPhase("result");
+        } catch (error) {
+          setPhase("error");
+          setErrorMessage(
+            error instanceof Error && error.message
+              ? error.message
+              : "情绪片段剪辑失败，请重新拍摄。",
+          );
+        } finally {
+          montageAudioContext?.close().catch(() => {});
+          audioContextRef.current = null;
+          stoppingRef.current = false;
+        }
       };
       recorderRef.current = recorder;
       recorder.start(1000);
@@ -1242,7 +1435,9 @@ export default function App() {
     } catch (error) {
       releaseMedia();
       filmVideoRef.current = createFilmVideoElement(
-        customVideoUrlRef.current || FILM_URL,
+        experienceModeRef.current === "course"
+          ? COURSE_FILM_URL
+          : customVideoUrlRef.current || FILM_URL,
       );
       stoppingRef.current = false;
       setPhase("error");
@@ -1342,6 +1537,21 @@ export default function App() {
     fileInputRef.current?.click();
   }, []);
 
+  const selectExperienceMode = useCallback((mode) => {
+    const isCourseMode = mode === "course";
+    experienceModeRef.current = mode;
+    filmVideoRef.current?.pause();
+    filmVideoRef.current = createFilmVideoElement(
+      isCourseMode ? COURSE_FILM_URL : FILM_URL,
+    );
+    setExperienceMode(mode);
+    setCustomVideoUrl("");
+    setVideoRatio(DEFAULT_VIDEO_RATIO);
+    setOutputSize(DEFAULT_OUTPUT_SIZE);
+    setErrorMessage("");
+    setPhase("idle");
+  }, []);
+
   const importVideo = useCallback((event) => {
     const input = event.currentTarget;
     const file = input.files?.[0];
@@ -1382,7 +1592,9 @@ export default function App() {
     }
     setVideoUrl("");
     filmVideoRef.current = createFilmVideoElement(
-      customVideoUrlRef.current || FILM_URL,
+      experienceModeRef.current === "course"
+        ? COURSE_FILM_URL
+        : customVideoUrlRef.current || FILM_URL,
     );
     setPhase("idle");
   }, []);
@@ -1407,12 +1619,19 @@ export default function App() {
     };
   }, [releaseMedia]);
 
+  if (!experienceMode) {
+    return <ModeMenu onSelect={selectExperienceMode} />;
+  }
+
   if (phase === "result" && videoUrl) {
     return (
       <ResultView
         videoUrl={videoUrl}
         mimeType={recordingMimeType}
         videoRatio={videoRatio}
+        downloadName={
+          experienceMode === "course" ? "课程情绪剪辑" : "童趣反应视频"
+        }
         onAgain={recordAgain}
       />
     );
@@ -1428,6 +1647,14 @@ export default function App() {
       customVideoUrl={customVideoUrl}
       videoRatio={videoRatio}
       outputSize={outputSize}
+      allowImport={experienceMode === "clip"}
+      posterUrl={
+        experienceMode === "course" ? COURSE_POSTER_URL : FILM_POSTER_URL
+      }
+      posterAlt={
+        experienceMode === "course" ? "课程视频画面" : "叫叫互动片段画面"
+      }
+      processingLabel={experienceMode === "course" ? "剪辑中" : "生成中"}
       errorMessage={errorMessage}
       onStart={startRecording}
       onStop={stopRecording}

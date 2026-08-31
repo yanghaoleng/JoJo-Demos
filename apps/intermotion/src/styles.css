@@ -45,6 +45,65 @@ a:focus-visible {
   outline-offset: 3px;
 }
 
+.mode-menu-shell {
+  width: 100%;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: max(18px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+  background: #000;
+}
+
+.mode-options {
+  width: min(720px, 100%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mode-choice {
+  min-height: 176px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 28px;
+  padding: 24px 18px;
+  color: #fff;
+  background: #171717;
+  font-size: clamp(18px, 2.4vw, 23px);
+  font-weight: 750;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mode-choice-course {
+  border-color: transparent;
+  background: var(--accent);
+}
+
+.mode-choice:hover {
+  background: #252525;
+}
+
+.mode-choice-course:hover {
+  background: var(--accent-active);
+}
+
+.mode-choice:active {
+  transform: scale(0.975);
+}
+
 .capture-shell {
   width: 100%;
   height: 100dvh;
@@ -217,6 +276,16 @@ a:focus-visible {
 }
 
 @media (orientation: portrait) {
+  .mode-options {
+    width: min(380px, 100%);
+    grid-template-columns: 1fr;
+  }
+
+  .mode-choice {
+    min-height: 138px;
+    border-radius: 24px;
+  }
+
   .capture-layout {
     position: relative;
     grid-template-rows: minmax(0, 1fr);
@@ -297,6 +366,7 @@ a:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .mode-choice,
   .action-button {
     transition: none;
   }
