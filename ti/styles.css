@@ -237,18 +237,15 @@ button:focus-visible {
 
 .quiz-board {
   position: absolute;
-  inset: 0;
+  inset: 1px;
   z-index: 6;
-  display: grid;
-  place-items: center;
-  padding: clamp(22px, 5vw, 72px);
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: clamp(38px, 7vh, 76px) clamp(50px, 8vw, 126px);
+  overflow: visible;
   border-radius: var(--page-radius);
-  background:
-    linear-gradient(90deg, rgba(205, 153, 73, 0.16), transparent 18px),
-    radial-gradient(circle at 84% 16%, rgba(230, 168, 63, 0.11), transparent 30%),
-    #fbf8ef;
-  box-shadow: -24px 0 58px rgba(64, 42, 14, 0.18);
+  background: transparent;
   pointer-events: none;
   transform: translate3d(100%, 0, 0);
   transition:
@@ -269,7 +266,6 @@ button:focus-visible {
 }
 
 .quiz-board.is-open {
-  pointer-events: auto;
   transform: translate3d(0, 0, 0);
 }
 
@@ -284,13 +280,20 @@ button:focus-visible {
 
 .quiz-card {
   position: relative;
-  width: min(620px, 100%);
-  padding: clamp(20px, 3vw, 34px);
+  width: min(360px, 100%);
+  max-height: 100%;
+  padding: 18px;
+  overflow: auto;
   border: 1px solid var(--line);
-  border-radius: clamp(22px, 3vw, 32px);
+  border-radius: 24px;
   background: rgba(255, 252, 245, 0.96);
   color: var(--ink);
   box-shadow: 0 22px 64px rgba(57, 37, 10, 0.2), inset 0 1px 0 #fff;
+  pointer-events: none;
+}
+
+.quiz-board.is-open .quiz-card {
+  pointer-events: auto;
 }
 
 .quiz-card__header {
@@ -486,11 +489,11 @@ button:focus-visible {
   }
 
   .quiz-board {
-    padding: 16px;
+    padding: clamp(30px, 6vh, 54px) 28px 46px;
   }
 
   .quiz-card {
-    width: 100%;
+    width: min(286px, 100%);
     padding: 16px;
   }
 }
@@ -503,6 +506,10 @@ button:focus-visible {
 
   .book-page__copy {
     font-size: clamp(16px, 5vw, 20px);
+  }
+
+  .quiz-board {
+    padding-top: 72px;
   }
 }
 
@@ -520,6 +527,10 @@ button:focus-visible {
   .book-page__copy {
     font-size: clamp(15px, 2.8vw, 20px);
     line-height: 1.55;
+  }
+
+  .quiz-board {
+    padding: 28px 72px 36px;
   }
 
   .book-page__art,
