@@ -733,6 +733,7 @@ function getLargestFaceBounds(result, cameraVideo, previous, timestamp) {
 function ModeMenu({ onSelect }) {
   return (
     <main className="mode-menu-shell">
+      <div className="mode-ambient-field" aria-hidden="true" />
       <div className="mode-menu-content">
         <h1 className="mode-menu-title">
           <span>记录孩子</span>
@@ -771,22 +772,47 @@ function ModeMenu({ onSelect }) {
   );
 }
 
-function HomeButton({ onClick }) {
+function HomeButton({ onClick, visible = true }) {
   return (
     <button
-      className="home-button"
+      className={`home-button ${visible ? "is-visible" : "is-hidden"}`}
       type="button"
       onClick={onClick}
       aria-label="返回主页"
+      aria-hidden={!visible}
+      tabIndex={visible ? 0 : -1}
     >
       <ArrowLeft size={20} weight="bold" aria-hidden="true" />
-      <span>主页</span>
     </button>
   );
 }
 
+function useAutoHideControls(active, delay = 2800) {
+  const [visible, setVisible] = useState(true);
+  const hideTimerRef = useRef(0);
+
+  const reveal = useCallback(() => {
+    window.clearTimeout(hideTimerRef.current);
+    setVisible(true);
+    if (active) {
+      hideTimerRef.current = window.setTimeout(() => {
+        setVisible(false);
+      }, delay);
+    }
+  }, [active, delay]);
+
+  useEffect(() => {
+    reveal();
+    return () => window.clearTimeout(hideTimerRef.current);
+  }, [reveal]);
+
+  return { visible, reveal };
+}
+
 function PlaybackControls({
   playbackInfo,
+  visible = true,
+  onInteract,
   onTogglePlay,
   onSeek,
   onToggleMute,
@@ -796,7 +822,15 @@ function PlaybackControls({
   const duration = Math.max(0, playbackInfo.duration || 0);
   const currentTime = clamp(playbackInfo.currentTime || 0, 0, duration || 0);
   return (
-    <div className="playback-controls" aria-label="播放器控制">
+    <div
+      className={`playback-controls ${visible ? "is-visible" : "is-hidden"}`}
+      aria-label="播放器控制"
+      aria-hidden={!visible}
+      onPointerUp={(event) => {
+        event.stopPropagation();
+        onInteract?.();
+      }}
+    >
       <button
         className="playback-icon-button"
         type="button"
@@ -920,6 +954,9 @@ function RecorderStage({
   const isRecording = phase === "recording";
   const showSourcePreview =
     phase === "idle" || phase === "error" || phase === "starting";
+  const controls = useAutoHideControls(
+    isRecording || Boolean(showSourcePreview && customVideoUrl),
+  );
   const handleFullscreen = () => {
     const stage = stageRef.current;
     if (document.fullscreenElement) {
@@ -934,14 +971,17 @@ function RecorderStage({
   };
   return (
     <main className={`capture-shell is-${phase}`}>
-      <HomeButton onClick={onHome} />
+      <HomeButton onClick={onHome} visible={controls.visible} />
       <section className="capture-layout" aria-label="反应视频拍摄区">
         <div
           ref={stageRef}
           className="video-stage"
           style={{ "--media-ratio": videoRatio }}
           onDoubleClick={onStageDoubleClick}
-          onPointerUp={onStagePointerUp}
+          onPointerUp={(event) => {
+            controls.reveal();
+            onStagePointerUp(event);
+          }}
         >
           <div
             className="stage-media"
@@ -952,7 +992,7 @@ function RecorderStage({
                 ref={previewVideoRef}
                 className="stage-preview"
                 src={customVideoUrl}
-                controls
+                controls={controls.visible}
                 playsInline
                 autoPlay
               />
@@ -984,6 +1024,8 @@ function RecorderStage({
             {isRecording ? (
               <PlaybackControls
                 playbackInfo={playbackInfo}
+                visible={controls.visible}
+                onInteract={controls.reveal}
                 onTogglePlay={onTogglePlay}
                 onSeek={onSeek}
                 onToggleMute={onToggleMute}
@@ -1070,19 +1112,26 @@ function ResultView({
   onAgain,
 }) {
   const extension = getFileExtension(mimeType);
+  const controls = useAutoHideControls(true);
   return (
     <main className="capture-shell result-shell">
-      <HomeButton onClick={onHome} />
+      <HomeButton onClick={onHome} visible={controls.visible} />
       <section className="capture-layout">
         <div
           className="video-stage result-stage"
           style={{ "--media-ratio": videoRatio }}
+          onPointerUp={controls.reveal}
         >
           <div
             className="stage-media"
             style={{ "--media-ratio": videoRatio }}
           >
-            <video src={videoUrl} controls playsInline autoPlay />
+            <video
+              src={videoUrl}
+              controls={controls.visible}
+              playsInline
+              autoPlay
+            />
           </div>
         </div>
         {notice ? (
@@ -1760,7 +1809,7 @@ export default function App() {
         try {
           let lastProgressValue = 0;
           const montage = await createEmotionMontage({
-            sourceBlob,
+            sourceBlob: rawSourceBlob,
             ranges,
             canvas,
             mimeType: actualMimeType,

@@ -1,7 +1,7 @@
 :root {
   color-scheme: dark;
   font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-  --background: #000;
+  --background: #050505;
   --stage: #080808;
   --accent: #c64f2f;
   --accent-active: #ad4025;
@@ -46,6 +46,8 @@ a:focus-visible {
 }
 
 .mode-menu-shell {
+  position: relative;
+  isolation: isolate;
   width: 100%;
   min-height: 100dvh;
   display: grid;
@@ -55,10 +57,102 @@ a:focus-visible {
     max(18px, env(safe-area-inset-right))
     max(18px, env(safe-area-inset-bottom))
     max(18px, env(safe-area-inset-left));
-  background: #000;
+  background: #050505;
+}
+
+.mode-ambient-field,
+.mode-menu-shell::before,
+.mode-menu-shell::after {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+}
+
+.mode-menu-shell::before {
+  right: -18%;
+  bottom: -22%;
+  width: 72%;
+  height: 68%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(198, 79, 47, 0.32) 0%,
+    rgba(198, 79, 47, 0.1) 44%,
+    transparent 72%
+  );
+  filter: blur(28px);
+  animation: mode-ambient-float-right 20s ease-in-out infinite alternate;
+}
+
+.mode-menu-shell::after {
+  bottom: 2%;
+  left: -24%;
+  width: 70%;
+  height: 52%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(151, 49, 29, 0.25) 0%,
+    rgba(151, 49, 29, 0.07) 48%,
+    transparent 74%
+  );
+  filter: blur(36px);
+  animation: mode-ambient-float-left 24s ease-in-out infinite alternate;
+}
+
+.mode-ambient-field {
+  right: 4%;
+  bottom: 10%;
+  width: 52%;
+  height: 38%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(224, 112, 72, 0.2) 0%,
+    rgba(224, 112, 72, 0.055) 50%,
+    transparent 76%
+  );
+  filter: blur(32px);
+  animation: mode-ambient-breathe 16s ease-in-out infinite alternate;
+}
+
+@keyframes mode-ambient-float-right {
+  from {
+    transform: translate3d(0, 1%, 0) scale(0.96);
+    opacity: 0.72;
+  }
+  to {
+    transform: translate3d(-8%, -5%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes mode-ambient-float-left {
+  from {
+    transform: translate3d(-2%, 3%, 0) scale(1);
+    opacity: 0.68;
+  }
+  to {
+    transform: translate3d(9%, -4%, 0) scale(1.1);
+    opacity: 0.92;
+  }
+}
+
+@keyframes mode-ambient-breathe {
+  from {
+    transform: translate3d(0, 3%, 0) scale(0.9);
+    opacity: 0.55;
+  }
+  to {
+    transform: translate3d(-12%, -5%, 0) scale(1.14);
+    opacity: 0.9;
+  }
 }
 
 .mode-menu-content {
+  position: relative;
+  z-index: 1;
   width: min(720px, 100%);
   display: grid;
   gap: clamp(28px, 6vh, 58px);
@@ -194,14 +288,14 @@ a:focus-visible {
   top: max(14px, env(safe-area-inset-top));
   left: max(14px, env(safe-area-inset-left));
   z-index: 20;
-  min-height: 44px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  padding: 0 15px 0 12px;
+  padding: 0;
   color: #fff;
   background: rgba(12, 12, 12, 0.78);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
@@ -210,7 +304,28 @@ a:focus-visible {
   font-size: 14px;
   font-weight: 750;
   cursor: pointer;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.home-button.is-visible,
+.playback-controls.is-visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+.home-button.is-hidden,
+.playback-controls.is-hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.home-button.is-hidden {
+  transform: translateY(-8px);
 }
 
 .home-button:active {
@@ -289,6 +404,14 @@ a:focus-visible {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms ease;
+}
+
+.playback-controls.is-hidden {
+  transform: translateY(10px);
 }
 
 .playback-icon-button {
@@ -615,9 +738,17 @@ a:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .mode-ambient-field,
+  .mode-menu-shell::before,
+  .mode-menu-shell::after {
+    animation: none;
+  }
+
   .stage-progress-track span,
   .mode-choice,
-  .action-button {
+  .action-button,
+  .home-button,
+  .playback-controls {
     transition: none;
   }
 }

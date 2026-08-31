@@ -14,7 +14,16 @@ export async function repairRecordedBlobDuration(blob, durationSeconds) {
   return fixWebmDuration(blob, durationSeconds * 1000, { logger: false });
 }
 
-function waitForMediaEvent(media, eventName, timeoutMs = 15_000) {
+function getMediaErrorCode(media) {
+  const code = media.error?.code;
+  return Number.isFinite(code) ? code : null;
+}
+
+function waitForMediaEvent(
+  media,
+  eventName,
+  { timeoutMs = 15_000, stage = "剪辑素材" } = {},
+) {
   return new Promise((resolve, reject) => {
     const cleanup = () => {
       window.clearTimeout(timeoutId);
@@ -27,24 +36,86 @@ function waitForMediaEvent(media, eventName, timeoutMs = 15_000) {
     };
     const handleError = () => {
       cleanup();
-      reject(new Error("剪辑素材读取失败，请重新拍摄。"));
+      console.error("[intermotion] montage media event failed", {
+        eventName,
+        stage,
+        mediaErrorCode: getMediaErrorCode(media),
+        networkState: media.networkState,
+        readyState: media.readyState,
+      });
+      reject(new Error(`${stage}读取失败，请重试。`));
     };
     const timeoutId = window.setTimeout(() => {
       cleanup();
-      reject(new Error("剪辑素材读取超时，请重新拍摄。"));
+      console.error("[intermotion] montage media event timed out", {
+        eventName,
+        stage,
+        networkState: media.networkState,
+        readyState: media.readyState,
+      });
+      reject(new Error(`${stage}读取超时，请重试。`));
     }, timeoutMs);
     media.addEventListener(eventName, handleEvent, { once: true });
     media.addEventListener("error", handleError, { once: true });
   });
 }
 
+function mountHiddenVideo(video) {
+  video.style.cssText =
+    "position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:.001;pointer-events:none";
+  document.body.appendChild(video);
+  return () => video.remove();
+}
+
+function waitForEditableVideo(video, stage = "剪辑素材") {
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      video.removeEventListener("loadeddata", handleReady);
+      video.removeEventListener("canplay", handleReady);
+      video.removeEventListener("error", handleError);
+    };
+    const handleReady = () => {
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      console.error("[intermotion] montage video is not editable", {
+        stage,
+        mediaErrorCode: getMediaErrorCode(video),
+        networkState: video.networkState,
+        readyState: video.readyState,
+      });
+      reject(new Error(`${stage}没有可用画面，请重试。`));
+    };
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error(`${stage}画面准备超时，请重试。`));
+    }, 20_000);
+    video.addEventListener("loadeddata", handleReady);
+    video.addEventListener("canplay", handleReady);
+    video.addEventListener("error", handleError, { once: true });
+    handleReady();
+  });
+}
+
 async function seekVideo(video, time) {
+  await waitForEditableVideo(video, "剪辑素材");
   if (Math.abs(video.currentTime - time) < 0.04 && video.readyState >= 2) {
     return;
   }
-  const seeked = waitForMediaEvent(video, "seeked");
+  const seeked = waitForMediaEvent(video, "seeked", {
+    stage: "剪辑片段定位",
+  });
   video.currentTime = time;
   await seeked;
+  await waitForEditableVideo(video, "剪辑片段");
 }
 
 function drawVideoFrame(context, video) {
@@ -147,15 +218,16 @@ async function verifyPlayableBlob(blob, expectedDurationSeconds) {
   preview.playsInline = true;
   preview.muted = true;
   preview.src = previewUrl;
-  preview.style.cssText =
-    "position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:.001;pointer-events:none";
-  document.body.appendChild(preview);
+  const removePreview = mountHiddenVideo(preview);
   preview.load();
 
   try {
     if (preview.readyState < 1) {
-      await waitForMediaEvent(preview, "loadedmetadata");
+      await waitForMediaEvent(preview, "loadedmetadata", {
+        stage: "成片校验",
+      });
     }
+    await waitForEditableVideo(preview, "成片校验");
     const duration = preview.duration;
     const minimumDuration = Math.min(0.2, expectedDurationSeconds * 0.45);
     const maximumDuration = expectedDurationSeconds * 2.2 + 2;
@@ -178,7 +250,7 @@ async function verifyPlayableBlob(blob, expectedDurationSeconds) {
     preview.pause();
     preview.removeAttribute("src");
     preview.load();
-    preview.remove();
+    removePreview();
     URL.revokeObjectURL(previewUrl);
   }
 }
@@ -209,13 +281,19 @@ export async function createEmotionMontage({
   video.preload = "auto";
   video.playsInline = true;
   video.src = sourceUrl;
+  const removeSourceVideo = mountHiddenVideo(video);
   video.load();
 
   let outputStream = null;
   let recorder = null;
   try {
     onProgress({ progress: 0.02, label: "读取录制内容" });
-    if (video.readyState < 1) await waitForMediaEvent(video, "loadedmetadata");
+    if (video.readyState < 1) {
+      await waitForMediaEvent(video, "loadedmetadata", {
+        stage: "剪辑素材",
+      });
+    }
+    await waitForEditableVideo(video, "剪辑素材");
     if (audioContext.state === "suspended") await audioContext.resume();
 
     const mediaDuration = Number.isFinite(video.duration)
@@ -347,6 +425,7 @@ export async function createEmotionMontage({
     video.pause();
     video.removeAttribute("src");
     video.load();
+    removeSourceVideo();
     outputStream?.getTracks().forEach((track) => track.stop());
     if (recorder?.state === "recording") recorder.stop();
     URL.revokeObjectURL(sourceUrl);
