@@ -235,26 +235,17 @@ button:focus-visible {
   transform: translate3d(2%, 3%, 0) scale(0.9);
 }
 
-.book-page__number {
+.page-status {
   position: absolute;
   right: clamp(28px, 4vw, 64px);
   bottom: clamp(20px, 3vw, 42px);
-  color: #bd8340;
-  font-size: clamp(15px, 1.4vw, 22px);
-  letter-spacing: 0.06em;
-}
-
-.page-status {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 9px;
-  color: rgba(61, 58, 54, 0.58);
-  font-size: 11px;
-  transform: translateX(-50%);
+  gap: 7px;
+  color: #bd8340;
+  font-size: clamp(15px, 1.4vw, 22px);
+  letter-spacing: 0.06em;
 }
 
 .page-quiz-mark {
@@ -527,13 +518,11 @@ button:focus-visible {
     transform: translate3d(4%, 4%, 0);
   }
 
-  .book-page__number {
-    display: none;
-  }
-
   .page-status {
+    right: 28px;
     bottom: 8px;
     gap: 6px;
+    font-size: 11px;
   }
 
   .quiz-board {

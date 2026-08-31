@@ -329,7 +329,7 @@ function closeQuiz({ direction = "right" } = {}) {
 
 function updatePageControls() {
   setTrackOffset(pageOffset());
-  pageStatus.textContent = `第 ${currentPage + 1} 页，共 ${pages.length} 页`;
+  pageStatus.textContent = `${currentPage + 1}/${pages.length}`;
   pageQuizMark.hidden = !hasQuiz();
 }
 
