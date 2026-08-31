@@ -35,7 +35,8 @@ const gestureTabs = [...document.querySelectorAll("[data-gesture-mode]")];
 const PAGE_SETTLE_MS = 620;
 const READING_START_MS = 420;
 const SWIPE_THRESHOLD_PX = 72;
-const FOLLOW_DEAD_ZONE_PX = 150;
+const FOLLOW_START_PX = 10;
+const FOLLOW_OPEN_RATIO = 0.8;
 const QUIZ_GESTURE_MODES = {
   FOLLOW: "follow",
   THRESHOLD: "threshold",
@@ -378,6 +379,7 @@ function beginSwipe(event) {
     quizGestureMode,
     quizPreviewReady: false,
     quizPreviewVisible: false,
+    quizVisibleRatio: 0,
     captureTarget: event.currentTarget,
   };
 
@@ -419,8 +421,9 @@ function moveSwipe(event) {
       return;
     }
 
-    const followDistance = Math.max(0, -deltaX - FOLLOW_DEAD_ZONE_PX);
+    const followDistance = Math.max(0, -deltaX - FOLLOW_START_PX);
     if (followDistance === 0) {
+      swipeState.quizVisibleRatio = 0;
       if (swipeState.quizPreviewVisible) {
         swipeState.quizPreviewVisible = false;
         quizBoard.classList.remove("is-peeking", "is-dragging");
@@ -428,7 +431,7 @@ function moveSwipe(event) {
         quizBoard.setAttribute("aria-hidden", "true");
       }
       setTrackOffset(pageOffset());
-      readingStatus.textContent = "回到 150px 内 · 题板取消";
+      readingStatus.textContent = "回到起始位 · 题板取消";
       return;
     }
 
@@ -440,12 +443,15 @@ function moveSwipe(event) {
     quizBoard.classList.add("is-peeking", "is-dragging");
     const rawBoardX = updateQuizClosedOffset() - followDistance;
     const boardX = rawBoardX < 0 ? rawBoardX * 0.22 : rawBoardX;
+    swipeState.quizVisibleRatio = clamp(followDistance / quizCard.offsetWidth, 0, 1);
     quizBoard.style.transform = `translate3d(${boardX}px, 0, 0)`;
     quizBoard.setAttribute("aria-hidden", "true");
     setTrackOffset(pageOffset() + Math.min(0, deltaX * 0.12));
     readingStatus.textContent = rawBoardX < 0
       ? "已超过停靠位 · 松手回弹"
-      : "150px 跟手 · 松手展开";
+      : swipeState.quizVisibleRatio >= FOLLOW_OPEN_RATIO
+        ? "已露出 80% · 松手展开"
+        : "露出不足 80% · 松手收回";
     return;
   }
 
@@ -474,12 +480,12 @@ function finishSwipe(event, forceCancel = false) {
   quizBoard.classList.remove("is-dragging");
 
   if (state.mode === "quiz") {
-    const threshold = state.quizGestureMode === QUIZ_GESTURE_MODES.FOLLOW
-      ? FOLLOW_DEAD_ZONE_PX
-      : Math.min(SWIPE_THRESHOLD_PX, readerViewport.clientWidth * 0.22);
-    const shouldOpen = !forceCancel
-      && state.deltaX < -threshold
-      && Math.abs(state.deltaX) > Math.abs(state.deltaY) * 1.2;
+    const dominantDirection = Math.abs(state.deltaX) > Math.abs(state.deltaY) * 1.2;
+    const threshold = Math.min(SWIPE_THRESHOLD_PX, readerViewport.clientWidth * 0.22);
+    const crossedModeThreshold = state.quizGestureMode === QUIZ_GESTURE_MODES.FOLLOW
+      ? state.quizVisibleRatio >= FOLLOW_OPEN_RATIO
+      : state.deltaX < -threshold;
+    const shouldOpen = !forceCancel && dominantDirection && crossedModeThreshold;
     setTrackOffset(pageOffset());
 
     if (shouldOpen) {
