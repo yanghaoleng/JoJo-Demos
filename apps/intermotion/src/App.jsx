@@ -11,6 +11,7 @@ import {
   FilesetResolver,
   ImageSegmenter,
 } from "@mediapipe/tasks-vision";
+import { isPersonMaskReady } from "./maskReadiness.js";
 
 const BASE_URL = import.meta.env.BASE_URL;
 const FILM_URL = `${BASE_URL}media/reaction-screen-recording.mp4`;
@@ -23,6 +24,8 @@ const DEFAULT_VIDEO_RATIO = 16 / 9;
 const MASK_THRESHOLD = 0.55;
 const MASK_FEATHER_PX = 3;
 const SEGMENT_INTERVAL_MS = 90;
+const PERSON_MASK_READY_FRAMES = 3;
+const PERSON_MASK_READY_TIMEOUT_MS = 10_000;
 const FACE_INTERVAL_MS = 180;
 const FACE_HOLD_MS = 900;
 const OUTLINE_RADIUS_PX = 6;
@@ -393,7 +396,6 @@ function paintOutline(buffers, styleId, timestamp) {
 function drawReactionOverlay(
   context,
   personCanvas,
-  cameraVideo,
   personBounds,
   cameraEnabled,
   outlineStyleId,
@@ -404,12 +406,10 @@ function drawReactionOverlay(
   overlayPlacement,
 ) {
   if (!cameraEnabled) return null;
-  const source = personCanvas?.width ? personCanvas : cameraVideo;
-  if (!source || (source === cameraVideo && cameraVideo.readyState < 2)) {
-    return null;
-  }
+  const source = personCanvas?.width ? personCanvas : null;
+  if (!source) return null;
 
-  const bounds = personCanvas?.width ? personBounds : DEFAULT_PERSON_BOUNDS;
+  const bounds = personBounds;
   const sourceWidth = source.width || source.videoWidth;
   const sourceHeight = source.height || source.videoHeight;
   if (!sourceWidth || !sourceHeight) return null;
@@ -458,28 +458,6 @@ function drawReactionOverlay(
   overlayPlacement.current = placement;
   const { x, y } = placement;
 
-  if (!personCanvas?.width) {
-    context.save();
-    context.translate(x + targetWidth, y);
-    context.scale(-1, 1);
-    context.shadowColor = "rgba(18, 20, 18, 0.28)";
-    context.shadowBlur = 18;
-    context.shadowOffsetY = 12;
-    context.drawImage(
-      source,
-      sx,
-      sy,
-      sw,
-      sh,
-      0,
-      0,
-      targetWidth,
-      targetHeight,
-    );
-    context.restore();
-    return { x, y, width: targetWidth, height: targetHeight };
-  }
-
   prepareOutlineBuffers(
     outlineBuffers,
     source,
@@ -523,7 +501,6 @@ function drawComposition(
   context,
   film,
   personCanvas,
-  cameraVideo,
   personBounds,
   cameraEnabled,
   outlineStyleId,
@@ -537,7 +514,6 @@ function drawComposition(
   return drawReactionOverlay(
     context,
     personCanvas,
-    cameraVideo,
     personBounds,
     cameraEnabled,
     outlineStyleId,
@@ -882,7 +858,7 @@ export default function App() {
 
   const updatePersonMask = useCallback((result, cameraVideo) => {
     const confidenceMask = result.confidenceMasks?.[0];
-    if (!confidenceMask) return;
+    if (!confidenceMask) return false;
     const values = confidenceMask.getAsFloat32Array();
     const maskCanvas = maskCanvasRef.current;
     const personCanvas = personCanvasRef.current;
@@ -890,12 +866,9 @@ export default function App() {
     const cameraHeight = cameraVideo.videoHeight || 480;
     maskCanvas.width = confidenceMask.width;
     maskCanvas.height = confidenceMask.height;
-    personCanvas.width = cameraWidth;
-    personCanvas.height = cameraHeight;
 
     const maskContext = maskCanvas.getContext("2d");
-    const personContext = personCanvas.getContext("2d");
-    if (!maskContext || !personContext) return;
+    if (!maskContext) return false;
 
     const imageData = maskContext.createImageData(
       confidenceMask.width,
@@ -905,6 +878,7 @@ export default function App() {
     let maxX = -1;
     let minY = confidenceMask.height;
     let maxY = -1;
+    let foregroundPixelCount = 0;
     for (let index = 0; index < values.length; index += 1) {
       const alpha = values[index] >= MASK_THRESHOLD ? 255 : 0;
       const dataIndex = index * 4;
@@ -913,6 +887,7 @@ export default function App() {
       imageData.data[dataIndex + 2] = 255;
       imageData.data[dataIndex + 3] = alpha;
       if (alpha) {
+        foregroundPixelCount += 1;
         const x = index % confidenceMask.width;
         const y = Math.floor(index / confidenceMask.width);
         minX = Math.min(minX, x);
@@ -921,8 +896,25 @@ export default function App() {
         maxY = Math.max(maxY, y);
       }
     }
+
+    const isReady = isPersonMaskReady({
+      foregroundPixelCount,
+      totalPixelCount: values.length,
+      minX,
+      maxX,
+      minY,
+      maxY,
+      width: confidenceMask.width,
+      height: confidenceMask.height,
+    });
+    if (!isReady) return false;
+
     maskContext.putImageData(imageData, 0, 0);
 
+    personCanvas.width = cameraWidth;
+    personCanvas.height = cameraHeight;
+    const personContext = personCanvas.getContext("2d");
+    if (!personContext) return false;
     personContext.clearRect(0, 0, cameraWidth, cameraHeight);
     personContext.globalCompositeOperation = "source-over";
     personContext.filter = "none";
@@ -953,7 +945,58 @@ export default function App() {
         }),
       };
     }
+    return true;
   }, []);
+
+  const preparePersonMask = useCallback(
+    async (segmenter, cameraVideo, mediaSession) => {
+      const deadline = performance.now() + PERSON_MASK_READY_TIMEOUT_MS;
+      let readyFrameCount = 0;
+
+      while (performance.now() < deadline) {
+        if (
+          mediaSessionRef.current !== mediaSession ||
+          !userStreamRef.current
+        ) {
+          throw new Error("拍摄准备已取消");
+        }
+
+        const timestamp = performance.now();
+        const isReady = await new Promise((resolve, reject) => {
+          segmentingRef.current = true;
+          try {
+            segmenter.segmentForVideo(cameraVideo, timestamp, (result) => {
+              try {
+                resolve(
+                  mediaSessionRef.current === mediaSession &&
+                    updatePersonMask(result, cameraVideo),
+                );
+              } catch (error) {
+                reject(error);
+              } finally {
+                result.confidenceMasks?.forEach((mask) => mask.close());
+                segmentingRef.current = false;
+              }
+            });
+          } catch (error) {
+            segmentingRef.current = false;
+            reject(error);
+          }
+        });
+
+        lastSegmentTimeRef.current = timestamp;
+        readyFrameCount = isReady ? readyFrameCount + 1 : 0;
+        if (readyFrameCount >= PERSON_MASK_READY_FRAMES) return;
+
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, SEGMENT_INTERVAL_MS);
+        });
+      }
+
+      throw new Error("暂时没有识别到清晰人物，请让上半身进入画面后重试。");
+    },
+    [updatePersonMask],
+  );
 
   const startDrawLoop = useCallback(() => {
     const draw = (timestamp) => {
@@ -1016,7 +1059,6 @@ export default function App() {
         context,
         film,
         personCanvasRef.current,
-        camera,
         personBoundsRef.current,
         cameraEnabledRef.current,
         OUTLINE_STYLES[outlineStyleIndexRef.current].id,
@@ -1067,7 +1109,10 @@ export default function App() {
       const film = filmVideoRef.current;
       const camera = cameraVideoRef.current;
       const canvas = canvasRef.current;
-      if (!film || !camera || !canvas) throw new Error("拍摄画面没有准备好");
+      const playbackCanvas = playbackCanvasRef.current;
+      if (!film || !camera || !canvas || !playbackCanvas) {
+        throw new Error("拍摄画面没有准备好");
+      }
 
       const initialStream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -1088,6 +1133,17 @@ export default function App() {
       camera.muted = true;
       await camera.play();
 
+      const segmenter = await createSegmenter();
+      if (
+        mediaSessionRef.current !== mediaSession ||
+        !userStreamRef.current
+      ) {
+        segmenter.close();
+        throw new Error("拍摄准备已取消");
+      }
+      segmenterRef.current = segmenter;
+      await preparePersonMask(segmenter, camera, mediaSession);
+
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       await audioContext.resume();
@@ -1106,18 +1162,6 @@ export default function App() {
       filmGainRef.current = filmGain;
       microphoneGainRef.current = microphoneGain;
 
-      createSegmenter()
-        .then((segmenter) => {
-          if (
-            mediaSessionRef.current === mediaSession &&
-            userStreamRef.current
-          ) {
-            segmenterRef.current = segmenter;
-          } else {
-            segmenter.close();
-          }
-        })
-        .catch(() => {});
       createFaceDetector()
         .then((faceDetector) => {
           if (
@@ -1135,6 +1179,30 @@ export default function App() {
       film.volume = 1;
       film.muted = false;
       await film.play();
+
+      const compositionContext = canvas.getContext("2d", { alpha: false });
+      const playbackContext = playbackCanvas.getContext("2d", {
+        alpha: false,
+      });
+      if (!compositionContext || !playbackContext) {
+        throw new Error("拍摄画面没有准备好");
+      }
+      const firstFrameTimestamp = performance.now();
+      reactionDisplayBoundsRef.current = drawComposition(
+        compositionContext,
+        film,
+        personCanvasRef.current,
+        personBoundsRef.current,
+        cameraEnabledRef.current,
+        OUTLINE_STYLES[outlineStyleIndexRef.current].id,
+        firstFrameTimestamp,
+        outlineBuffersRef.current,
+        personFrameRevisionRef.current,
+        faceBoundsRef.current,
+        overlayPlacementRef,
+      );
+      drawFilmFrame(playbackContext, film);
+
       const canvasStream = canvas.captureStream(30);
       const outputStream = new MediaStream([
         ...canvasStream.getVideoTracks(),
@@ -1188,7 +1256,7 @@ export default function App() {
         );
       }
     }
-  }, [releaseMedia, startDrawLoop]);
+  }, [preparePersonMask, releaseMedia, startDrawLoop]);
 
   const cycleOutlineAtPoint = useCallback(
     (clientX, clientY, stageElement) => {
