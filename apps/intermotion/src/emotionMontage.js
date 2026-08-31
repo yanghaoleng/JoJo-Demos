@@ -3,6 +3,17 @@ import { fixWebmDuration } from "@fix-webm-duration/fix";
 const TRANSITION_DURATION_MS = 460;
 const TRANSITION_DURATION_SECONDS = TRANSITION_DURATION_MS / 1000;
 
+export async function repairRecordedBlobDuration(blob, durationSeconds) {
+  if (
+    !blob?.type?.includes("webm") ||
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0
+  ) {
+    return blob;
+  }
+  return fixWebmDuration(blob, durationSeconds * 1000, { logger: false });
+}
+
 function waitForMediaEvent(media, eventName, timeoutMs = 15_000) {
   return new Promise((resolve, reject) => {
     const cleanup = () => {
@@ -189,14 +200,10 @@ export async function createEmotionMontage({
   }
 
   onProgress({ progress: 0.01, label: "修复录制时间轴" });
-  const normalizedSourceBlob =
-    sourceBlob.type.includes("webm") &&
-    Number.isFinite(sourceDuration) &&
-    sourceDuration > 0
-      ? await fixWebmDuration(sourceBlob, sourceDuration * 1000, {
-          logger: false,
-        })
-      : sourceBlob;
+  const normalizedSourceBlob = await repairRecordedBlobDuration(
+    sourceBlob,
+    sourceDuration,
+  );
   const sourceUrl = URL.createObjectURL(normalizedSourceBlob);
   const video = document.createElement("video");
   video.preload = "auto";

@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
   ArrowCounterClockwise,
   Camera,
+  CornersOut,
   DownloadSimple,
   FilmStrip,
+  Pause,
+  Play,
   Smiley,
+  SpeakerHigh,
+  SpeakerSlash,
   Stop,
   UploadSimple,
 } from "@phosphor-icons/react";
@@ -19,8 +25,12 @@ import {
   getEmotionalReaction,
   updateEmotionCandidate,
 } from "./emotionClips.js";
-import { createEmotionMontage } from "./emotionMontage.js";
+import {
+  createEmotionMontage,
+  repairRecordedBlobDuration,
+} from "./emotionMontage.js";
 import { isPersonMaskReady } from "./maskReadiness.js";
+import TextRotate from "./TextRotate.jsx";
 
 const BASE_URL = import.meta.env.BASE_URL;
 const FILM_URL = `${BASE_URL}media/reaction-screen-recording.mp4`;
@@ -63,6 +73,13 @@ const WIDE_CAMERA_PATTERN =
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function formatPlaybackTime(seconds) {
+  const safeSeconds = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = Math.floor(safeSeconds % 60);
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 function getOutputSize(videoWidth, videoHeight) {
@@ -716,25 +733,128 @@ function getLargestFaceBounds(result, cameraVideo, previous, timestamp) {
 function ModeMenu({ onSelect }) {
   return (
     <main className="mode-menu-shell">
-      <section className="mode-options" aria-label="选择拍摄方式">
-        <button
-          className="mode-choice mode-choice-course"
-          type="button"
-          onClick={() => onSelect("course")}
-        >
-          <Smiley size={42} weight="fill" aria-hidden="true" />
-          <span>课程情绪剪辑</span>
-        </button>
-        <button
-          className="mode-choice"
-          type="button"
-          onClick={() => onSelect("clip")}
-        >
-          <FilmStrip size={42} weight="fill" aria-hidden="true" />
-          <span>片段</span>
-        </button>
-      </section>
+      <div className="mode-menu-content">
+        <h1 className="mode-menu-title">
+          <span>记录孩子</span>
+          <TextRotate
+            texts={["被启发的瞬间", "情绪闪光的时刻", "真切投入的反应"]}
+          />
+        </h1>
+        <section className="mode-options" aria-label="选择拍摄方式">
+          <button
+            className="mode-choice"
+            type="button"
+            onClick={() => onSelect("course")}
+          >
+            <Smiley size={42} weight="fill" aria-hidden="true" />
+            <span className="mode-choice-copy">
+              <strong>自动剪辑上课反应</strong>
+              <small>
+                根据情绪曲线为参考，自动剪辑一堂课下的精彩片段和情绪高点的反应视频
+              </small>
+            </span>
+          </button>
+          <button
+            className="mode-choice"
+            type="button"
+            onClick={() => onSelect("clip")}
+          >
+            <FilmStrip size={42} weight="fill" aria-hidden="true" />
+            <span className="mode-choice-copy">
+              <strong>特定片段反应</strong>
+              <small>针对特定功能场景录制反应视频</small>
+            </span>
+          </button>
+        </section>
+      </div>
     </main>
+  );
+}
+
+function HomeButton({ onClick }) {
+  return (
+    <button
+      className="home-button"
+      type="button"
+      onClick={onClick}
+      aria-label="返回主页"
+    >
+      <ArrowLeft size={20} weight="bold" aria-hidden="true" />
+      <span>主页</span>
+    </button>
+  );
+}
+
+function PlaybackControls({
+  playbackInfo,
+  onTogglePlay,
+  onSeek,
+  onToggleMute,
+  onVolumeChange,
+  onFullscreen,
+}) {
+  const duration = Math.max(0, playbackInfo.duration || 0);
+  const currentTime = clamp(playbackInfo.currentTime || 0, 0, duration || 0);
+  return (
+    <div className="playback-controls" aria-label="播放器控制">
+      <button
+        className="playback-icon-button"
+        type="button"
+        onClick={onTogglePlay}
+        aria-label={playbackInfo.paused ? "播放" : "暂停"}
+      >
+        {playbackInfo.paused ? (
+          <Play size={20} weight="fill" aria-hidden="true" />
+        ) : (
+          <Pause size={20} weight="fill" aria-hidden="true" />
+        )}
+      </button>
+      <span className="playback-time">
+        {formatPlaybackTime(currentTime)} / {formatPlaybackTime(duration)}
+      </span>
+      <input
+        className="playback-progress"
+        type="range"
+        min="0"
+        max={Math.max(0.01, duration)}
+        step="0.05"
+        value={currentTime}
+        onChange={(event) => onSeek(Number(event.currentTarget.value))}
+        aria-label="播放进度"
+      />
+      <button
+        className="playback-icon-button"
+        type="button"
+        onClick={onToggleMute}
+        aria-label={playbackInfo.muted ? "取消静音" : "静音"}
+      >
+        {playbackInfo.muted ? (
+          <SpeakerSlash size={20} weight="fill" aria-hidden="true" />
+        ) : (
+          <SpeakerHigh size={20} weight="fill" aria-hidden="true" />
+        )}
+      </button>
+      <input
+        className="playback-volume"
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={playbackInfo.muted ? 0 : playbackInfo.volume}
+        onChange={(event) =>
+          onVolumeChange(Number(event.currentTarget.value))
+        }
+        aria-label="音量"
+      />
+      <button
+        className="playback-icon-button"
+        type="button"
+        onClick={onFullscreen}
+        aria-label="全屏"
+      >
+        <CornersOut size={20} weight="bold" aria-hidden="true" />
+      </button>
+    </div>
   );
 }
 
@@ -781,22 +901,45 @@ function RecorderStage({
   posterAlt,
   processingLabel,
   progressInfo,
+  playbackInfo,
   errorMessage,
+  onHome,
   onStart,
   onStop,
   onImport,
   onImportChange,
+  onTogglePlay,
+  onSeek,
+  onToggleMute,
+  onVolumeChange,
+  onVideoFullscreen,
   onStageDoubleClick,
   onStagePointerUp,
 }) {
+  const stageRef = useRef(null);
   const isRecording = phase === "recording";
   const showSourcePreview =
     phase === "idle" || phase === "error" || phase === "starting";
+  const handleFullscreen = () => {
+    const stage = stageRef.current;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else if (stage?.requestFullscreen) {
+      stage.requestFullscreen()?.catch(() => onVideoFullscreen());
+    } else if (stage?.webkitRequestFullscreen) {
+      stage.webkitRequestFullscreen();
+    } else {
+      onVideoFullscreen();
+    }
+  };
   return (
     <main className={`capture-shell is-${phase}`}>
+      <HomeButton onClick={onHome} />
       <section className="capture-layout" aria-label="反应视频拍摄区">
         <div
+          ref={stageRef}
           className="video-stage"
+          style={{ "--media-ratio": videoRatio }}
           onDoubleClick={onStageDoubleClick}
           onPointerUp={onStagePointerUp}
         >
@@ -838,6 +981,16 @@ function RecorderStage({
               width={outputSize.width}
               height={outputSize.height}
             />
+            {isRecording ? (
+              <PlaybackControls
+                playbackInfo={playbackInfo}
+                onTogglePlay={onTogglePlay}
+                onSeek={onSeek}
+                onToggleMute={onToggleMute}
+                onVolumeChange={onVolumeChange}
+                onFullscreen={handleFullscreen}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -898,21 +1051,33 @@ function RecorderStage({
           )}
         </div>
         {phase === "error" && (
-          <span className="visually-hidden" role="alert">
+          <div className="stage-error" role="alert">
             {errorMessage}
-          </span>
+          </div>
         )}
       </section>
     </main>
   );
 }
 
-function ResultView({ videoUrl, mimeType, videoRatio, downloadName, onAgain }) {
+function ResultView({
+  videoUrl,
+  mimeType,
+  videoRatio,
+  downloadName,
+  notice,
+  onHome,
+  onAgain,
+}) {
   const extension = getFileExtension(mimeType);
   return (
     <main className="capture-shell result-shell">
+      <HomeButton onClick={onHome} />
       <section className="capture-layout">
-        <div className="video-stage result-stage">
+        <div
+          className="video-stage result-stage"
+          style={{ "--media-ratio": videoRatio }}
+        >
           <div
             className="stage-media"
             style={{ "--media-ratio": videoRatio }}
@@ -920,6 +1085,11 @@ function ResultView({ videoUrl, mimeType, videoRatio, downloadName, onAgain }) {
             <video src={videoUrl} controls playsInline autoPlay />
           </div>
         </div>
+        {notice ? (
+          <div className="result-notice" role="status">
+            {notice}
+          </div>
+        ) : null}
         <div className="action-dock result-actions" aria-label="成片操作">
           <a
             className="action-button action-primary"
@@ -985,6 +1155,10 @@ export default function App() {
   const outlineStyleIndexRef = useRef(getRandomDefaultOutlineIndex());
   const lastTouchTapRef = useRef(null);
   const lastTouchCycleTimeRef = useRef(0);
+  const recordingStartedAtRef = useRef(0);
+  const recordedDurationRef = useRef(0);
+  const lastPlaybackUiUpdateRef = useRef(0);
+  const abandonGenerationRef = useRef(false);
 
   const [experienceMode, setExperienceMode] = useState(null);
   const [phase, setPhase] = useState("idle");
@@ -994,6 +1168,14 @@ export default function App() {
   const [outputSize, setOutputSize] = useState(DEFAULT_OUTPUT_SIZE);
   const [recordingMimeType, setRecordingMimeType] = useState("video/webm");
   const [errorMessage, setErrorMessage] = useState("");
+  const [resultNotice, setResultNotice] = useState("");
+  const [playbackInfo, setPlaybackInfo] = useState({
+    currentTime: 0,
+    duration: 0,
+    paused: true,
+    muted: false,
+    volume: 1,
+  });
   const [progressInfo, setProgressInfo] = useState({
     label: "正在准备",
     value: 0,
@@ -1038,6 +1220,10 @@ export default function App() {
     cancelAnimationFrame(frameRequestRef.current);
     const recorder = recorderRef.current;
     if (recorder?.state === "recording") {
+      recordedDurationRef.current = Math.max(
+        0.1,
+        (performance.now() - recordingStartedAtRef.current) / 1000,
+      );
       setProgressInfo({ label: "整理录制内容", value: 0.03 });
       setPhase("processing");
       recorder.stop();
@@ -1260,7 +1446,10 @@ export default function App() {
         try {
           const result = emotionLandmarker.detectForVideo(camera, timestamp);
           const reaction = getEmotionalReaction(result.faceBlendshapes);
-          const videoTime = film.currentTime;
+          const videoTime = Math.max(
+            0,
+            (performance.now() - recordingStartedAtRef.current) / 1000,
+          );
           if (
             !emotionPeakRef.current ||
             reaction.score > emotionPeakRef.current.score
@@ -1293,6 +1482,16 @@ export default function App() {
         overlayPlacementRef,
       );
       drawFilmFrame(playbackContext, film);
+      if (timestamp - lastPlaybackUiUpdateRef.current >= 180) {
+        lastPlaybackUiUpdateRef.current = timestamp;
+        setPlaybackInfo({
+          currentTime: film.currentTime,
+          duration: Number.isFinite(film.duration) ? film.duration : 0,
+          paused: film.paused,
+          muted: film.muted,
+          volume: film.volume,
+        });
+      }
       if (film.ended) {
         stopRecording();
         return;
@@ -1314,7 +1513,12 @@ export default function App() {
     setPhase("starting");
     setProgressInfo({ label: "加载视频", value: 0.02 });
     setErrorMessage("");
+    setResultNotice("");
+    abandonGenerationRef.current = false;
     stoppingRef.current = false;
+    recordingStartedAtRef.current = 0;
+    recordedDurationRef.current = 0;
+    lastPlaybackUiUpdateRef.current = 0;
     cameraEnabledRef.current = true;
     personCanvasRef.current.width = 0;
     personCanvasRef.current.height = 0;
@@ -1481,13 +1685,18 @@ export default function App() {
         setErrorMessage("录制过程中出现了问题，请重新拍摄。");
       };
       recorder.onstop = async () => {
-        const sourceBlob = new Blob(chunksRef.current, {
+        const rawSourceBlob = new Blob(chunksRef.current, {
           type: actualMimeType,
         });
-        const capturedDuration = film.currentTime;
+        const capturedDuration = Math.max(
+          0.1,
+          recordedDurationRef.current ||
+            (performance.now() - recordingStartedAtRef.current) / 1000,
+        );
         const isCourseMode = experienceModeRef.current === "course";
 
-        if (!sourceBlob.size) {
+        if (abandonGenerationRef.current) return;
+        if (!rawSourceBlob.size) {
           releaseMedia();
           setPhase("error");
           setErrorMessage("没有读取到成片数据，请重新拍摄。");
@@ -1495,13 +1704,33 @@ export default function App() {
           return;
         }
 
-        if (!isCourseMode) {
+        let sourceBlob = rawSourceBlob;
+        try {
+          sourceBlob = await repairRecordedBlobDuration(
+            rawSourceBlob,
+            capturedDuration,
+          );
+        } catch (error) {
+          console.warn("[intermotion] source duration repair skipped", error);
+        }
+        if (abandonGenerationRef.current) {
+          stoppingRef.current = false;
+          return;
+        }
+
+        const showRecordedResult = (blob, mimeType, notice = "") => {
           if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
-          const nextUrl = URL.createObjectURL(sourceBlob);
+          const nextUrl = URL.createObjectURL(blob);
           resultUrlRef.current = nextUrl;
+          setRecordingMimeType(mimeType);
+          setResultNotice(notice);
           setVideoUrl(nextUrl);
-          releaseMedia();
           setPhase("result");
+        };
+
+        if (!isCourseMode) {
+          releaseMedia();
+          showRecordedResult(sourceBlob, actualMimeType);
           stoppingRef.current = false;
           return;
         }
@@ -1519,8 +1748,11 @@ export default function App() {
         if (!ranges.length) {
           montageAudioContext?.close().catch(() => {});
           audioContextRef.current = null;
-          setPhase("error");
-          setErrorMessage("没有检测到明显的情绪互动，请重新拍摄。");
+          showRecordedResult(
+            sourceBlob,
+            actualMimeType,
+            "没有检测到明显的情绪片段，已为你保留完整录制。",
+          );
           stoppingRef.current = false;
           return;
         }
@@ -1535,24 +1767,26 @@ export default function App() {
             audioContext: montageAudioContext,
             sourceDuration: capturedDuration,
             onProgress: ({ progress, label }) => {
+              if (abandonGenerationRef.current) return;
               if (progress - lastProgressValue >= 0.01 || progress === 1) {
                 lastProgressValue = progress;
                 setProgressInfo({ label, value: 0.06 + progress * 0.94 });
               }
             },
           });
-          if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
-          const nextUrl = URL.createObjectURL(montage.blob);
-          resultUrlRef.current = nextUrl;
-          setRecordingMimeType(montage.mimeType);
-          setVideoUrl(nextUrl);
-          setPhase("result");
+          if (abandonGenerationRef.current) return;
+          showRecordedResult(montage.blob, montage.mimeType);
         } catch (error) {
-          setPhase("error");
-          setErrorMessage(
+          if (abandonGenerationRef.current) return;
+          const detail =
             error instanceof Error && error.message
               ? error.message
-              : "情绪片段剪辑失败，请重新拍摄。",
+              : "情绪片段剪辑失败";
+          console.error("[intermotion] emotion montage failed", error);
+          showRecordedResult(
+            sourceBlob,
+            actualMimeType,
+            `自动剪辑没有完成：${detail} 已为你保留完整录制。`,
           );
         } finally {
           montageAudioContext?.close().catch(() => {});
@@ -1561,7 +1795,16 @@ export default function App() {
         }
       };
       recorderRef.current = recorder;
-      recorder.start(1000);
+      recordingStartedAtRef.current = performance.now();
+      recordedDurationRef.current = 0;
+      recorder.start();
+      setPlaybackInfo({
+        currentTime: film.currentTime,
+        duration: Number.isFinite(film.duration) ? film.duration : 0,
+        paused: film.paused,
+        muted: film.muted,
+        volume: film.volume,
+      });
       setProgressInfo({ label: "录制已开始", value: 1 });
       setPhase("recording");
       startDrawLoop();
@@ -1670,6 +1913,102 @@ export default function App() {
     fileInputRef.current?.click();
   }, []);
 
+  const toggleFilmPlayback = useCallback(() => {
+    const film = filmVideoRef.current;
+    if (!film) return;
+    if (film.paused) {
+      film
+        .play()
+        .then(() =>
+          setPlaybackInfo((current) => ({ ...current, paused: false })),
+        )
+        .catch(() => {});
+    } else {
+      film.pause();
+      setPlaybackInfo((current) => ({ ...current, paused: true }));
+    }
+  }, []);
+
+  const seekFilmPlayback = useCallback((nextTime) => {
+    const film = filmVideoRef.current;
+    if (!film || !Number.isFinite(nextTime)) return;
+    film.currentTime = clamp(nextTime, 0, film.duration || 0);
+    setPlaybackInfo((current) => ({
+      ...current,
+      currentTime: film.currentTime,
+    }));
+  }, []);
+
+  const toggleFilmMute = useCallback(() => {
+    const film = filmVideoRef.current;
+    if (!film) return;
+    film.muted = !film.muted;
+    setPlaybackInfo((current) => ({ ...current, muted: film.muted }));
+  }, []);
+
+  const changeFilmVolume = useCallback((nextVolume) => {
+    const film = filmVideoRef.current;
+    if (!film) return;
+    film.volume = clamp(nextVolume, 0, 1);
+    film.muted = film.volume === 0;
+    setPlaybackInfo((current) => ({
+      ...current,
+      muted: film.muted,
+      volume: film.volume,
+    }));
+  }, []);
+
+  const enterFilmFullscreen = useCallback(() => {
+    const film = filmVideoRef.current;
+    if (typeof film?.webkitEnterFullscreen === "function") {
+      film.webkitEnterFullscreen();
+    }
+  }, []);
+
+  const returnHome = useCallback(() => {
+    abandonGenerationRef.current = true;
+    const recorder = recorderRef.current;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onerror = null;
+      recorder.onstop = null;
+      if (recorder.state === "recording") recorder.stop();
+    }
+    recorderRef.current = null;
+    const film = filmVideoRef.current;
+    film?.pause();
+    film?.removeAttribute("src");
+    film?.load();
+    releaseMedia();
+    if (resultUrlRef.current) {
+      URL.revokeObjectURL(resultUrlRef.current);
+      resultUrlRef.current = "";
+    }
+    if (customVideoUrlRef.current) {
+      URL.revokeObjectURL(customVideoUrlRef.current);
+      customVideoUrlRef.current = "";
+    }
+    experienceModeRef.current = null;
+    filmVideoRef.current = createFilmVideoElement();
+    stoppingRef.current = false;
+    setExperienceMode(null);
+    setPhase("idle");
+    setVideoUrl("");
+    setCustomVideoUrl("");
+    setResultNotice("");
+    setErrorMessage("");
+    setVideoRatio(DEFAULT_VIDEO_RATIO);
+    setOutputSize(DEFAULT_OUTPUT_SIZE);
+    setProgressInfo({ label: "正在准备", value: 0 });
+    setPlaybackInfo({
+      currentTime: 0,
+      duration: 0,
+      paused: true,
+      muted: false,
+      volume: 1,
+    });
+  }, [releaseMedia]);
+
   const selectExperienceMode = useCallback((mode) => {
     const isCourseMode = mode === "course";
     experienceModeRef.current = mode;
@@ -1682,7 +2021,15 @@ export default function App() {
     setVideoRatio(DEFAULT_VIDEO_RATIO);
     setOutputSize(DEFAULT_OUTPUT_SIZE);
     setErrorMessage("");
+    setResultNotice("");
     setProgressInfo({ label: "正在准备", value: 0 });
+    setPlaybackInfo({
+      currentTime: 0,
+      duration: 0,
+      paused: true,
+      muted: false,
+      volume: 1,
+    });
     setPhase("idle");
   }, []);
 
@@ -1706,6 +2053,7 @@ export default function App() {
       setVideoRatio(nextRatio);
       setOutputSize(getOutputSize(probe.videoWidth, probe.videoHeight));
       setErrorMessage("");
+      setResultNotice("");
       setPhase("idle");
       if (previousUrl) URL.revokeObjectURL(previousUrl);
       probe.removeAttribute("src");
@@ -1725,6 +2073,7 @@ export default function App() {
       resultUrlRef.current = "";
     }
     setVideoUrl("");
+    setResultNotice("");
     setProgressInfo({ label: "正在准备", value: 0 });
     filmVideoRef.current = createFilmVideoElement(
       experienceModeRef.current === "course"
@@ -1767,6 +2116,8 @@ export default function App() {
         downloadName={
           experienceMode === "course" ? "课程情绪剪辑" : "童趣反应视频"
         }
+        notice={resultNotice}
+        onHome={returnHome}
         onAgain={recordAgain}
       />
     );
@@ -1791,11 +2142,18 @@ export default function App() {
       }
       processingLabel={experienceMode === "course" ? "剪辑中" : "生成中"}
       progressInfo={progressInfo}
+      playbackInfo={playbackInfo}
       errorMessage={errorMessage}
+      onHome={returnHome}
       onStart={startRecording}
       onStop={stopRecording}
       onImport={openVideoPicker}
       onImportChange={importVideo}
+      onTogglePlay={toggleFilmPlayback}
+      onSeek={seekFilmPlayback}
+      onToggleMute={toggleFilmMute}
+      onVolumeChange={changeFilmVolume}
+      onVideoFullscreen={enterFilmFullscreen}
       onStageDoubleClick={handleStageDoubleClick}
       onStagePointerUp={handleStagePointerUp}
     />
