@@ -240,15 +240,20 @@ function getCoverRect(sourceWidth, sourceHeight, targetWidth, targetHeight) {
   };
 }
 
-function chooseRecordingMimeType() {
+function chooseRecordingMimeType(preferWebm = false) {
   if (!window.MediaRecorder) return "";
-  const candidates = [
-    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-    "video/mp4",
-    "video/webm;codecs=vp9,opus",
+  const webmCandidates = [
     "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9,opus",
     "video/webm",
   ];
+  const mp4Candidates = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4",
+  ];
+  const candidates = preferWebm
+    ? [...webmCandidates, ...mp4Candidates]
+    : [...mp4Candidates, ...webmCandidates];
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
 }
 
@@ -263,6 +268,68 @@ function createFilmVideoElement(sourceUrl = FILM_URL) {
   film.playsInline = true;
   film.load();
   return film;
+}
+
+function getVideoBufferProgress(video) {
+  if (!Number.isFinite(video.duration) || video.duration <= 0) return 0;
+  let bufferedEnd = 0;
+  for (let index = 0; index < video.buffered.length; index += 1) {
+    bufferedEnd = Math.max(bufferedEnd, video.buffered.end(index));
+  }
+  return clamp(bufferedEnd / video.duration, 0, 1);
+}
+
+function waitForVideoReady(video, onProgress) {
+  if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+    onProgress(1);
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      video.removeEventListener("progress", handleProgress);
+      video.removeEventListener("loadedmetadata", handleProgress);
+      video.removeEventListener("canplay", handleReady);
+      video.removeEventListener("error", handleError);
+    };
+    const handleProgress = () => {
+      const metadataProgress = video.readyState >= 1 ? 0.24 : 0;
+      const firstFrameProgress = video.readyState >= 2 ? 0.56 : 0;
+      onProgress(
+        Math.max(
+          metadataProgress,
+          firstFrameProgress,
+          getVideoBufferProgress(video),
+        ),
+      );
+    };
+    const handleReady = () => {
+      cleanup();
+      onProgress(1);
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error("视频加载失败，请检查网络后重试。"));
+    };
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        onProgress(1);
+        resolve();
+      } else {
+        reject(new Error("视频加载超时，请检查网络后重试。"));
+      }
+    }, 20_000);
+
+    video.addEventListener("progress", handleProgress);
+    video.addEventListener("loadedmetadata", handleProgress);
+    video.addEventListener("canplay", handleReady, { once: true });
+    video.addEventListener("error", handleError, { once: true });
+    handleProgress();
+    video.load();
+  });
 }
 
 function drawFilmFrame(context, film) {
@@ -671,6 +738,35 @@ function ModeMenu({ onSelect }) {
   );
 }
 
+function ProgressOverlay({ progressInfo }) {
+  const progress = clamp(progressInfo?.value || 0, 0, 1);
+  const percent = Math.round(progress * 100);
+  return (
+    <div className="stage-progress-overlay" role="status" aria-live="polite">
+      <div
+        className="stage-progress-ring"
+        style={{ "--progress-angle": `${progress * 360}deg` }}
+        aria-hidden="true"
+      >
+        <span>{percent}%</span>
+      </div>
+      <span className="stage-progress-label">
+        {progressInfo?.label || "正在准备"}
+      </span>
+      <div
+        className="stage-progress-track"
+        role="progressbar"
+        aria-label={progressInfo?.label || "正在准备"}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow={percent}
+      >
+        <span style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function RecorderStage({
   phase,
   canvasRef,
@@ -684,6 +780,7 @@ function RecorderStage({
   posterUrl,
   posterAlt,
   processingLabel,
+  progressInfo,
   errorMessage,
   onStart,
   onStop,
@@ -693,6 +790,8 @@ function RecorderStage({
   onStagePointerUp,
 }) {
   const isRecording = phase === "recording";
+  const showSourcePreview =
+    phase === "idle" || phase === "error" || phase === "starting";
   return (
     <main className={`capture-shell is-${phase}`}>
       <section className="capture-layout" aria-label="反应视频拍摄区">
@@ -705,7 +804,7 @@ function RecorderStage({
             className="stage-media"
             style={{ "--media-ratio": videoRatio }}
           >
-            {(phase === "idle" || phase === "error") && customVideoUrl ? (
+            {showSourcePreview && customVideoUrl ? (
               <video
                 ref={previewVideoRef}
                 className="stage-preview"
@@ -715,7 +814,7 @@ function RecorderStage({
                 autoPlay
               />
             ) : null}
-            {(phase === "idle" || phase === "error") && !customVideoUrl ? (
+            {showSourcePreview && !customVideoUrl ? (
               <img
                 className="stage-poster"
                 src={posterUrl}
@@ -729,6 +828,9 @@ function RecorderStage({
               width={outputSize.width}
               height={outputSize.height}
             />
+            {phase === "starting" || phase === "processing" ? (
+              <ProgressOverlay progressInfo={progressInfo} />
+            ) : null}
             <canvas
               ref={playbackCanvasRef}
               className="playback-film-canvas"
@@ -773,7 +875,9 @@ function RecorderStage({
           {phase === "starting" && (
             <button className="action-button" type="button" disabled>
               <Camera size={23} weight="fill" aria-hidden="true" />
-              <span>准备中</span>
+              <span>
+                {Math.round(clamp(progressInfo?.value || 0, 0, 1) * 100)}%
+              </span>
             </button>
           )}
           {isRecording && (
@@ -890,6 +994,10 @@ export default function App() {
   const [outputSize, setOutputSize] = useState(DEFAULT_OUTPUT_SIZE);
   const [recordingMimeType, setRecordingMimeType] = useState("video/webm");
   const [errorMessage, setErrorMessage] = useState("");
+  const [progressInfo, setProgressInfo] = useState({
+    label: "正在准备",
+    value: 0,
+  });
 
   const releaseMedia = useCallback(({ preserveAudioContext = false } = {}) => {
     mediaSessionRef.current += 1;
@@ -930,6 +1038,7 @@ export default function App() {
     cancelAnimationFrame(frameRequestRef.current);
     const recorder = recorderRef.current;
     if (recorder?.state === "recording") {
+      setProgressInfo({ label: "整理录制内容", value: 0.03 });
       setPhase("processing");
       recorder.stop();
     } else {
@@ -1203,6 +1312,7 @@ export default function App() {
     }
 
     setPhase("starting");
+    setProgressInfo({ label: "加载视频", value: 0.02 });
     setErrorMessage("");
     stoppingRef.current = false;
     cameraEnabledRef.current = true;
@@ -1233,6 +1343,14 @@ export default function App() {
         throw new Error("拍摄画面没有准备好");
       }
 
+      await waitForVideoReady(film, (progress) => {
+        setProgressInfo({
+          label: "加载视频",
+          value: 0.02 + progress * 0.2,
+        });
+      });
+
+      setProgressInfo({ label: "准备摄像头", value: 0.25 });
       const initialStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: "user" },
@@ -1252,6 +1370,7 @@ export default function App() {
       camera.muted = true;
       await camera.play();
 
+      setProgressInfo({ label: "加载人物抠像", value: 0.4 });
       const segmenter = await createSegmenter();
       if (
         mediaSessionRef.current !== mediaSession ||
@@ -1261,9 +1380,11 @@ export default function App() {
         throw new Error("拍摄准备已取消");
       }
       segmenterRef.current = segmenter;
+      setProgressInfo({ label: "识别清晰人物", value: 0.55 });
       await preparePersonMask(segmenter, camera, mediaSession);
 
       if (experienceModeRef.current === "course") {
+        setProgressInfo({ label: "加载情绪识别", value: 0.68 });
         const emotionLandmarker = await createEmotionLandmarker();
         if (
           mediaSessionRef.current !== mediaSession ||
@@ -1275,6 +1396,7 @@ export default function App() {
         emotionLandmarkerRef.current = emotionLandmarker;
       }
 
+      setProgressInfo({ label: "准备声音", value: 0.8 });
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       await audioContext.resume();
@@ -1309,6 +1431,7 @@ export default function App() {
       film.currentTime = 0;
       film.volume = 1;
       film.muted = false;
+      setProgressInfo({ label: "启动视频", value: 0.92 });
       await film.play();
 
       const compositionContext = canvas.getContext("2d", { alpha: false });
@@ -1340,7 +1463,9 @@ export default function App() {
         ...destination.stream.getAudioTracks(),
       ]);
       outputStreamRef.current = outputStream;
-      const mimeType = chooseRecordingMimeType();
+      const mimeType = chooseRecordingMimeType(
+        experienceModeRef.current === "course",
+      );
       const recorder = new MediaRecorder(outputStream, {
         ...(mimeType ? { mimeType } : {}),
         videoBitsPerSecond: 4_000_000,
@@ -1401,13 +1526,20 @@ export default function App() {
         }
 
         try {
+          let lastProgressValue = 0;
           const montage = await createEmotionMontage({
             sourceBlob,
             ranges,
-            width: canvas.width,
-            height: canvas.height,
+            canvas,
             mimeType: actualMimeType,
             audioContext: montageAudioContext,
+            sourceDuration: capturedDuration,
+            onProgress: ({ progress, label }) => {
+              if (progress - lastProgressValue >= 0.01 || progress === 1) {
+                lastProgressValue = progress;
+                setProgressInfo({ label, value: 0.06 + progress * 0.94 });
+              }
+            },
           });
           if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current);
           const nextUrl = URL.createObjectURL(montage.blob);
@@ -1430,6 +1562,7 @@ export default function App() {
       };
       recorderRef.current = recorder;
       recorder.start(1000);
+      setProgressInfo({ label: "录制已开始", value: 1 });
       setPhase("recording");
       startDrawLoop();
     } catch (error) {
@@ -1549,6 +1682,7 @@ export default function App() {
     setVideoRatio(DEFAULT_VIDEO_RATIO);
     setOutputSize(DEFAULT_OUTPUT_SIZE);
     setErrorMessage("");
+    setProgressInfo({ label: "正在准备", value: 0 });
     setPhase("idle");
   }, []);
 
@@ -1591,6 +1725,7 @@ export default function App() {
       resultUrlRef.current = "";
     }
     setVideoUrl("");
+    setProgressInfo({ label: "正在准备", value: 0 });
     filmVideoRef.current = createFilmVideoElement(
       experienceModeRef.current === "course"
         ? COURSE_FILM_URL
@@ -1655,6 +1790,7 @@ export default function App() {
         experienceMode === "course" ? "课程视频画面" : "叫叫互动片段画面"
       }
       processingLabel={experienceMode === "course" ? "剪辑中" : "生成中"}
+      progressInfo={progressInfo}
       errorMessage={errorMessage}
       onStart={startRecording}
       onStop={stopRecording}

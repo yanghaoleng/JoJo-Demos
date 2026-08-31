@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@fix-webm-duration/fix": "^1.0.1",
     "@mediapipe/tasks-vision": "1.0.1",
     "@phosphor-icons/react": "2.1.10",
     "react": "19.2.8",

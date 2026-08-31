@@ -188,6 +188,72 @@ a:focus-visible {
   z-index: 1;
 }
 
+.stage-progress-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.stage-progress-ring {
+  --progress-angle: 0deg;
+  position: relative;
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--accent) var(--progress-angle),
+    rgba(255, 255, 255, 0.16) 0
+  );
+}
+
+.stage-progress-ring::before {
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: rgba(8, 8, 8, 0.94);
+  content: "";
+}
+
+.stage-progress-ring span {
+  position: relative;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-progress-label {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.stage-progress-track {
+  width: min(220px, 72%);
+  height: 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.17);
+}
+
+.stage-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 160ms ease-out;
+}
+
 .action-dock {
   display: flex;
   align-items: center;
@@ -366,6 +432,7 @@ a:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .stage-progress-track span,
   .mode-choice,
   .action-button {
     transition: none;

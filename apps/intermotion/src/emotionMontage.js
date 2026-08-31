@@ -1,8 +1,12 @@
-const TRANSITION_DURATION_MS = 460;
+import { fixWebmDuration } from "@fix-webm-duration/fix";
 
-function waitForMediaEvent(media, eventName) {
+const TRANSITION_DURATION_MS = 460;
+const TRANSITION_DURATION_SECONDS = TRANSITION_DURATION_MS / 1000;
+
+function waitForMediaEvent(media, eventName, timeoutMs = 15_000) {
   return new Promise((resolve, reject) => {
     const cleanup = () => {
+      window.clearTimeout(timeoutId);
       media.removeEventListener(eventName, handleEvent);
       media.removeEventListener("error", handleError);
     };
@@ -14,6 +18,10 @@ function waitForMediaEvent(media, eventName) {
       cleanup();
       reject(new Error("剪辑素材读取失败，请重新拍摄。"));
     };
+    const timeoutId = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("剪辑素材读取超时，请重新拍摄。"));
+    }, timeoutMs);
     media.addEventListener(eventName, handleEvent, { once: true });
     media.addEventListener("error", handleError, { once: true });
   });
@@ -36,7 +44,12 @@ function drawVideoFrame(context, video) {
   context.drawImage(video, 0, 0, width, height);
 }
 
-async function drawWipeTransition(context, previousFrame, video) {
+async function drawWipeTransition(
+  context,
+  previousFrame,
+  video,
+  onProgress,
+) {
   const { width, height } = context.canvas;
   const startedAt = performance.now();
   await new Promise((resolve) => {
@@ -45,6 +58,7 @@ async function drawWipeTransition(context, previousFrame, video) {
         1,
         (timestamp - startedAt) / TRANSITION_DURATION_MS,
       );
+      onProgress(progress);
       const eased = 1 - (1 - progress) ** 3;
       const revealX = width * eased;
       const slant = Math.min(width * 0.12, 92);
@@ -68,7 +82,14 @@ async function drawWipeTransition(context, previousFrame, video) {
   });
 }
 
-async function playRange(context, video, range, audioContext, gain) {
+async function playRange(
+  context,
+  video,
+  range,
+  audioContext,
+  gain,
+  onProgress,
+) {
   const duration = Math.max(0.08, range.end - range.start);
   const now = audioContext.currentTime;
   const fadeDuration = Math.min(0.09, duration / 3);
@@ -82,6 +103,9 @@ async function playRange(context, video, range, audioContext, gain) {
   await new Promise((resolve) => {
     const draw = () => {
       drawVideoFrame(context, video);
+      onProgress(
+        Math.min(1, Math.max(0, (video.currentTime - range.start) / duration)),
+      );
       if (video.currentTime >= range.end || video.ended) {
         video.pause();
         drawVideoFrame(context, video);
@@ -94,13 +118,68 @@ async function playRange(context, video, range, audioContext, gain) {
   });
 }
 
+export function getMontageTimelineDuration(ranges) {
+  const clipDuration = ranges.reduce(
+    (total, range) => total + Math.max(0, range.end - range.start),
+    0,
+  );
+  return (
+    clipDuration +
+    Math.max(0, ranges.length - 1) * TRANSITION_DURATION_SECONDS
+  );
+}
+
+async function verifyPlayableBlob(blob, expectedDurationSeconds) {
+  const previewUrl = URL.createObjectURL(blob);
+  const preview = document.createElement("video");
+  preview.preload = "auto";
+  preview.playsInline = true;
+  preview.muted = true;
+  preview.src = previewUrl;
+  preview.style.cssText =
+    "position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:.001;pointer-events:none";
+  document.body.appendChild(preview);
+  preview.load();
+
+  try {
+    if (preview.readyState < 1) {
+      await waitForMediaEvent(preview, "loadedmetadata");
+    }
+    const duration = preview.duration;
+    const minimumDuration = Math.min(0.2, expectedDurationSeconds * 0.45);
+    const maximumDuration = expectedDurationSeconds * 2.2 + 2;
+    if (
+      !Number.isFinite(duration) ||
+      duration < minimumDuration ||
+      duration > maximumDuration
+    ) {
+      throw new Error("成片时间轴异常，请重新拍摄。");
+    }
+
+    if (duration >= 0.45) {
+      await preview.play();
+      await new Promise((resolve) => window.setTimeout(resolve, 520));
+      if (preview.currentTime < 0.08) {
+        throw new Error("成片画面无法播放，请重新拍摄。");
+      }
+    }
+  } finally {
+    preview.pause();
+    preview.removeAttribute("src");
+    preview.load();
+    preview.remove();
+    URL.revokeObjectURL(previewUrl);
+  }
+}
+
 export async function createEmotionMontage({
   sourceBlob,
   ranges,
-  width,
-  height,
+  canvas,
   mimeType,
   audioContext,
+  sourceDuration,
+  onProgress = () => {},
 }) {
   if (!ranges.length) {
     throw new Error("没有检测到明显的情绪互动，请重新拍摄。");
@@ -109,7 +188,16 @@ export async function createEmotionMontage({
     throw new Error("音频剪辑没有准备好，请重新拍摄。");
   }
 
-  const sourceUrl = URL.createObjectURL(sourceBlob);
+  onProgress({ progress: 0.01, label: "修复录制时间轴" });
+  const normalizedSourceBlob =
+    sourceBlob.type.includes("webm") &&
+    Number.isFinite(sourceDuration) &&
+    sourceDuration > 0
+      ? await fixWebmDuration(sourceBlob, sourceDuration * 1000, {
+          logger: false,
+        })
+      : sourceBlob;
+  const sourceUrl = URL.createObjectURL(normalizedSourceBlob);
   const video = document.createElement("video");
   video.preload = "auto";
   video.playsInline = true;
@@ -119,22 +207,27 @@ export async function createEmotionMontage({
   let outputStream = null;
   let recorder = null;
   try {
+    onProgress({ progress: 0.02, label: "读取录制内容" });
     if (video.readyState < 1) await waitForMediaEvent(video, "loadedmetadata");
     if (audioContext.state === "suspended") await audioContext.resume();
 
+    const mediaDuration = Number.isFinite(video.duration)
+      ? video.duration
+      : sourceDuration;
+    if (!Number.isFinite(mediaDuration) || mediaDuration <= 0) {
+      throw new Error("录制内容的时长异常，请重新拍摄。");
+    }
+
     const safeRanges = ranges
       .map((range) => ({
-        start: Math.max(0, Math.min(video.duration, range.start)),
-        end: Math.max(0, Math.min(video.duration, range.end)),
+        start: Math.max(0, Math.min(mediaDuration, range.start)),
+        end: Math.max(0, Math.min(mediaDuration, range.end)),
       }))
       .filter((range) => range.end - range.start >= 0.2);
     if (!safeRanges.length) {
       throw new Error("没有检测到可以剪辑的情绪片段，请重新拍摄。");
     }
 
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
     const context = canvas.getContext("2d", { alpha: false });
     if (!context) throw new Error("视频剪辑画布没有准备好。");
 
@@ -159,38 +252,88 @@ export async function createEmotionMontage({
     });
     const actualMimeType =
       recorder.mimeType || supportedMimeType || "video/webm";
+    const expectedDuration = getMontageTimelineDuration(safeRanges);
     const chunks = [];
+    let recordedDurationMs = 0;
     const recording = new Promise((resolve, reject) => {
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.push(event.data);
       };
       recorder.onerror = () => reject(new Error("情绪片段剪辑失败，请重试。"));
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: actualMimeType });
-        if (!blob.size) reject(new Error("情绪片段剪辑失败，请重试。"));
-        else resolve({ blob, mimeType: actualMimeType });
+      recorder.onstop = async () => {
+        try {
+          const rawBlob = new Blob(chunks, { type: actualMimeType });
+          if (!rawBlob.size) {
+            throw new Error("情绪片段剪辑失败，请重试。");
+          }
+          onProgress({ progress: 0.96, label: "修复成片时间轴" });
+          const blob = actualMimeType.includes("webm")
+            ? await fixWebmDuration(rawBlob, recordedDurationMs, {
+                logger: false,
+              })
+            : rawBlob;
+          onProgress({ progress: 0.985, label: "校验成片" });
+          await verifyPlayableBlob(blob, recordedDurationMs / 1000);
+          onProgress({ progress: 1, label: "成片完成" });
+          resolve({ blob, mimeType: actualMimeType });
+        } catch (error) {
+          reject(error);
+        }
       };
     });
 
     await seekVideo(video, safeRanges[0].start);
     drawVideoFrame(context, video);
-    recorder.start(500);
+    recorder.start();
+    const recordingStartedAt = performance.now();
+    const totalTimelineDuration = Math.max(0.1, expectedDuration);
+    let completedTimelineDuration = 0;
+    onProgress({ progress: 0.06, label: "剪辑情绪片段" });
 
     for (let index = 0; index < safeRanges.length; index += 1) {
       const range = safeRanges[index];
       if (index > 0) {
         const previousFrame = document.createElement("canvas");
-        previousFrame.width = width;
-        previousFrame.height = height;
+        previousFrame.width = canvas.width;
+        previousFrame.height = canvas.height;
         previousFrame.getContext("2d")?.drawImage(canvas, 0, 0);
         await seekVideo(video, range.start);
-        await drawWipeTransition(context, previousFrame, video);
+        await drawWipeTransition(context, previousFrame, video, (progress) => {
+          onProgress({
+            progress:
+              0.06 +
+              0.86 *
+                ((completedTimelineDuration +
+                  progress * TRANSITION_DURATION_SECONDS) /
+                  totalTimelineDuration),
+            label: "加入划变转场",
+          });
+        });
+        completedTimelineDuration += TRANSITION_DURATION_SECONDS;
       }
-      await playRange(context, video, range, audioContext, gain);
+      const rangeDuration = Math.max(0, range.end - range.start);
+      await playRange(
+        context,
+        video,
+        range,
+        audioContext,
+        gain,
+        (progress) => {
+          onProgress({
+            progress:
+              0.06 +
+              0.86 *
+                ((completedTimelineDuration + progress * rangeDuration) /
+                  totalTimelineDuration),
+            label: `剪辑第 ${index + 1}/${safeRanges.length} 段`,
+          });
+        },
+      );
+      completedTimelineDuration += rangeDuration;
     }
 
     await new Promise((resolve) => window.setTimeout(resolve, 120));
-    recorder.requestData?.();
+    recordedDurationMs = performance.now() - recordingStartedAt;
     recorder.stop();
     return await recording;
   } finally {
