@@ -107,6 +107,16 @@ a:focus-visible {
   z-index: 1;
 }
 
+.video-stage .capture-composite-canvas {
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.video-stage .playback-film-canvas {
+  z-index: 1;
+}
+
 .stage-poster {
   z-index: 2;
 }

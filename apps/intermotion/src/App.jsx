@@ -635,6 +635,7 @@ function getLargestFaceBounds(result, cameraVideo, previous, timestamp) {
 function RecorderStage({
   phase,
   canvasRef,
+  playbackCanvasRef,
   previewVideoRef,
   fileInputRef,
   customVideoUrl,
@@ -680,6 +681,15 @@ function RecorderStage({
             ) : null}
             <canvas
               ref={canvasRef}
+              className="capture-composite-canvas"
+              aria-hidden="true"
+              width={outputSize.width}
+              height={outputSize.height}
+            />
+            <canvas
+              ref={playbackCanvasRef}
+              className="playback-film-canvas"
+              aria-label="当前播放的视频画面"
               width={outputSize.width}
               height={outputSize.height}
             />
@@ -788,6 +798,7 @@ function ResultView({ videoUrl, mimeType, videoRatio, onAgain }) {
 
 export default function App() {
   const canvasRef = useRef(null);
+  const playbackCanvasRef = useRef(null);
   const filmVideoRef = useRef(null);
   const previewVideoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -947,11 +958,15 @@ export default function App() {
   const startDrawLoop = useCallback(() => {
     const draw = (timestamp) => {
       const canvas = canvasRef.current;
+      const playbackCanvas = playbackCanvasRef.current;
       const film = filmVideoRef.current;
       const camera = cameraVideoRef.current;
-      if (!canvas || !film || !camera) return;
+      if (!canvas || !playbackCanvas || !film || !camera) return;
       const context = canvas.getContext("2d", { alpha: false });
-      if (!context) return;
+      const playbackContext = playbackCanvas.getContext("2d", {
+        alpha: false,
+      });
+      if (!context || !playbackContext) return;
 
       const segmenter = segmenterRef.current;
       if (
@@ -1011,6 +1026,7 @@ export default function App() {
         faceBoundsRef.current,
         overlayPlacementRef,
       );
+      drawFilmFrame(playbackContext, film);
       if (film.ended) {
         stopRecording();
         return;
@@ -1338,6 +1354,7 @@ export default function App() {
     <RecorderStage
       phase={phase}
       canvasRef={canvasRef}
+      playbackCanvasRef={playbackCanvasRef}
       previewVideoRef={previewVideoRef}
       fileInputRef={fileInputRef}
       customVideoUrl={customVideoUrl}
