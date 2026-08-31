@@ -35,7 +35,7 @@ const gestureTabs = [...document.querySelectorAll("[data-gesture-mode]")];
 const PAGE_SETTLE_MS = 620;
 const READING_START_MS = 420;
 const SWIPE_THRESHOLD_PX = 72;
-const FOLLOW_DEAD_ZONE_PX = 10;
+const FOLLOW_DEAD_ZONE_PX = 150;
 const QUIZ_GESTURE_MODES = {
   FOLLOW: "follow",
   THRESHOLD: "threshold",
@@ -428,7 +428,7 @@ function moveSwipe(event) {
         quizBoard.setAttribute("aria-hidden", "true");
       }
       setTrackOffset(pageOffset());
-      readingStatus.textContent = "回到 10px 内 · 题板取消";
+      readingStatus.textContent = "回到 150px 内 · 题板取消";
       return;
     }
 
@@ -445,7 +445,7 @@ function moveSwipe(event) {
     setTrackOffset(pageOffset() + Math.min(0, deltaX * 0.12));
     readingStatus.textContent = rawBoardX < 0
       ? "已超过停靠位 · 松手回弹"
-      : "10px 跟手 · 松手展开";
+      : "150px 跟手 · 松手展开";
     return;
   }
 
