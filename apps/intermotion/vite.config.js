@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { cleanBuildAssets } from "./scripts/clean-build-assets.mjs";
 import react from "@vitejs/plugin-react";
 import { createReadStream, statSync } from "node:fs";
 import { extname, resolve } from "node:path";
@@ -59,11 +60,17 @@ function serveBuiltStaticDuringDevelopment() {
 
 export default defineConfig({
   base: "/intermotion/",
-  plugins: [react(), serveBuiltStaticDuringDevelopment()],
+  plugins: [react(), serveBuiltStaticDuringDevelopment(), {
+    name: "clean-obsolete-intermotion-assets",
+    apply: "build",
+    async writeBundle(_options, bundle) {
+      await cleanBuildAssets(builtStaticDir, bundle);
+    },
+  }],
   build: {
     outDir: "../../intermotion",
     emptyOutDir: false,
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         entryFileNames: "assets/intermotion-[hash].js",
