@@ -1,1 +1,6 @@
 /index.html
+
+# Source workspaces and development tools are not public demo routes.
+/apps/
+/skills/
+**/*.map
