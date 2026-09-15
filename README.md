@@ -32,6 +32,7 @@
 | 家长成长沟通 | `report/index.html` |
 | 家长成长沟通（Figma 实图版） | `report-codex/index.html` |
 | 童趣动画反应视频 | `intermotion/index.html` |
+| 儿童社区成员信息流 | `DEMO/avatar-community/index.html` |
 
 ## 使用方式
 
@@ -55,3 +56,12 @@
 `/report-codex/` 为独立重建版本，按“每周学情预告、日学情反馈、主题月学情反馈、阶段学情反馈”展示四类家长触达。日报按“产品触达 / 班班触达”分别双图并排，阶段报告同时展示新版班班消息、封面与完整报告；日报使用 Figma `22878:163382` 的完整长图，并与阶段报告统一为 `375:812` 的 iPhone 比例滚动窗口。日报长图切成 4 段 WebP，首段预加载、后续段懒加载；页首叫叫标志旗桌面高 `25px`、手机高 `24px`。无 API、无用户数据采集。
 
 `/intermotion/` 打开后直接进入拍摄界面，播放童趣动画并在设备本地合成孩子的镜头与麦克风；人像抠图羽化范围限制为 `3px`。
+## Mock 社区头像
+
+`DEMO/avatar-community/assets/sprites/` 内有 19 张 4×4 头像母图，`assets/avatars/` 内为 300 张 256×256 PNG，文件名从 `avatar-001.png` 连续到 `avatar-300.png`。头像使用原创涂鸦、抽象符号、像素角色、自然景物和手作物件，不包含真人儿童信息、品牌标志或可识别现有 IP。最后一张母图只使用前 12 格，使正式头像总数保持为 300。
+
+## 笔记练习本与部署稳定性
+
+- `upnotes/` 是 `https://jojodemos.mikeywa.icu/upnotes/` 的正式发布副本，必须随每次宿主生产部署保留。
+- `vercel.json` 将 `/upnotes` 307 跳转到 `/upnotes/`，保证相对静态资源路径正确。
+- Vercel 项目必须保持 `autoAssignCustomDomains=true`，让新生产部署自动继承自定义域名。

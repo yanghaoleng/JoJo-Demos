@@ -17,3 +17,7 @@
 | 修复黑客松活动页线上 404 | 已完成 | 已补入 `DEMO/hackathon.html` 和必要静态资源，并重新部署；线上 `/Hackathon`、`/hackathon`、`/DEMO/hackathon.html` 均返回 200 |
 | 修改蛐蛐模拟器入口链接 | 已完成 | `/DEMO/index.html` 中 `PROJECTS.ququ.files[0]` 已改为 `https://ququ.mikeywa.icu/ding`，线上索引页已验证生效 |
 | 重做索引页文件夹 | 已发布 | 文件夹改为连续 SVG 轮廓；favicon 与 3 张缩略图均收进文件夹，桌面、移动端、浅色模式和弹窗交互已验证；代码提交 `c605c6a`，生产部署 `dpl_FpUL5CEhXZZkzHJVVabh6SgpvgWf` Ready |
+| 邀请 GitHub 协作者 | 已完成 | 2026-07-16 已邀请 `qihaogithub` 加入 `yanghaoleng/JoJo-Demos`，权限为 `write`，等待对方接受邀请 |
+| 生成儿童社区 Mock 头像 | 已完成 | 19 张 4×4 母图与 300 张 256×256 单图已保存，编号为 `avatar-001` 至 `avatar-300`；采用涂鸦、符号、原创像素角色、景物与手作物件，已排查明显可识别现有 IP |
+| 儿童社区信息流 Demo | 已完成本地实现与验证 | `/DEMO/avatar-community/index.html` 展示头像、名称、状态，支持搜索、状态筛选、刷新骨架和空结果；390×844 视口验证正常，浏览器无报错 |
+| 修复 upnotes 重复失联 | 已完成 | `upnotes/` 与 307 跳转已提交主分支 `4aab593`；Vercel 已开启自动域名继承，并通过生产部署 `dpl_6FUP515ny7bvvsakX3i8ekdUfz7N` 验证生效 |

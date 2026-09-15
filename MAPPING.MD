@@ -4,6 +4,8 @@
 | --- | --- | --- | --- |
 | 索引页弹窗 | `/DEMO/index.html` | `.note-layer`, `.note-stage`, `.note-paper` | 点击首页项目文件夹后打开的便签式模态弹窗 |
 | 弹窗关闭按钮 | `/DEMO/index.html` | `.note-close`, `closeNote()` | 弹窗右上角关闭按钮，叉号由 CSS 伪元素绘制，不依赖图标字体 |
+| 索引页文件夹 | `/DEMO/index.html` | `.folder-card`, `.folder-visual`, `.folder-front`, `.folder-back` | 首页每个 demo 的文件夹卡片，默认夹住内部缩略图，点击打开项目弹窗 |
+| 文件夹内部缩略图 | `/DEMO/index.html` | `.folder-paper`, `.folder-shot`, `.folder-preview`, `.folder-favicon` | 文件夹里的副截图、补充截图、主截图和内置 favicon/logo；favicon 不再作为外贴图标 |
 | 蛐蛐模拟器入口 | `/DEMO/index.html` | `PROJECTS.ququ.files[0].href`, `data-project="ququ"` | 索引页“蛐蛐模拟器”弹窗里的打开项目链接，当前指向 `https://ququ.mikeywa.icu/ding` |
 | 黑客松活动页 | `/DEMO/hackathon.html` | `/Hackathon`, `/hackathon`, `vercel.json` rewrites | 叫叫线下 AI 黑客松活动页，线上短链由 Vercel rewrite 指向 HTML |
 | 黑客松首页卡片 | `/DEMO/index.html` | `data-project="hackathon"` | 索引页中打开黑客松活动页的列表项 |
@@ -30,3 +32,9 @@
 | 课程预告窗口 | `/report-codex/` | `.course-frame` | 直接载入 `assets/course-preview.html` 的滚动窗口 |
 | 课程预告水印图 | `/report-codex/` | `.hero-art` | 课程插画在首屏右侧以低透明度、无边框方式作为水印纹理 |
 | 阶段报告手机框 | `/report-codex/` | `.stage-pair .report-phone` | 与封面比例一致的细黑手机框，封面使用 `object-fit: cover` 铺满 |
+| 儿童社区信息流 | `/DEMO/avatar-community/index.html` | `.feed`, `#feed`, `members` | 展示 Mock 用户头像、昵称和活动状态的成员列表 |
+| 社区头像母图 | `/DEMO/avatar-community/` | `assets/sprites/avatar-sprite-01.png` 至 `avatar-sprite-19.png` | 19 张 4×4 原创混合风格头像精灵图 |
+| 单个社区头像 | `/DEMO/avatar-community/` | `.avatar`, `assets/avatars/avatar-001.png` 至 `avatar-300.png` | 300 张 256×256 PNG，列表中显示为 58-64px |
+| 动态状态筛选 | `/DEMO/avatar-community/index.html` | `.filter`, `activeFilter`, `render()` | 全部、在线、阅读中、创作中、休息中筛选 |
+| 笔记练习本 | `/upnotes/` | `upnotes/`, `vercel.json` redirect | 独立源码的宿主发布副本，必须进入每个生产包 |
+| 域名自动继承 | Vercel 项目设置 | `autoAssignCustomDomains=true` | 新生产部署自动接管 `jojodemos.mikeywa.icu`，禁止只手工 alias 固定部署 |
